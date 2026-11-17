@@ -11,20 +11,16 @@
 | Dil | TypeScript |
 | Paket | `@feralin/electron` |
 | Sürüm | 0.1.0 |
-| Yaşam döngüsü | INTEGRATION_TESTED |
+| Yaşam döngüsü | INSTALL_VERIFIED |
 | Kaynak dizin | `sdks/electron` |
-| Registry | npm: **BLOCKED_EXTERNAL** (gereken: @feralin npm organizasyonu, 2FA, OIDC trusted publishing) |
+| Registry | npm: **PUBLISHED** (sonraki adım: her paket için npm trusted publishing (OIDC); npm 2FA'yı atlayan anahtarla doğrudan yayını Ocak 2027'de kapatıyor) |
 | Derleme | `pnpm --filter @feralin/electron build` |
 | Test | `pnpm --filter @feralin/electron test` |
 
 ## Kurulum
 
-Registry yayını durumu **BLOCKED_EXTERNAL**: paket henüz `npm` üzerinde yayınlanmış olarak doğrulanmadı; aşağıdaki adımlar kaynaktan ya da yerel pakettendir.
-
 ```bash
-cd sdks/node && npm pack
-cd ../electron && npm pack
-npm install ./feralin-node-0.1.0.tgz ./feralin-electron-0.1.0.tgz
+npm install @feralin/node @feralin/electron
 ```
 
 ## İlk kullanım
@@ -68,9 +64,9 @@ await feralin.track("project_opened");
 
 | Yetenek | Durum |
 |---|---|
-| event | SUPPORTED (yayınsız; #7 üstünde, platform=node) |
+| event | SUPPORTED (#7 üstünde, platform=node) |
 | batch | PARTIAL (ana süreç belleğinde kuyruk, kalıcı ve şifreli değil) |
-| consent | SUPPORTED (yayınsız; köprüden setConsent, süreç başına) |
+| consent | SUPPORTED (köprüden setConsent, süreç başına) |
 | identity | PARTIAL (identify, reset; group ve setUserProperties renderer köprüsünde, doğrulama ana süreçte; kurulum kimliğini uygulama verir) |
 | attribution | PARTIAL (installCode → fr_install_code eşleştirme kodu; mağaza referrer yolu yok) |
 | deeplink | PARTIAL (opt-in deepLinks: özel protokol, open-url ve second-instance adresi SDK derin bağlantı akışına verilir; birim testli, gerçek pencerede koşmadı) |
@@ -86,8 +82,8 @@ await feralin.track("project_opened");
 | source | PASS |  |
 | build | PASS |  |
 | test | PASS | node --test 13/13; taklit IPC ile. |
-| registry | BLOCKED_EXTERNAL | @feralin npm organizasyonu yok. |
-| clean_install | PASS | npm pack çıktıları boş dizine kuruldu, ESM ve CommonJS yüklendi. |
-| event_receipt | PASS | scripts/sdk-e2e/run.mjs electron ile FERALIN_E2E_ELECTRON_RUNTIME=1: gerçek Electron süreci, sandbox ve contextIsolation açık, paketlenmiş preload, gerçek IPC ve gerçek toplayıcı. Olaylarda platform=node; UTP şemasında masaüstü değeri yok. Yalnız Windows; macOS, Linux ve imzalı paket NOT_RUN. |
+| registry | PASS | npm'de yayımlandı: @feralin/electron@0.1.0 (17 Kasım 2026, git b1a7d127, org @feralin; ilk yayın site sahibinin tek onayıyla, docs/sdk/npm-yayin-adimlari.md B yolu; RELEASE_CANDIDATE dört göz koşulu bu yayında aranmadı). Registry'den geri okuma: latest 0.1.0, dist.integrity sha512-sy+e7z7J8Gcb… yerel kuru koşu paketinin özetiyle birebir aynı, sahip org @feralin. npm ilk yayında 2 dosyalık 0.0.0-stage yer tutucu sürümünü de oluşturdu; Feralin yayını değildir. |
+| clean_install | PASS | npm pack çıktıları boş dizine kuruldu, ESM ve CommonJS yüklendi. Registry'den temiz kurulum: FERALIN_E2E_FROM_REGISTRY=1 FERALIN_E2E_ELECTRON_RUNTIME=1 scripts/sdk-e2e/run.mjs electron (17 Kasım 2026): @feralin/node@0.1.0 ve @feralin/electron@0.1.0 npmjs.org'dan hem Node tüketicisine hem gerçek Electron uygulamasına kuruldu (resolved https://registry.npmjs.org/@feralin/electron/-/electron-0.1.0.tgz, kilit dosyasındaki sürüm ve özet registry'deki dist.integrity ile aynı). |
+| event_receipt | PASS | scripts/sdk-e2e/run.mjs electron ile FERALIN_E2E_ELECTRON_RUNTIME=1: gerçek Electron süreci, sandbox ve contextIsolation açık, paketlenmiş preload, gerçek IPC ve gerçek toplayıcı. Olaylarda platform=node; UTP şemasında masaüstü değeri yok. Yalnız Windows; macOS, Linux ve imzalı paket NOT_RUN. Registry'den kurulan @feralin/electron@0.1.0 ile (17 Kasım 2026, taklit IPC ve gerçek Electron süreci): gerçek collect 202 (9 istek) ve 401, outbox'ta 13 satır, ClickHouse'ta 5 olay tam bir kez, izinsiz 2 olay yok. |
 | documentation | PASS | docs/sdk/electron.md: kurulum ve kullanım kod blokları README'den, yetenek ve zincir durumu yetenek dosyasından üretilir (scripts/sdk-dry-run/docs.mjs); registry yayını ve Super Admin kanıtı ayrı halkadır. |
 | super_admin_proof | NOT_STARTED |  |

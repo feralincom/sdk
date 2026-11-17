@@ -1,5 +1,5 @@
-// Geçici modül yolu. Kalıcı yol (ör. github.com/feralin/feralin-go) namespace sahipliği doğrulanınca
-// kararlaştırılır; bkz. docs/sdk/capability-matrix.md §4 (Go modules: Git tag + public repo → BLOCKED_EXTERNAL).
-module feralin.dev/sdks/go
+// Kalıcı modül yolu: herkese açık depo github.com/feralincom/sdk içindeki sdks/go alt dizini.
+// Alt dizin modülünün sürüm etiketi dizin önekiyle yazılır: sdks/go/v0.1.0 (bkz. docs/sdk/git-yayin-adimlari.md).
+module github.com/feralincom/sdk/sdks/go
 
 go 1.26

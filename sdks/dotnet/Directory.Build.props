@@ -10,6 +10,11 @@
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageTags>feralin;analytics;attribution;utp</PackageTags>
+    <PackageProjectUrl>https://feralin.com</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/feralincom/sdk</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <!-- Paket herkese açık depodan (feralincom/sdk) yayınlanır: geliştirme deposunun commit kimliği nuspec'e ve sürüm bilgisine girmesin. -->
+    <EnableSourceControlManagerQueries>false</EnableSourceControlManagerQueries>
     <Deterministic>true</Deterministic>
   </PropertyGroup>
 </Project>

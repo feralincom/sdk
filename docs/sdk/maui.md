@@ -13,7 +13,7 @@
 | Sürüm | 0.1.0 |
 | Yaşam döngüsü | INTEGRATION_TESTED |
 | Kaynak dizin | `sdks/maui` |
-| Registry | NuGet: **BLOCKED_EXTERNAL** (gereken: nuget.org hesabı, Feralin önek rezervasyonu, API anahtarı) |
+| Registry | NuGet: **BLOCKED_EXTERNAL** (gereken: nuget.org hesabı ve 2FA; Feralin önek rezervasyonu (account@nuget.org); Push kapsamlı, Feralin.* desenli API anahtarı (NUGET_API_KEY, .NET SDK 10.0.300+) ya da trusted publishing ilkesi) |
 | Derleme | `cd sdks/maui && dotnet build src/Feralin.Sdk.Maui -c Release --nologo` |
 | Test | `cd sdks/maui && dotnet test tests/Feralin.Sdk.Maui.Tests --nologo` |
 

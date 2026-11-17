@@ -2,9 +2,27 @@
 
 `com.feralin.unity`: Unity oyunları için UTP v1 olay SDK'sı. İzin yoksa olay üretmez, parmak izi veya cihaz kimliği toplamaz. Çalışma zamanı bağımlılığı yalnız Unity'nin kendi `UnityWebRequest` modülüdür (Android atfı için ayrıca Play Install Referrer kitaplığı, aşağıya bakın).
 
-> **Durum:** Registry'de yayınlanmadı. Paket kanalı (scoped registry veya Git) açılana kadar aşağıdaki gibi yerel kurulur. Android ve iOS yerel köprüleri (Keystore, Keychain, Install Referrer, AdServices) yazıldı ama oyuncu derlemesi ve cihaz olmadığı için **derlenmedi ve cihazda sınanmadı**. Ayrıntı için "Doğrulama" bölümüne bakın. Kurulum belgesi: [`docs/sdk/unity.md`](../../docs/sdk/unity.md) (TR ve EN).
+> **Durum:** Registry'de yayınlanmadı. Paket kanalı herkese açık Git deposudur (aşağıda); sürüm etiketi `sdks/unity/v0.2.0` henüz gönderilmedi, gönderim ve etiket site sahibinin onayını bekler. O zamana kadar aşağıdaki gibi yerel kurulur. Android ve iOS yerel köprüleri (Keystore, Keychain, Install Referrer, AdServices) yazıldı ama oyuncu derlemesi ve cihaz olmadığı için **derlenmedi ve cihazda sınanmadı**. Ayrıntı için "Doğrulama" bölümüne bakın. Kurulum belgesi: [`docs/sdk/unity.md`](../../docs/sdk/unity.md) (TR ve EN).
 
 ## Kurulum
+
+### Git deposundan (UPM)
+
+Paket herkese açık depoda `sdks/unity` altındadır (<https://github.com/feralincom/sdk>); sürüm etiketi `sdks/unity/v0.2.0`. Unity Package Manager → **+** → **Add package from git URL** alanına:
+
+```text
+https://github.com/feralincom/sdk.git?path=sdks/unity#sdks/unity/v0.2.0
+```
+
+ya da `Packages/manifest.json`:
+
+```json
+{ "dependencies": { "com.feralin.unity": "https://github.com/feralincom/sdk.git?path=sdks/unity#sdks/unity/v0.2.0" } }
+```
+
+Bilgisayarda Git kurulu olmalıdır (Unity Git adresini kendisi değil, `git` komutuyla çeker). `#` sonrası etiket sürümü sabitler; etiketsiz adres `main` dalının o anki hâlini kurar ve önerilmez. Etiket depoya gönderilmeden adres "revision not found" hatası verir; yayımlanmış etiketler <https://github.com/feralincom/sdk/tags> sayfasındadır.
+
+### Paket dosyasından (tarball)
 
 Unity Package Manager → **Add package from tarball**, veya `Packages/manifest.json`:
 

@@ -13,7 +13,7 @@
 | Sürüm | 0.1.0 |
 | Yaşam döngüsü | INTEGRATION_TESTED |
 | Kaynak dizin | `sdks/python-fastapi` |
-| Registry | PyPI: **BLOCKED_EXTERNAL** (gereken: PyPI hesabı, 2FA, API token; feralin çekirdeğinin yayını) |
+| Registry | PyPI: **BLOCKED_EXTERNAL** (gereken: PyPI hesabı ve 2FA; pypi- önekli API anahtarı (twine, TWINE_PASSWORD) ya da pending trusted publisher; feralin çekirdeği önce yayınlanır) |
 | Derleme | `python -m build sdks/python-fastapi` |
 | Test | `node scripts/sdk-dry-run/python-adapter.mjs sdks/python-fastapi fastapi httpx` |
 

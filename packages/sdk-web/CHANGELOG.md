@@ -1,13 +1,16 @@
 # Değişiklik günlüğü
 
-Paket npm'e yayınlanmadı (`@feralin` organizasyonu yok, `BLOCKED_EXTERNAL`); bugün `/sdk/feralin.iife.js` ile sunulur. Doğrulama durumu `sdks/capabilities.yaml` içindedir.
+`@feralin/web@0.1.0` npm'de yayımlıdır (17 Kasım 2026, git b1a7d127); site ayrıca `/sdk/feralin.iife.js` ile sunar. Doğrulama durumu `sdks/capabilities.yaml` içindedir.
 
-## Yayınlanmamış
+## Yayınlanmamış (yayın bekliyor)
+
+Depodadır, npm'deki 0.1.0 içinde yoktur; sonraki sürüm numarasıyla yayımlanacak.
+
+- `@feralin/web/errors`: V8 yığın izinin `Tür: mesaj` başlığı mesajında `@` varsa (ör. e-posta) Firefox çerçevesi sanılıp `top_frame` ve parmak izine giriyordu; V8 biçiminde artık yalnız `at ` satırları okunur. Toplayıcı `top_frame` alanını sunucuda da temizlediği için saklanan veriye e-posta yazılmıyordu; düzeltme istemciden çıkışı da keser (17 Kasım 2026).
+
+## 0.1.0 (npm'de yayımlı, 17 Kasım 2026, git b1a7d127)
 
 - Kurulum eşleştirme kodu: `new Feralin({ ..., installCode })` panelin "Kurulumu doğrula" ekranındaki tek kullanımlık kodu izin sonrası ilk olaya `fr_install_code` olarak ekler; biçimi geçersiz kod yok sayılır (16 Kasım 2026).
-
-## 0.1.0 (yayınlanmadı)
-
 - UTP v1 çekirdeği: `initialize`, `track`, `identify`, `reset`, `setConsent`, `flush`; ULID olay kimliği, `localStorage` kuyruğu (yoksa bellek), batch gönderimi `POST /v1/batch` (3 Kasım 2026).
 - İzin ve atıf düzeltmeleri: izin kararı olmadan olay üretilmez, `fr_click` yalnız reklam izniyle taşınır, URL'den yalnız izin listesindeki `utm_*` okunur (3 Kasım 2026).
 - App Banner betiği (`banner`): mobil web sayfasında Smart Link'e götüren şerit; çerez yazmaz, olay göndermez (5 Kasım 2026).

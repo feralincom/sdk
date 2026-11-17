@@ -9,7 +9,7 @@ Tauri uygulamasının JS tarafı. Web görünümünde `@feralin/web` çalışır
 | Birim testleri (vitest, jsdom, window'suz yükleme) | Geçiyor |
 | Temiz kurulum + gerçek `services/collect` | `scripts/sdk-e2e/run.mjs tauri` ile geçti (jsdom, Tauri işareti elle konur) |
 | Gerçek Tauri penceresi | **Çalıştırılmadı.** WebView, CSP ve `tauri://` kökeni sınanmadı |
-| npm yayını | `BLOCKED_EXTERNAL`: `@feralin` organizasyonu yok |
+| npm yayını | `BLOCKED_EXTERNAL`: `@feralin` organizasyonu var; olay alındısı halkası PARTIAL olduğu için yayın kapısında engelli, yayınlanmadı |
 
 ## Kurulum
 

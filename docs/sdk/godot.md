@@ -13,12 +13,20 @@
 | Sürüm | 0.2.0 |
 | Yaşam döngüsü | INTEGRATION_TESTED |
 | Kaynak dizin | `sdks/godot` |
-| Registry | Godot Asset Library: **BLOCKED_EXTERNAL** (gereken: Godot Asset Library hesabı ve herkese açık Git deposu) |
+| Registry | Godot Asset Library: **BLOCKED_EXTERNAL** (gereken: Herkese açık depo github.com/feralincom/sdk var; addon sdks/godot/addons/feralin etiketten kopyalanır, güncel içeriğin gönderimi ve sdks/godot/v0.2.0 etiketi (site sahibinin onayı, docs/sdk/git-yayin-adimlari.md). Godot Asset Library kaydı ayrı hesap ister) |
 | Test | `godot --headless --path sdks/godot -s tests/test_feralin_core.gd && godot --headless --path sdks/godot -s tests/test_feralin_contracts.gd` |
 
 ## Kurulum
 
 Registry yayını durumu **BLOCKED_EXTERNAL**: paket henüz `Godot Asset Library` üzerinde yayınlanmış olarak doğrulanmadı; aşağıdaki adımlar kaynaktan ya da yerel pakettendir.
+
+```bash
+# OYUN_DIZINI oyununuzun project.godot dosyasının bulunduğu dizin
+git clone --depth 1 --branch sdks/godot/v0.2.0 --filter=blob:none --sparse https://github.com/feralincom/sdk.git feralin-sdk
+git -C feralin-sdk sparse-checkout set sdks/godot/addons/feralin
+mkdir -p OYUN_DIZINI/addons
+cp -r feralin-sdk/sdks/godot/addons/feralin OYUN_DIZINI/addons/feralin
+```
 
 ```bash
 # Depo kökünden; OYUN_DIZINI oyununuzun project.godot dosyasının bulunduğu dizin
@@ -62,7 +70,7 @@ func _ready() -> void:
 | source | PASS | 0.2.0 addon ve testler; ilk gerçek koşuda iki GDScript tür çıkarımı hatası (feralin_store.gd) ve boş girdide SHA-256 hatası düzeltildi. Android ve iOS yerel köprü kaynakları derlenmedi. |
 | build | PASS | Godot 4.7.2 (Windows, headless) addon betiklerini hatasız derledi. Dışa aktarılmış oyuncu derlemesi (Windows, Android, iOS, Web) yapılmadı; 4.7 dışındaki sürümler denenmedi. |
 | test | PASS | godot --headless: çekirdek 83/83, sözleşme 362/362 denetim (NIST AES-256-GCM, Unity vektörleri, kalıcı şifreli kuyruk, gelir, oyun olayları, hata, oturum, atıf, BindInstall). İki test hatası test kodundaydı (lambda yakalaması, genel hata sınırı senaryosu) ve Unity testiyle hizalandı. |
-| registry | BLOCKED_EXTERNAL | Asset Library hesabı yok. |
+| registry | BLOCKED_EXTERNAL | 17 Kasım 2026: Asset Library hesabı yok; Git etiketi sdks/godot/v0.2.0 gönderilmedi. |
 | clean_install | PASS | scripts/sdk-e2e/targets/godot.mjs: addons/feralin boş Godot projesine kopyalanıp autoload'suz yüklendi; Asset Library'den kurulum denenemez. |
 | event_receipt | PASS | scripts/sdk-e2e/run.mjs godot: HTTPRequest ile gerçek services/collect + PostgreSQL outbox; 9 olay (level_start/complete/fail, economy_source/sink, rewarded_ad_shown/complete, feralin_purchase verified'sız, fr_ad_revenue) tek outbox satırı ve platform=godot, özellikler ve session_id denetlendi; kapalı adreste kalan olay yeniden açılışta şifreli kuyruktan aynı event_id ile tek satır. Editor/headless içindedir, cihaz değildir. |
 | documentation | PASS | docs/sdk/godot.md: kurulum ve kullanım kod blokları README'den, yetenek ve zincir durumu yetenek dosyasından üretilir (scripts/sdk-dry-run/docs.mjs); registry yayını ve Super Admin kanıtı ayrı halkadır. |

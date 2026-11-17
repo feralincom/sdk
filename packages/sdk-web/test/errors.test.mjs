@@ -125,3 +125,14 @@ test("elle bildirim: handled true ve origin handled", () => {
   assert.equal(client.events[0].props.handled, true);
   assert.equal(client.events[0].props.origin, "handled");
 });
+
+test("V8 başlığındaki e-posta çerçeve sanılmaz: top_frame ve frames mesajı taşımaz", () => {
+  const stack = `TypeError: kullanıcı ali@example.com bulunamadı\n    at loadUser (https://cdn.example.com/assets/app.3f9a1b2c.js:7:9)`;
+  const props = errors.buildErrorProperties({ name: "TypeError", message: "kullanıcı ali@example.com bulunamadı", stack }, "window_onerror");
+  assert.equal(props.top_frame, "loadUser@app.js");
+  assert.equal(props.frame_count, 1);
+  assert.deepEqual(props.frames, [{ file: "app.3f9a1b2c.js", line: 7, column: 9, function: "loadUser" }]);
+  assert.ok(!JSON.stringify(props).includes("ali@"), JSON.stringify(props));
+  // Firefox biçiminde başlık yoktur; @ ayırıcısı çerçeve olarak okunmaya devam eder.
+  assert.deepEqual(errors.normalizeFrames(FIREFOX_STACK).slice(0, 1), ["submitOrder@checkout.js"]);
+});

@@ -13,7 +13,7 @@
 | Sürüm | 0.1.0 |
 | Yaşam döngüsü | INTEGRATION_TESTED |
 | Kaynak dizin | `sdks/python` |
-| Registry | PyPI: **BLOCKED_EXTERNAL** (gereken: PyPI hesabı, 2FA, trusted publishing) |
+| Registry | PyPI: **BLOCKED_EXTERNAL** (gereken: PyPI hesabı ve 2FA; ilk yayın pypi- önekli API anahtarıyla (twine, TWINE_PASSWORD) ya da pending trusted publisher; adlar feralin, feralin-django, feralin-fastapi boş (rezervasyon yok, ilk yayında alınır)) |
 | Derleme | `python -m build sdks/python` |
 | Test | `python -X utf8 -c "import sys,unittest; sys.path[:0]=['sdks/python/src','sdks/python/tests']; r=unittest.TextTestRunner().run(unittest.defaultTestLoader.discover('sdks/python/tests')); sys.exit(not r.wasSuccessful())"` |
 

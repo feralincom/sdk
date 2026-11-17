@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=68"]
+requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -8,13 +8,14 @@ version = "0.1.0"
 description = "Feralin UTP v1 server SDK (Python) — yalnız standart kütüphane, consent-first, at-least-once batch gönderimi"
 readme = "README.md"
 requires-python = ">=3.10"
-license = { text = "MIT" }
+# PEP 639 lisans ifadesi (setuptools 77+); lisans sınıflandırıcısıyla birlikte kullanılamaz.
+license = "MIT"
+license-files = ["LICENSE"]
 authors = [{ name = "Feralin" }]
 keywords = ["analytics", "attribution", "feralin", "utp", "events"]
 classifiers = [
   "Development Status :: 3 - Alpha",
   "Intended Audience :: Developers",
-  "License :: OSI Approved :: MIT License",
   "Operating System :: OS Independent",
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3 :: Only",
@@ -29,7 +30,10 @@ classifiers = [
 dependencies = []
 
 [project.urls]
-Documentation = "https://github.com/feralin"  # PyPI yayını ve kalıcı repo adresi henüz yok (BLOCKED_EXTERNAL)
+Homepage = "https://feralin.com"
+Repository = "https://github.com/feralincom/sdk"
+Documentation = "https://github.com/feralincom/sdk/blob/main/docs/sdk/python.md"
+Changelog = "https://github.com/feralincom/sdk/blob/main/sdks/python/CHANGELOG.md"
 
 [tool.setuptools.packages.find]
 where = ["src"]

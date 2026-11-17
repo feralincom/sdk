@@ -8,26 +8,32 @@ Yalnız standart kütüphane (`net/http`, `crypto/rand`, `log/slog`); dış bağ
 | Konu | Durum |
 |---|---|
 | Kod: `NewClient`, `Track`, `Identify`, `SetConsent`, `Flush`, `Close`, `Status` | `TESTING` — `httptest` ile 24 test geçti |
-| Yayın: `go get feralin.dev/sdks/go` | **Henüz yayımlanmadı — `BLOCKED_EXTERNAL`.** Modül yolu geçicidir; kalıcı yol (ör. `github.com/feralin/feralin-go`) ve Git tag namespace sahipliği doğrulanınca belirlenir. Yaşam döngüsü `PROPOSED → … → PUBLISHED → REGISTRY_VERIFIED → INSTALL_VERIFIED → SUPPORTED`: `docs/sdk/capability-matrix.md` §0 ve §4 |
+| Yayın: Git etiketi `sdks/go/v0.1.0` | **Henüz etiketlenmedi: `BLOCKED_EXTERNAL`.** Modül yolu kalıcıdır (`github.com/feralincom/sdk/sdks/go`, 17 Kasım 2026); `go get` için herkese açık depoya gönderim ve etiket gerekir, ikisi de site sahibinin onayını bekler (`docs/sdk/git-yayin-adimlari.md`). Yaşam döngüsü `PROPOSED → … → PUBLISHED → REGISTRY_VERIFIED → INSTALL_VERIFIED → SUPPORTED`: `docs/sdk/capability-matrix.md` §0 ve §4 |
 | Gerçek `collect` ile uçtan uca | `scripts/sdk-e2e/run.mjs go` ile doğrulandı: 202, outbox satırı, izinsiz red, yanlış anahtar 401, idempotency |
 | İmzalı server event (`verified`), OTel tracing | Yok — F3/F5 (`verified` alanı istemciden **asla** gönderilmez; `TrackRevenue` `feralin_purchase` istemci beyanı üretir, doğrulama sunucuda) |
 
 ## Kurulum
 
-Monorepo içinde `replace` ile kullanın (yayın öncesi tek yol):
+Modül herkese açık depodadır: <https://github.com/feralincom/sdk> içinde `sdks/go`. Paket deposu hesabı gerekmez; sürüm bir Git etiketidir (`sdks/go/v0.1.0`):
+
+```bash
+go get github.com/feralincom/sdk/sdks/go@v0.1.0
+```
+
+Etiket depoya gönderilmeden bu komut `unknown revision` hatası verir; yayımlanmış etiketler <https://github.com/feralincom/sdk/tags> sayfasındadır.
+
+Etiket yokken ya da yerel kopyayla çalışırken `replace` kullanın:
 
 ```go
 // go.mod
-require feralin.dev/sdks/go v0.1.0
-replace feralin.dev/sdks/go => ../../sdks/go
+require github.com/feralincom/sdk/sdks/go v0.1.0
+replace github.com/feralincom/sdk/sdks/go => ../../sdks/go
 ```
-
-Yayın sonrası (henüz çalışmaz): `go get feralin.dev/sdks/go`.
 
 ## Kullanım
 
 ```go
-import feralin "feralin.dev/sdks/go"
+import feralin "github.com/feralincom/sdk/sdks/go"
 
 client, err := feralin.NewClient("pk_live_…", "https://collect.example.com",
     feralin.WithConsent(feralin.Consent{Analytics: true}), // consent-first: varsayılan analytics=false

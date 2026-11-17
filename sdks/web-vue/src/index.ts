@@ -2,8 +2,13 @@
 // istemci, zamanlayıcı ve istekler arası paylaşılan durum oluşmaz.
 import { hasInjectionContext, inject } from "vue";
 import type { App, InjectionKey } from "vue";
+import { reportFrameworkError } from "./errors.js";
+import type { FeralinErrorOptions } from "./errors.js";
 import { acquireFeralin, ambientFeralin } from "./handle.js";
 import type { FeralinHandle, FeralinOptions } from "./handle.js";
+
+export { reportFrameworkError } from "./errors.js";
+export type { FeralinErrorOptions } from "./errors.js";
 
 export { acquireFeralin, noopFeralin, releaseFeralin } from "./handle.js";
 export type { Consent, FeralinHandle, FeralinOptions, FeralinStatus, FlushResult, RevenueInput, UtpEvent } from "./handle.js";
@@ -42,6 +47,34 @@ export const FeralinPlugin = {
         feralin.page();
       });
     }
+  },
+};
+
+export interface FeralinErrorHandlerOptions extends FeralinErrorOptions {
+  /** Varsayılan: uygulamaya FeralinPlugin ile verilen istemci, yoksa ilk kurulan istemci (hata anında çözülür; eklenti sırası önemsiz). */
+  feralin?: FeralinHandle;
+}
+
+/**
+ * `app.config.errorHandler` eklentisi: bileşen çizimi, yaşam döngüsü, izleyici ve olay işleyicisi hatalarını `fr_error` olarak bildirir
+ * (`origin: "uncaught_exception"`, `handled: false`). Kurulumdan önce atanmış işleyici aynen çağrılır; yoksa hata `console.error` ile
+ * yazılır (Vue'nun üretim kipi davranışı). İzin, örnekleme, sınır ve PII temizliği Web SDK'nınkidir. Sunucuda olay üretmez.
+ */
+export const FeralinErrorHandler = {
+  install(app: App, options: FeralinErrorHandlerOptions = {}): void {
+    const { feralin: explicit, ...errorOptions } = options;
+    const previous = app.config.errorHandler;
+    const resolve = (): FeralinHandle => explicit ?? app.runWithContext(() => inject(FERALIN_KEY, null)) ?? ambientFeralin;
+    app.config.errorHandler = (error, instance, info) => {
+      try {
+        void reportFrameworkError(resolve(), error, errorOptions);
+      } catch {
+        // Bildirim hatası uygulamanın işleyicisini engellemez.
+      }
+      // İşleyiciden fırlatmak Vue'da işleyiciyi yeniden çağırır; zincir yalnız çağırır, fırlatmaz.
+      if (previous) previous(error, instance, info);
+      else console.error(error);
+    };
   },
 };
 

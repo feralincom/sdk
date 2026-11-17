@@ -10,15 +10,14 @@
 | Temiz kurulum + gerçek `services/collect` | `scripts/sdk-e2e/run.mjs web-angular` ile geçti (jsdom, gerçek enjektör) |
 | Angular CLI ile derlenmiş AOT uygulama, gerçek tarayıcı | **Çalıştırılmadı.** Testler Angular paketleri için JIT yükler |
 | Angular 17-21 | Peer aralığında, sınanmadı |
-| npm yayını | `BLOCKED_EXTERNAL`: `@feralin` organizasyonu yok |
+| npm yayını | npm'de yayımlandı: `@feralin/angular@0.1.0` (17 Kasım 2026, `@feralin` organizasyonu); sürüm ve özet registry'den geri okundu |
 
 ## Kurulum
 
+Çekirdek peer bağımlılığıdır, iki paket birlikte kurulur:
+
 ```bash
-pnpm --filter @feralin/web build
-cd packages/sdk-web && npm pack
-cd ../../sdks/web-angular && npm pack
-npm install ./feralin-web-0.1.0.tgz ./feralin-angular-0.1.0.tgz
+npm install @feralin/web @feralin/angular
 ```
 
 ## Kullanım
@@ -54,8 +53,26 @@ inject(Router).events.pipe(filter((e) => e instanceof NavigationEnd), skip(1)).s
 
 `PLATFORM_ID` tarayıcı değilse istemci kurulmaz, servis boş yüzey olur.
 
+## Hata yakalama (`provideFeralinErrorHandler`)
+
+> Yayın bekliyor: depoda var, npm'deki `@feralin/angular@0.1.0` içinde yok. Sonraki sürümle yayımlanacak.
+
+```ts
+import { bootstrapApplication } from "@angular/platform-browser";
+import { provideFeralin, provideFeralinErrorHandler } from "@feralin/angular";
+
+bootstrapApplication(AppComponent, {
+  providers: [
+    provideFeralin({ projectKey: "pk_live_...", collectUrl: "https://collect.feralin.com" }),
+    provideFeralinErrorHandler({ appVersion: "1.4.2", delegate: new MyErrorHandler() }),
+  ],
+});
+```
+
+Uygulamanın `ErrorHandler`'ı olur: bileşen ve değişiklik algılama hataları (Angular 20+ `provideBrowserGlobalErrorListeners` açıksa pencere hataları da) `fr_error` olarak gider (`origin: "uncaught_exception"`, `handled: false`, `fatal: false`), ardından `delegate.handleError` çağrılır; `delegate` yoksa Angular'ın varsayılanı gibi `console.error("ERROR", hata)` yazılır. Gövde, PII temizliği, parmak izi, örnekleme ve sınır `@feralin/web/errors` modülündendir; ham yığın izi gitmez. İzin yoksa olay üretilmez ve sınır sayacı harcanmaz. Sunucuda (Angular SSR) olay üretmez, `delegate` yine çağrılır. `provideFeralin` olmadan kurulursa yalnız `delegate` çalışır.
+
 ## Desteklenmeyenler
 
 - NgModule sarmalayıcısı ve otomatik router izleme yoktur.
-- Hata raporlama ve replay yoktur. `trackRevenue` (`feralin_purchase`) istemci beyanıdır; `verified` gönderilmez, doğrulama sunucudaki makbuz doğrulayıcısınındır.
+- Replay yoktur. `trackRevenue` (`feralin_purchase`) istemci beyanıdır; `verified` gönderilmez, doğrulama sunucudaki makbuz doğrulayıcısınındır.
 - Çekirdekten gelen sınırlar: üstel geri çekilme yok; yanıt kaybolduktan sonra araya olay girerse `Idempotency-Key` değişir ve kaybolan olay outbox'a ikinci kez yazılır. Düzeltme `packages/sdk-web` içindedir.

@@ -13,7 +13,7 @@
 | Sürüm | 0.1.0 |
 | Yaşam döngüsü | INTEGRATION_TESTED |
 | Kaynak dizin | `sdks/dotnet` |
-| Registry | NuGet: **BLOCKED_EXTERNAL** (gereken: nuget.org hesabı, Feralin önek rezervasyonu, API anahtarı) |
+| Registry | NuGet: **BLOCKED_EXTERNAL** (gereken: nuget.org hesabı ve 2FA; Feralin önek rezervasyonu (account@nuget.org); Push kapsamlı, Feralin.* desenli API anahtarı (NUGET_API_KEY, .NET SDK 10.0.300+) ya da trusted publishing ilkesi) |
 | Derleme | `cd sdks/dotnet && dotnet build Feralin.sln --nologo` |
 | Test | `cd sdks/dotnet && dotnet test Feralin.sln --nologo` |
 

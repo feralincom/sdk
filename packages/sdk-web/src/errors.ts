@@ -76,18 +76,27 @@ export function normalizeFile(location: string): string {
  * Yığın izini normalize çerçevelere çevirir (`işlev@dosya`). Chrome (`at fn (url:1:2)`) ve Firefox/Safari (`fn@url:1:2`) biçimleri okunur.
  * Satır ve sütun numarası atılır: aynı hata, kod biraz kaydığında da aynı parmak izini üretsin.
  */
+/**
+ * V8 yığın izi `Tür: mesaj` başlığıyla başlar; mesajda `@` varsa (ör. e-posta) başlık Firefox çerçevesi sanılmasın diye V8 biçiminde
+ * yalnız `at ` satırları okunur. Firefox ve Safari başlık yazmaz.
+ */
+function stackLines(stack: string): { lines: string[]; v8: boolean } {
+  const lines = stack.split("\n").slice(0, MAX_STACK_LINES).map((raw) => raw.trim());
+  return { lines, v8: lines.some((line) => line.startsWith("at ")) };
+}
+
 export function normalizeFrames(stack: unknown): string[] {
   if (typeof stack !== "string" || stack === "") return [];
   const frames: string[] = [];
-  for (const raw of stack.split("\n").slice(0, MAX_STACK_LINES)) {
-    const line = raw.trim();
+  const { lines, v8 } = stackLines(stack);
+  for (const line of lines) {
     let fn: string;
     let loc: string;
     const chrome = /^at\s+(?:(.*?)\s+\()?(.*?)(?::\d+)?(?::\d+)?\)?$/.exec(line);
     if (line.startsWith("at ") && chrome) {
       fn = chrome[1] ?? "";
       loc = chrome[2] ?? "";
-    } else if (line.includes("@")) {
+    } else if (!v8 && line.includes("@")) {
       const at = line.lastIndexOf("@");
       fn = line.slice(0, at);
       loc = line.slice(at + 1).replace(/(?::\d+){1,2}$/, "");
@@ -119,9 +128,9 @@ const FILE_BASENAME = /^[A-Za-z0-9._~-]{1,128}$/;
 export function sourcePositions(stack: unknown): SourcePosition[] {
   if (typeof stack !== "string" || stack === "") return [];
   const out: SourcePosition[] = [];
-  for (const raw of stack.split("\n").slice(0, MAX_STACK_LINES)) {
+  const { lines, v8 } = stackLines(stack);
+  for (const line of lines) {
     if (out.length >= MAX_POSITIONS) break;
-    const line = raw.trim();
     let fn: string;
     let loc: string;
     if (line.startsWith("at ")) {
@@ -129,7 +138,7 @@ export function sourcePositions(stack: unknown): SourcePosition[] {
       if (!m) continue;
       fn = m[1] ?? "";
       loc = m[2] ?? "";
-    } else if (line.includes("@")) {
+    } else if (!v8 && line.includes("@")) {
       const at = line.lastIndexOf("@");
       fn = line.slice(0, at);
       loc = line.slice(at + 1);

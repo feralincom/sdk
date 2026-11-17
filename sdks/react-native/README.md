@@ -10,16 +10,15 @@ React Native SDK. JS yüzeyi doğrulama yapar, davranışın tamamı `sdks/andro
 | `npm pack` temiz kurulum, emülatörde gerçek olay (izin, opt-out, çevrimdışı flush) | `scripts/e2e-emulator.mjs` ile doğrulandı, React Native 0.87.1, API 36 |
 | iOS | `BLOCKED_EXTERNAL`: Swift SDK yok, macOS ve Xcode gerekir. Modül iOS'ta bağlanmaz; SDK kapalı kalır, uygulama düşmez, `getStatus().unavailable` nedeni söyler |
 | Gerçek cihaz (SDK-R07) | `BLOCKED_EXTERNAL`: fiziksel cihaz gerekir |
-| npm ve Maven Central yayını | `BLOCKED_EXTERNAL`: `@feralin` organizasyonu ve `com.feralin` namespace gerekir, yayın yapılmadı |
+| npm yayını | npm'de yayımlandı: `@feralin/react-native@0.2.0` (17 Kasım 2026, `@feralin` organizasyonu); sürüm ve özet registry'den geri okundu |
+| Maven Central yayını | `BLOCKED_EXTERNAL`: `com.feralin` namespace gerekir, yayın yapılmadı |
 
 Maven Central yayını olmadığından Android çekirdeği npm paketi içindeki yerel Maven deposundan (`android/maven-repo`) çözülür. Depo `npm pack` sırasında üretilir.
 
 ## Kurulum
 
 ```bash
-cd sdks/react-native
-npm pack          # Android SDK ve JDK 17 gerekir; çekirdek derlenir
-npm install /yol/feralin-react-native-0.1.0.tgz
+npm install @feralin/react-native
 ```
 
 Autolinking Android köprüsünü bağlar. Elle bağlama gerekmez.

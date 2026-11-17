@@ -17,6 +17,8 @@ import type { ProfileDrop, ProfileValue } from "./profile.js";
 import type { RevenueInput } from "./revenue.js";
 import { ERROR_EVENT_NAME, ERROR_ORIGINS, ErrorLimiter, buildErrorProperties } from "./errors.js";
 import type { ErrorOrigin } from "./errors.js";
+import { DEFAULT_STALE_MS, FileQueue } from "./storage.js";
+import type { RecoveredQueue, StoredEvent } from "./storage.js";
 
 export const SDK_NAME = "@feralin/node";
 export const SDK_VERSION = "0.1.0";
@@ -28,13 +30,13 @@ const MIN_BACKOFF_MS = 1_000;
 const MAX_BACKOFF_MS = 30_000;
 const MAX_RETRY_AFTER_MS = 5 * 60_000;
 const DEFAULT_CLOSE_TIMEOUT_MS = 5_000;
+const DEFAULT_STORAGE_MAX_BYTES = 10 * 1024 * 1024;
+const DEFAULT_STORAGE_MAX_AGE_MS = 7 * 24 * 60 * 60_000;
+// Toplayıcı 90 günden eski olayı reddeder; daha uzun yaş sınırı anlamsızdır.
+const MAX_STORAGE_AGE_MS = 90 * 24 * 60 * 60_000;
 
-interface QueuedEvent {
-  id: string;
-  json: string;
-  bytes: number;
-  name: string;
-}
+/** Kuyruktaki olay; kalıcı kuyrukla aynı biçim (`at`: kuyruğa giriş zamanı, yaş sınırı için). */
+type QueuedEvent = StoredEvent;
 
 /** Kurulum eşleştirme kodu özelliği ve biçimi (Web SDK ve `services/collect/internal/worker/installcode.go` ile aynı). */
 export const INSTALL_CODE_PROPERTY = "fr_install_code";
@@ -76,6 +78,13 @@ export class FeralinClient {
   /** Kurulum eşleştirme kodu; ilk uygun olaya eklenir ve silinir (Web, Android ve Flutter SDK'larıyla aynı kural). */
   private pendingInstallCode: string | null;
   private readonly errorOptions: NonNullable<FeralinOptions["errors"]>;
+  /** `storageDirectory` verildiyse kuyruğun disk yansıması; yazım hatasında kapanır ve kuyruk bellekte sürer. */
+  private storage: FileQueue | null = null;
+  private readonly storageMaxBytes: number;
+  private readonly storageMaxAgeMs: number;
+  /** Çöken süreçten devralınan, bileşimi sabit batch'ler: aynı Idempotency-Key ile, yeni olaylardan önce gönderilir. */
+  private recovered: QueuedEvent[][] = [];
+  private storageTimer: ReturnType<typeof setInterval> | undefined;
 
   constructor(options: FeralinOptions) {
     const key = typeof options?.projectKey === "string" ? options.projectKey.trim() : "";
@@ -107,6 +116,9 @@ export class FeralinClient {
     this.pendingInstallCode = INSTALL_CODE_PATTERN.test(installCode) ? installCode : null;
     this.errorOptions = options.errors && typeof options.errors === "object" ? { ...options.errors } : {};
     this.errorLimiter = new ErrorLimiter(this.errorOptions, this.now, this.random);
+    this.storageMaxBytes = Math.max(1024, Math.floor(options.storageMaxBytes ?? DEFAULT_STORAGE_MAX_BYTES));
+    this.storageMaxAgeMs = Math.min(MAX_STORAGE_AGE_MS, Math.max(1_000, Math.floor(options.storageMaxAgeMs ?? DEFAULT_STORAGE_MAX_AGE_MS)));
+    if (options.storageDirectory !== undefined) this.openStorage(options.storageDirectory);
 
     const interval = options.flushIntervalMs ?? 2_000;
     if (interval > 0) {
@@ -314,7 +326,9 @@ export class FeralinClient {
       this.warn("olay boyut sınırını aşıyor, atıldı", { event_name: eventName, bytes });
       return null;
     }
-    this.queue.push({ id: event.event_id, json, bytes, name: eventName });
+    const item: QueuedEvent = { id: event.event_id, json, bytes, name: eventName, at: nowMs };
+    this.queue.push(item);
+    this.persist((storage) => storage.append(item));
     if (installCode) this.pendingInstallCode = null;
     this.enforceQueueLimit();
     if (this.timer && this.queue.length >= this.batchSize) this.backgroundTick();
@@ -322,11 +336,19 @@ export class FeralinClient {
   }
 
   private enforceQueueLimit(): void {
-    const pinned = this.pinned?.length ?? 0;
-    const over = this.queue.length + pinned - this.queueLimit;
-    if (over > 0) {
-      const removed = this.queue.splice(0, over);
+    const over = this.queued() - this.queueLimit;
+    let removed = over > 0 ? this.queue.splice(0, over) : [];
+    // Disk sınırı: kalıcı kuyruğun gövde baytı sınırı aşarsa en eski olaylar atılır (gönderimdeki batch'e dokunulmaz).
+    const storage = this.storage;
+    if (storage) {
+      let excess = storage.liveBytes - removed.reduce((sum, item) => sum + item.bytes, 0) - this.storageMaxBytes;
+      let count = 0;
+      while (excess > 0 && count < this.queue.length) excess -= this.queue[count++]!.bytes;
+      if (count > 0) removed = removed.concat(this.queue.splice(0, count));
+    }
+    if (removed.length > 0) {
       this.dropped += removed.length;
+      this.persist((s) => s.remove(removed));
       this.warn("kuyruk sınırı aşıldı, en eski olaylar atıldı", { dropped: removed.length });
     }
   }
@@ -334,16 +356,21 @@ export class FeralinClient {
   private clearQueue(): void {
     this.queue = [];
     this.pinned = null;
+    this.recovered = [];
+    this.persist((storage) => storage.clear());
     this.failures = 0;
     this.notBefore = 0;
     this.serverNotBefore = 0;
   }
 
   private queued(): number {
-    return this.queue.length + (this.pinned?.length ?? 0);
+    let count = this.queue.length + (this.pinned?.length ?? 0);
+    for (const batch of this.recovered) count += batch.length;
+    return count;
   }
 
   private backgroundTick(): void {
+    if (this.closed) return;
     if (this.queued() === 0) return;
     if (this.now() < Math.max(this.notBefore, this.serverNotBefore)) return;
     void this.flush();
@@ -388,6 +415,13 @@ export class FeralinClient {
 
   private nextBatch(): QueuedEvent[] | null {
     if (this.pinned) return this.pinned;
+    // Devralınan batch zaten diskte sabitlenmiştir; yeniden yazılmaz.
+    const recovered = this.recovered.shift();
+    if (recovered) {
+      this.pinned = recovered;
+      return recovered;
+    }
+    if (this.storage) this.dropExpired();
     if (this.queue.length === 0) return null;
     let count = 0;
     let bytes = 0;
@@ -396,8 +430,22 @@ export class FeralinClient {
       count++;
       bytes += item.bytes + 1;
     }
-    this.pinned = this.queue.splice(0, count);
-    return this.pinned;
+    const batch = this.queue.splice(0, count);
+    this.pinned = batch;
+    this.persist((storage) => storage.pin(batch));
+    return batch;
+  }
+
+  /** Kalıcı kuyrukta `storageMaxAgeMs` süresini aşan, henüz gönderime girmemiş olaylar atılır. */
+  private dropExpired(): void {
+    const limit = this.now() - this.storageMaxAgeMs;
+    let count = 0;
+    while (count < this.queue.length && this.queue[count]!.at < limit) count++;
+    if (count === 0) return;
+    const removed = this.queue.splice(0, count);
+    this.dropped += removed.length;
+    this.persist((storage) => storage.remove(removed));
+    this.warn("kalıcı kuyrukta yaş sınırını aşan olaylar atıldı", { dropped: removed.length });
   }
 
   private async send(batch: QueuedEvent[]): Promise<FlushResult> {
@@ -456,7 +504,72 @@ export class FeralinClient {
 
   /** İstek sürerken izin geri çekildiyse kuyruk çoktan boşaltılmıştır; yeni batch'e dokunulmaz. */
   private releaseBatch(batch: QueuedEvent[]): void {
-    if (this.pinned === batch) this.pinned = null;
+    if (this.pinned !== batch) return;
+    this.pinned = null;
+    this.persist((storage) => storage.remove(batch));
+  }
+
+  /**
+   * Kalıcı kuyruğu açar ve dizindeki sahipsiz günlükleri (çöken ya da kapanmadan çıkan süreçler) devralır. Dizin oluşturulamaz ya da
+   * yazılamazsa fırlatır: yapılandırma hatası başlangıçta görünür.
+   */
+  private openStorage(directory: unknown): void {
+    if (typeof directory !== "string" || directory.trim() === "") throw new Error("feralin: storageDirectory boş olmayan bir dizin yolu olmalı");
+    let storage: FileQueue;
+    try {
+      storage = new FileQueue({
+        directory,
+        maxAgeMs: this.storageMaxAgeMs,
+        now: this.now,
+        snapshot: () => ({ batches: [...(this.pinned ? [this.pinned] : []), ...this.recovered], events: this.queue }),
+      });
+    } catch (err) {
+      const code = (err as NodeJS.ErrnoException)?.code ?? (err instanceof Error ? err.name : "unknown");
+      // Asıl hata (dizin yolu dahil) yalnız `cause` içinde kalır; ileti log satırına güvenle yazılabilir.
+      throw new Error(`feralin: storageDirectory kullanılamıyor (${code})`, { cause: err });
+    }
+    this.storage = storage;
+    this.adopt();
+    // Kalp atışı: boşta bekleyen canlı sürecin günlüğü sahipsiz sayılmasın; aynı turda sonradan sahipsiz kalan günlükler devralınır.
+    this.storageTimer = setInterval(() => {
+      this.persist((s) => s.heartbeat());
+      this.adopt();
+    }, Math.floor(DEFAULT_STALE_MS / 4));
+    this.storageTimer.unref?.();
+  }
+
+  /** Sahipsiz günlüklerdeki olayları kuyruğa alır: sabit batch'ler önce, kalan olaylar kuyruğun başına (en eskiler önce). */
+  private adopt(): void {
+    if (this.closed || this.optedOut) return;
+    let found: RecoveredQueue | undefined;
+    this.persist((storage) => {
+      found = storage.recover();
+    });
+    if (!found || found.files === 0) return;
+    this.recovered.push(...found.batches);
+    if (found.events.length) this.queue = [...found.events, ...this.queue];
+    const events = found.events.length + found.batches.reduce((sum, batch) => sum + batch.length, 0);
+    this.dropped += found.expired;
+    this.logger?.debug?.("kalıcı kuyruk devralındı", { files: found.files, events, batches: found.batches.length, expired: found.expired });
+    this.enforceQueueLimit();
+  }
+
+  /** Disk işlemi hatası uygulamaya fırlatılmaz: uyarı yazılır, kalıcı kuyruk kapanır ve kuyruk bellekte sürer. */
+  private persist(operation: (storage: FileQueue) => void): void {
+    const storage = this.storage;
+    if (!storage) return;
+    try {
+      operation(storage);
+    } catch (err) {
+      this.storage = null;
+      if (this.storageTimer) clearInterval(this.storageTimer);
+      try {
+        storage.close();
+      } catch {
+        // Kapanamayan günlük sonraki açılışta devralınır.
+      }
+      this.warn("kalıcı kuyruk yazılamadı, bellek içi kuyrukla sürüyor", { error: (err as NodeJS.ErrnoException)?.code ?? (err instanceof Error ? err.name : "unknown") });
+    }
   }
 
   private noteFailure(retryAfter: string | null): void {
@@ -475,6 +588,7 @@ export class FeralinClient {
     if (this.closed) return { ...EMPTY_RESULT, retained: this.queued() };
     this.closed = true;
     if (this.timer) clearInterval(this.timer);
+    if (this.storageTimer) clearInterval(this.storageTimer);
     let timeout: ReturnType<typeof setTimeout> | undefined;
     const expired = new Promise<FlushResult>((resolve) => {
       timeout = setTimeout(() => resolve({ ...EMPTY_RESULT, retained: this.queued() }), timeoutMs);
@@ -484,6 +598,9 @@ export class FeralinClient {
       return await Promise.race([this.startDrain(true), expired]);
     } finally {
       if (timeout) clearTimeout(timeout);
+      // Boş günlük silinir; gönderilemeyen olaylar diskte kalır ve sonraki açılışta aynı batch bileşimiyle gönderilir.
+      this.persist((storage) => storage.close());
+      this.storage = null;
     }
   }
 
@@ -498,6 +615,7 @@ export class FeralinClient {
       closed: this.closed,
       backoffMs: Math.max(0, Math.max(this.notBefore, this.serverNotBefore) - this.now()),
       endpoint: this.endpoint,
+      storage: this.storage ? { path: this.storage.path, events: this.storage.size, bytes: this.storage.liveBytes } : null,
     };
   }
 

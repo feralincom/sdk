@@ -13,7 +13,7 @@
 | Sürüm | 0.1.0 |
 | Yaşam döngüsü | INTEGRATION_TESTED |
 | Kaynak dizin | `sdks/tauri` |
-| Registry | npm: **BLOCKED_EXTERNAL** (gereken: @feralin npm organizasyonu, 2FA, OIDC trusted publishing) |
+| Registry | npm: **BLOCKED_EXTERNAL** (gereken: olay alındısı halkası PASS (gerçek Tauri penceresi); sonra npm trusted publishing (OIDC)) |
 | Derleme | `pnpm --filter @feralin/tauri build` |
 | Test | `pnpm --filter @feralin/tauri test` |
 
@@ -60,7 +60,7 @@ feralin.track("project_opened");
 | source | PASS |  |
 | build | PASS |  |
 | test | PASS | vitest 9/9; jsdom, Tauri işareti elle. |
-| registry | BLOCKED_EXTERNAL | @feralin npm organizasyonu yok. |
+| registry | BLOCKED_EXTERNAL | @feralin npm organizasyonu 17 Kasım 2026'da açıldı; paket olay alındısı halkası PARTIAL olduğu için yayın kapısında engelli ve yayınlanmadı. |
 | clean_install | PASS | npm pack çıktıları boş dizine kuruldu, ESM ve CommonJS yüklendi. |
 | event_receipt | PARTIAL | scripts/sdk-e2e/run.mjs tauri: jsdom ve gerçek toplayıcı. Gerçek Tauri penceresi KOŞMADI, Rust eklentisi yok. |
 | documentation | PASS | docs/sdk/tauri.md: kurulum ve kullanım kod blokları README'den, yetenek ve zincir durumu yetenek dosyasından üretilir (scripts/sdk-dry-run/docs.mjs); registry yayını ve Super Admin kanıtı ayrı halkadır. |

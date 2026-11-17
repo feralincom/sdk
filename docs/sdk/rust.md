@@ -13,7 +13,7 @@
 | Sürüm | 0.1.0 |
 | Yaşam döngüsü | INTEGRATION_TESTED |
 | Kaynak dizin | `sdks/rust` |
-| Registry | crates.io: **BLOCKED_EXTERNAL** (gereken: crates.io hesabı, feralin ad doğrulaması, API token) |
+| Registry | crates.io: **BLOCKED_EXTERNAL** (gereken: crates.io hesabı (GitHub girişi, doğrulanmış e-posta); publish-new kapsamlı cio önekli API anahtarı (CARGO_REGISTRY_TOKEN); ad rezervasyonu yok, feralin ilk yayında alınır; trusted publishing yalnız ilk sürümden sonra) |
 | Derleme | `cd sdks/rust && cargo build --workspace` |
 | Test | `cd sdks/rust && cargo test --workspace` |
 

@@ -4,7 +4,7 @@ import { createRequire } from "node:module";
 import { createElement, useEffect } from "react";
 import { renderToString } from "react-dom/server";
 import { FeralinProvider, releaseFeralin, useFeralin } from "@feralin/react";
-import { env, installDom, runWebScenarios } from "./web-scenarios.mjs";
+import { env, installDom, runErrorScenario, runWebScenarios } from "./web-scenarios.mjs";
 
 const cjs = createRequire(import.meta.url)("@feralin/react");
 assert.equal(typeof cjs.FeralinProvider, "function");
@@ -40,6 +40,43 @@ async function mount(options) {
 }
 
 await runWebScenarios({ mount, release: async (options) => releaseFeralin(options), label: "react" });
+
+// ErrorBoundary: alt bileşen çizimde fırlatır, sınır yedeği çizer ve fr_error gönderir. React yakalanan hatayı console.error ile yazar.
+const reactPackage = await import("@feralin/react");
+const quiet = console.error;
+console.error = () => {};
+try {
+  await runErrorScenario({
+    supported: typeof reactPackage.FeralinErrorBoundary === "function",
+    label: "react",
+    release: async (options) => releaseFeralin(options),
+    trigger: async (options, message) => {
+      let captured;
+      function Capture() {
+        const feralin = useFeralin();
+        useEffect(() => {
+          captured = feralin;
+        });
+        return null;
+      }
+      function Boom() {
+        throw new TypeError(message);
+      }
+      const container = document.getElementById("app").appendChild(document.createElement("div"));
+      const root = createRoot(container);
+      roots.push(root);
+      await act(async () =>
+        root.render(
+          createElement(FeralinProvider, options, createElement(Capture), createElement(reactPackage.FeralinErrorBoundary, { fallback: createElement("p", null, "yedek") }, createElement(Boom))),
+        ),
+      );
+      assert.equal(container.textContent, "yedek");
+      return captured;
+    },
+  });
+} finally {
+  console.error = quiet;
+}
 for (const root of roots) await act(async () => root.unmount());
 console.log("react tüketici: tüm senaryolar geçti");
 process.exit(0);

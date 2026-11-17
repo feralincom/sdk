@@ -9,11 +9,11 @@
 | Alan | Değer |
 |---|---|
 | Dil | Go |
-| Paket | `feralin.dev/sdks/go` |
+| Paket | `github.com/feralincom/sdk/sdks/go` |
 | Sürüm | 0.1.0 |
 | Yaşam döngüsü | INTEGRATION_TESTED |
 | Kaynak dizin | `sdks/go` |
-| Registry | Go modules: **BLOCKED_EXTERNAL** (gereken: Public Git deposu, kalıcı modül yolu ve Git tag) |
+| Registry | Go modules: **BLOCKED_EXTERNAL** (gereken: Herkese açık depo github.com/feralincom/sdk ve kalıcı modül yolu github.com/feralincom/sdk/sdks/go hazır; kalan güncel içeriğin gönderimi ve sdks/go/v0.1.0 etiketi (site sahibinin onayı, docs/sdk/git-yayin-adimlari.md)) |
 | Derleme | `cd sdks/go && go build ./...` |
 | Test | `cd sdks/go && go test -count=1 ./...` |
 
@@ -21,16 +21,20 @@
 
 Registry yayını durumu **BLOCKED_EXTERNAL**: paket henüz `Go modules` üzerinde yayınlanmış olarak doğrulanmadı; aşağıdaki adımlar kaynaktan ya da yerel pakettendir.
 
+```bash
+go get github.com/feralincom/sdk/sdks/go@v0.1.0
+```
+
 ```go
 // go.mod
-require feralin.dev/sdks/go v0.1.0
-replace feralin.dev/sdks/go => ../../sdks/go
+require github.com/feralincom/sdk/sdks/go v0.1.0
+replace github.com/feralincom/sdk/sdks/go => ../../sdks/go
 ```
 
 ## İlk kullanım
 
 ```go
-import feralin "feralin.dev/sdks/go"
+import feralin "github.com/feralincom/sdk/sdks/go"
 
 client, err := feralin.NewClient("pk_live_…", "https://collect.example.com",
     feralin.WithConsent(feralin.Consent{Analytics: true}), // consent-first: varsayılan analytics=false
@@ -101,8 +105,8 @@ defer func() {
 | source | PASS |  |
 | build | PASS |  |
 | test | PASS |  |
-| registry | BLOCKED_EXTERNAL | Uzak depo private; herkese açık kalıcı modül yolu kararı yok, modül yolu geçici. |
-| clean_install | PARTIAL | Boş modül yerel kaynağa replace ile bağlandı; go get denenemez. |
+| registry | BLOCKED_EXTERNAL | 17 Kasım 2026: modül yolu kalıcı (github.com/feralincom/sdk/sdks/go), herkese açık depo var; sdks/go/v0.1.0 etiketi gönderilmedi, proxy.golang.org modülü görmez. |
+| clean_install | PARTIAL | Boş modül yerel kaynağa replace ile bağlandı. FERALIN_E2E_FROM_REGISTRY=1 ile go get kipi yazıldı (etiketten, proxy.golang.org ve sum.golang.org üzerinden, replace olmadan); etiket gönderilmediği için koşmadı. Yerel Git deposu ve aynı etiketle go get, scripts/sdk-publish/verify-git-install.mjs ile geçti. |
 | event_receipt | PASS | scripts/sdk-e2e/run.mjs go: 202, outbox satırı, izinsiz red, 401, idempotency. |
 | documentation | PASS | docs/sdk/go.md: kurulum ve kullanım kod blokları README'den, yetenek ve zincir durumu yetenek dosyasından üretilir (scripts/sdk-dry-run/docs.mjs); registry yayını ve Super Admin kanıtı ayrı halkadır. |
 | super_admin_proof | NOT_STARTED |  |

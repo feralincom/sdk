@@ -10,7 +10,9 @@
     "declaration": true,
     "strict": true,
     "noUncheckedIndexedAccess": true,
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    // CommonJS derlemesi (Node10 çözümlemesi) paket alt yollarını okumaz; tip bildirimi doğrudan gösterilir. Çıktıdaki belirteç değişmez.
+    "paths": { "@feralin/web/errors": ["./node_modules/@feralin/web/dist/errors.d.ts"] }
   },
   "include": ["src/**/*.ts"]
 }

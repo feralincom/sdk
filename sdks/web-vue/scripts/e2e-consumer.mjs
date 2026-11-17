@@ -2,7 +2,7 @@
 // `ssr`: window yokken gerçek Vue SSR. Argümansız: jsdom üzerinde plugin ve gerçek services/collect.
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
-import { env, installDom, runWebScenarios } from "./web-scenarios.mjs";
+import { env, installDom, runErrorScenario, runWebScenarios } from "./web-scenarios.mjs";
 
 const { collectUrl, projectKey } = env();
 
@@ -41,5 +41,35 @@ async function mount(options) {
 }
 
 await runWebScenarios({ mount, release: async (options) => releaseFeralin(options), label: "vue" });
+
+// app.config.errorHandler eklentisi: alt bileşen kurulumda fırlatır; önceki işleyici zincirde çağrılır.
+const vuePackage = await import("@feralin/vue");
+await runErrorScenario({
+  supported: typeof vuePackage.FeralinErrorHandler?.install === "function",
+  label: "vue",
+  release: async (options) => releaseFeralin(options),
+  trigger: async (options, message) => {
+    let captured;
+    const previous = [];
+    const Boom = defineComponent({
+      setup() {
+        throw new TypeError(message);
+      },
+    });
+    const app = createApp(
+      defineComponent({
+        setup() {
+          captured = useFeralin();
+          return () => h("div", [h(Boom)]);
+        },
+      }),
+    );
+    app.config.errorHandler = (error) => previous.push(error);
+    app.use(FeralinPlugin, options).use(vuePackage.FeralinErrorHandler);
+    app.mount(document.createElement("div"));
+    assert.equal(previous.length, 1, "önceki errorHandler zincirde çağrılmalı");
+    return captured;
+  },
+});
 console.log("vue tüketici: tüm senaryolar geçti");
 process.exit(0);

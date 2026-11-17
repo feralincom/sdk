@@ -1,8 +1,12 @@
 // Temiz kurulumdan çalışan tüketici: `npm pack` çıktısı boş dizine kurulur, bu dosya oraya kopyalanır ve gerçek
 // services/collect ile konuşur. Denetim satırları outbox_check.go ile PostgreSQL üzerinde doğrulanır.
 import assert from "node:assert/strict";
-import { appendFileSync } from "node:fs";
+import { spawnSync } from "node:child_process";
+import { appendFileSync, mkdtempSync, readdirSync, rmSync } from "node:fs";
 import { createRequire } from "node:module";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { FeralinClient, idempotencyKeyFor, SDK_VERSION } from "@feralin/node";
 
 const collectUrl = process.env.FERALIN_E2E_COLLECT_URL;
@@ -13,6 +17,25 @@ assert.ok(collectUrl && projectKey && out, "FERALIN_E2E_COLLECT_URL, FERALIN_E2E
 const expect = (line) => appendFileSync(out, line + "\n");
 const report = (name, detail) => console.log(`  OK ${name}: ${JSON.stringify(detail)}`);
 const make = (extra = {}) => new FeralinClient({ projectKey, collectUrl, flushIntervalMs: 0, ...extra });
+
+// Çökme alt süreci (`node e2e-consumer.mjs crash-child <dizin>`): kalıcı kuyrukla olay üretir; ilk batch toplayıcıya yazılır ama yanıt
+// yolda kaybolur, ikinci olay hiç gönderilmez; süreç `close` çağırmadan çıkar. Kimlikler ve kullanılan anahtar stdout'a yazılır.
+if (process.argv[2] === "crash-child") {
+  const keys = [];
+  const lossy = async (url, init) => {
+    keys.push(init.headers["idempotency-key"]);
+    const res = await fetch(url, init);
+    await res.arrayBuffer();
+    throw new Error("yanıt yolda kayboldu");
+  };
+  const c = make({ storageDirectory: process.argv[3], fetch: lossy, consent: { analytics: true } });
+  const pinned = [c.track("order_completed", { order_id: "ord_node_crash_1" }).event_id, c.track("order_shipped", { order_id: "ord_node_crash_1" }).event_id];
+  const lost = await c.flush();
+  assert.deepEqual([lost.status, lost.retained], [0, 2]);
+  const unsent = c.track("order_refunded", { order_id: "ord_node_crash_1" }).event_id;
+  process.stdout.write(JSON.stringify({ pinned, unsent, key: keys[0], pid: process.pid }));
+  process.exit(0);
+}
 
 // CommonJS girişi de kurulu paketten yüklenir.
 const cjs = createRequire(import.meta.url)("@feralin/node");
@@ -130,6 +153,34 @@ report("cjs-esm", { version: SDK_VERSION });
   assert.deepEqual([r.status, r.accepted], [202, 3]);
   for (const e of events) expect(`once ${e.event_id}`);
   report("close-batch", { accepted: r.accepted });
+}
+
+// Kalıcı kuyruk: çöken alt süreç sunucuya yazılan ama yanıtı kaybolan batch'i ve hiç gönderilmeyen olayı diskte bırakır. Yeniden
+// başlayan süreç aynı dizini açar: kaybolan batch aynı Idempotency-Key ile gider (ikinci outbox satırı yazılmaz), kalan olay da
+// gönderilir; kuyruk boşalınca günlük silinir. npm'deki 0.1.0 bu seçeneği taşımaz: registry koşusunda senaryo açıkça atlanır.
+if (!("storage" in make().getStatus())) {
+  console.log("  ATLANDI kalici-kuyruk: kurulu paket storageDirectory desteklemiyor (npm'deki 0.1.0)");
+} else {
+  const dir = mkdtempSync(join(tmpdir(), "feralin-node-e2e-queue-"));
+  try {
+    const crashed = spawnSync(process.execPath, [fileURLToPath(import.meta.url), "crash-child", dir], { encoding: "utf8", env: process.env });
+    assert.equal(crashed.status, 0, crashed.stderr);
+    const child = JSON.parse(crashed.stdout);
+    assert.equal(child.key, idempotencyKeyFor(child.pinned));
+    assert.equal(readdirSync(dir).filter((name) => name.endsWith(".jsonl")).length, 1, "çöken süreç günlüğü diskte bırakır");
+    const keys = [];
+    const c = make({ storageDirectory: dir, consent: { analytics: false }, fetch: (url, init) => { keys.push(init.headers["idempotency-key"]); return fetch(url, init); } });
+    assert.equal(c.getStatus().queued, 3, "devralınan olaylar kuyrukta");
+    const r = await c.close();
+    assert.deepEqual([r.status, r.retained], [202, 0]);
+    assert.equal(keys[0], child.key, "kaybolan batch aynı anahtarla yeniden gönderildi");
+    assert.equal(keys.length, 2);
+    assert.deepEqual(readdirSync(dir), [], "boş kuyrukta günlük silinir");
+    for (const id of [...child.pinned, child.unsent]) expect(`once ${id}`);
+    report("kalici-kuyruk-cokme-yeniden-baslama", { child_pid: child.pid, key_ayni: keys[0] === child.key, istek: keys.length });
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 }
 // Kimlik yöntemleri (UTP §8.2): toplayıcı izin listesi run.mjs'te `plan,tier`; liste dışı anahtar sunucuda düşer.
 {

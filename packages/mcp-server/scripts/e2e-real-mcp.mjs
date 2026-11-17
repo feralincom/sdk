@@ -3,6 +3,8 @@
 // üzerinden çalıştırılır ve tools/list gerçek MCP'den okunur. API anahtarı panelin kullandığı REST ucuyla üretilir.
 //   MCP_E2E_DATABASE_URL='postgres://...' node packages/mcp-server/scripts/e2e-real-mcp.mjs
 // Yalnız test veritabanı verin: otomatik migrasyon çalışır ve deneme kiracısı yazılır.
+// FERALIN_E2E_FROM_REGISTRY=1: paket yerelde üretilmez, yayımlanmış `@feralin/mcp-server@<package.json sürümü>` npmjs.org'dan kurulur
+// ve kilit dosyasından sürümü ve kaynağı denetlenir (temiz kurulum halkası).
 import { spawn, spawnSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import { mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
@@ -16,6 +18,8 @@ const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const repo = join(root, "../..");
 const database = process.env.MCP_E2E_DATABASE_URL;
 const isWindows = process.platform === "win32";
+const NPM_REGISTRY = "https://registry.npmjs.org/";
+const fromRegistry = process.env.FERALIN_E2E_FROM_REGISTRY === "1";
 if (!database) {
   console.error("HATA: MCP_E2E_DATABASE_URL zorunlu (yalnız test veritabanı)");
   process.exit(1);
@@ -164,16 +168,31 @@ try {
   await waitHealthy(`${mcpBase}/health`, mcp, 120_000);
   console.log("services/mcp açıldı");
 
-  const packDir = join(work, "pack");
-  mkdirSync(packDir);
-  npm(["pack", "--pack-destination", packDir], root);
-  const tarball = join(packDir, readdirSync(packDir).find((name) => name.endsWith(".tgz")));
-  console.log(`paket: ${basename(tarball)}`);
   const consumer = join(work, "consumer");
   mkdirSync(consumer);
   writeFileSync(join(consumer, "package.json"), JSON.stringify({ name: "mcp-stdio-clean-install", private: true }));
-  npm(["install", "--no-audit", "--no-fund", tarball], consumer);
+  const manifest = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
+  if (fromRegistry) {
+    // Yayımlanmış sürüm npmjs.org'dan kurulur; önbellek yerine registry'ye sorulur.
+    const spec = `${manifest.name}@${manifest.version}`;
+    console.log(`registry'den kurulacak: ${spec}`);
+    npm(["install", "--no-audit", "--no-fund", "--registry", NPM_REGISTRY, "--prefer-online", spec], consumer);
+  } else {
+    const packDir = join(work, "pack");
+    mkdirSync(packDir);
+    npm(["pack", "--pack-destination", packDir], root);
+    const tarball = join(packDir, readdirSync(packDir).find((name) => name.endsWith(".tgz")));
+    console.log(`paket: ${basename(tarball)}`);
+    npm(["install", "--no-audit", "--no-fund", tarball], consumer);
+  }
   const lock = JSON.parse(readFileSync(join(consumer, "package-lock.json"), "utf8"));
+  if (fromRegistry) {
+    const entry = lock.packages?.[`node_modules/${manifest.name}`];
+    if (!entry) throw new Error(`kurulmadı: ${manifest.name}`);
+    if (entry.version !== manifest.version) throw new Error(`${manifest.name}: kurulan sürüm ${entry.version}, beklenen ${manifest.version}`);
+    if (!String(entry.resolved ?? "").startsWith(NPM_REGISTRY)) throw new Error(`${manifest.name} registry'den gelmedi: ${entry.resolved}`);
+    console.log(`registry kaynağı: ${entry.resolved} (${entry.integrity})`);
+  }
   const installed = Object.keys(lock.packages).filter((name) => name.startsWith("node_modules/"));
   console.log(`kurulan paketler: ${installed.join(", ")}`);
   if (installed.length !== 1) throw new Error("çalışma zamanı bağımlılığı olmamalı");

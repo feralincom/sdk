@@ -1,6 +1,6 @@
 # SDK sürüm desteği, LTS ve EOL politikası (F7-E06-T01)
 
-Durum: **politika taslağı, ürün sahibi onayı bekliyor.** Bugün hiçbir SDK paket deposunda yayımlanmadı: `sdks/capabilities.yaml` içindeki 35 kaydın tamamında `registry.status: BLOCKED_EXTERNAL`, sürüm bilgisi olan 33 kaydın hepsi `0.1.0`, en ileri yaşam döngüsü durumu `INTEGRATION_TESTED`. Bu yüzden aşağıdaki destek süreleri ilk kararlı (`1.0.0`) yayınla başlar; bugün müşteriye destek taahhüdü verilmiş bir sürüm yoktur.
+Durum: **politika taslağı, ürün sahibi onayı bekliyor.** 17 Kasım 2026'da 10 npm paketi yayımlandı (`sdks/capabilities.yaml` içinde `registry.status: PUBLISHED`; `@feralin/react-native` 0.2.0, ötekiler 0.1.0; yaşam döngüsü `REGISTRY_VERIFIED` ya da `INSTALL_VERIFIED`, ayrıntı `docs/sdk/npm-yayin-adimlari.md`). Öteki kayıtlar `BLOCKED_EXTERNAL`; hiçbir kayıt `SUPPORTED` değildir ve hiçbir sürüm için destek süresi beyan edilmedi. Bu yüzden aşağıdaki destek süreleri ilk kararlı (`1.0.0`) yayınla başlar; bugün müşteriye destek taahhüdü verilmiş bir sürüm yoktur.
 
 İlgili belgeler: `docs/sdk/release-checklist.md` (yayın kapısı ve geri alma), `docs/sdk/trusted-publishing.md` (OIDC yayın yolu), `docs/sdk/capability-matrix.md` §7 (zincir durumu).
 

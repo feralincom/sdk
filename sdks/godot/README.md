@@ -6,7 +6,19 @@ Godot 4 addon'u: UTP v1 olayları, izin öncelikli üretim, kalıcı şifreli ku
 
 ## Kurulum
 
-Registry yayını olmadığından addon depodan kopyalanır (`node scripts/sdk-e2e/run.mjs godot` boş projeye aynı kopyayla kurar):
+Registry yayını olmadığından addon depodan kopyalanır (`node scripts/sdk-e2e/run.mjs godot` boş projeye aynı kopyayla kurar). Addon herkese açık depoda `sdks/godot/addons/feralin` altındadır (<https://github.com/feralincom/sdk>); sürüm etiketi `sdks/godot/v0.2.0`. Yalnız addon dizinini indirmek için:
+
+```bash
+# OYUN_DIZINI oyununuzun project.godot dosyasının bulunduğu dizin
+git clone --depth 1 --branch sdks/godot/v0.2.0 --filter=blob:none --sparse https://github.com/feralincom/sdk.git feralin-sdk
+git -C feralin-sdk sparse-checkout set sdks/godot/addons/feralin
+mkdir -p OYUN_DIZINI/addons
+cp -r feralin-sdk/sdks/godot/addons/feralin OYUN_DIZINI/addons/feralin
+```
+
+Etiket depoya gönderilmeden `git clone --branch` "Remote branch not found" hatası verir; yayımlanmış etiketler <https://github.com/feralincom/sdk/tags> sayfasındadır. Git kullanmadan: aynı sayfada `sdks/godot/v0.2.0` etiketinin ZIP arşivi indirilir, içindeki `sdks/godot/addons/feralin` dizini aynı yere kopyalanır.
+
+Bu depo kopyasından:
 
 ```bash
 # Depo kökünden; OYUN_DIZINI oyununuzun project.godot dosyasının bulunduğu dizin

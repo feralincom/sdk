@@ -13,7 +13,7 @@
 | Sürüm | 0.1.0 |
 | Yaşam döngüsü | INTEGRATION_TESTED |
 | Kaynak dizin | `sdks/ruby` |
-| Registry | RubyGems: **BLOCKED_EXTERNAL** (gereken: RubyGems.org hesabı, MFA ve feralin adının doğrulanması) |
+| Registry | RubyGems: **BLOCKED_EXTERNAL** (gereken: RubyGems.org hesabı, MFA (UI and API); push_rubygem kapsamlı rubygems_ önekli API anahtarı (GEM_HOST_API_KEY) ya da pending trusted publisher; ad rezervasyonu yok, feralin ilk yayında alınır) |
 | Derleme | `cd sdks/ruby && ruby -S gem build feralin.gemspec` |
 | Test | `cd sdks/ruby && ruby -S rake test` |
 

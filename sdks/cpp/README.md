@@ -10,13 +10,33 @@ C++17 çekirdek, kararlı C API (`feralin.h`) ve CMake paketi. Dış JSON bağı
 | Kod: `track`, `identify`, `set_consent`, `flush`, `close`, `status`, `track_revenue`, `group`, `set_user_properties`, `capture_error`, C API | Birim testleri geçti (`ctest`, WSL2 Ubuntu 24.04 g++ 13.3 ve libcurl; `feralin_signals_tests` ayrıca Windows MinGW g++ ile): `feralin_tests` 44, `feralin_signals_tests` 15, `feralin_transport_tests` 6 (gerçek yerel TCP sunucusu), `feralin_c_tests` 153 denetim |
 | Gerçek `collect` ile uçtan uca | Windows + MinGW g++ + WinHTTP ile `scripts/sdk-e2e/run.mjs cpp` geçti: C++ ve C tüketicileri, 202, outbox, `fr_click`, izinsiz red, 401, idempotency |
 | libcurl katmanı (Linux) | WSL2 Ubuntu 24.04, g++ 13.3, libcurl 8.5 ile derlendi; birim testleri ve yerel TCP sunucusu testleri geçti. Gerçek `collect` karşısında koşmadı. macOS ve MSVC denenmedi |
-| Yayın | **`BLOCKED_EXTERNAL`.** Kanal: CMake + imzalı Git release. Public depo ve imza anahtarı yok |
+| Yayın | **`BLOCKED_EXTERNAL`.** Kanal: herkese açık depodaki Git etiketi `sdks/cpp/v<sürüm>` (<https://github.com/feralincom/sdk>) ve CMake `FetchContent`. Etiket henüz gönderilmedi; gönderim ve etiket site sahibinin onayını bekler. İmzalı sürüm (release) ve imza anahtarı yok |
 | `track_revenue`, `group`, `set_user_properties`, `capture_error` | Birim testli; gerçek `collect` karşısında henüz koşmadı. Makbuz doğrulama sunucudadır (`BLOCKED_EXTERNAL`) |
 | OTel tracing, kalıcı kuyruk, yakalanmamış istisna ve çökme yakalama | Yok. Kuyruk bellek içidir; süreç ölürse kaybolur |
 
 ## Kurulum
 
-Registry yok; kaynaktan derlenir.
+Registry yok; kaynaktan derlenir. İki yol var: Git etiketinden `FetchContent` ya da derleyip kurmak.
+
+### Git etiketinden (FetchContent)
+
+SDK herkese açık depoda `sdks/cpp` altındadır; sürüm etiketi `sdks/cpp/v0.1.0`. CMake 3.18+ gerekir (`SOURCE_SUBDIR`):
+
+```cmake
+include(FetchContent)
+FetchContent_Declare(
+  feralin
+  GIT_REPOSITORY https://github.com/feralincom/sdk.git
+  GIT_TAG        sdks/cpp/v0.1.0
+  GIT_SHALLOW    TRUE
+  SOURCE_SUBDIR  sdks/cpp)
+FetchContent_MakeAvailable(feralin)
+target_link_libraries(uygulamam PRIVATE feralin::feralin)
+```
+
+Etiket depoya gönderilmeden bu adım `GIT_TAG` bulunamadı hatası verir; yayımlanmış etiketler <https://github.com/feralincom/sdk/tags> sayfasındadır. Alt proje olarak eklendiğinde SDK testleri derlenmez. Çalışan örnek: `examples/fetchcontent/CMakeLists.txt` (yerel kopya için `-DFETCHCONTENT_SOURCE_DIR_FERALIN=<depo kökü>`).
+
+### Derleyip kurmak
 
 ```bash
 cmake -S sdks/cpp -B sdks/cpp/build -DCMAKE_BUILD_TYPE=Release

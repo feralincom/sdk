@@ -9,14 +9,14 @@
 | Birim testleri (gerçek Express 5, gerçek HTTP) | Geçiyor |
 | Temiz kurulum + gerçek `services/collect` | `scripts/sdk-e2e/run.mjs node-express` ile geçti |
 | Express 4 | Peer aralığında, sınanmadı |
-| npm yayını | `BLOCKED_EXTERNAL`: `@feralin` organizasyonu yok |
+| npm yayını | npm'de yayımlandı: `@feralin/express@0.1.0` (17 Kasım 2026, `@feralin` organizasyonu); sürüm ve özet registry'den geri okundu |
 
 ## Kurulum
 
+Çekirdek peer bağımlılığıdır, iki paket birlikte kurulur:
+
 ```bash
-cd sdks/node && npm pack
-cd ../node-express && npm pack
-npm install ./feralin-node-0.1.0.tgz ./feralin-express-0.1.0.tgz
+npm install @feralin/node @feralin/express
 ```
 
 ## Kullanım

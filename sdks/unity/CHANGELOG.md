@@ -2,6 +2,7 @@
 
 ## Yayınlanmamış
 
+- UPM Git adresi: `https://github.com/feralincom/sdk.git?path=sdks/unity#sdks/unity/v0.2.0`; `package.json` içine `documentationUrl`, `changelogUrl`, `licensesUrl` eklendi. Etiket henüz gönderilmedi (17 Kasım 2026).
 - Kurulum eşleştirme kodu: `FeralinOptions.InstallCode` izin sonrası kuyruğa giren ilk olaya `fr_install_code` olarak eklenir; olay kuyruğa girmezse kod sonrakine kalır (16 Kasım 2026).
 
 ## 0.2.0 (yayınlanmadı)

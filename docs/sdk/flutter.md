@@ -13,7 +13,7 @@
 | Sürüm | 0.2.0 |
 | Yaşam döngüsü | INTEGRATION_TESTED |
 | Kaynak dizin | `sdks/flutter` |
-| Registry | pub.dev: **BLOCKED_EXTERNAL** (gereken: Doğrulanmış pub.dev yayıncısı) |
+| Registry | pub.dev: **BLOCKED_EXTERNAL** (gereken: Google hesabıyla dart pub login (anahtar yok; pub-credentials.json); feralin.com doğrulanmış yayıncısı önerilir (DNS alanı doğrulaması); otomatik yayın yalnız ilk sürümden sonra) |
 | Derleme | `cd sdks/flutter && flutter pub get` |
 | Test | `cd sdks/flutter && flutter test` |
 

@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	feralin "feralin.dev/sdks/go"
+	feralin "github.com/feralincom/sdk/sdks/go"
 )
 
 var ctx = context.Background()

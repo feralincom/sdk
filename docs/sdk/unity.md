@@ -2,13 +2,13 @@
 
 Türkçe: aşağıda. English: [below](#english).
 
-> **Dürüst durum.** Paket registry'de yayınlanmadı (UPM kanalı `BLOCKED_EXTERNAL`). Çekirdek mantık `dotnet test` ve Unity 6000.0.84f1 Editor PlayMode ile sınandı. Android (Keystore, Install Referrer) ve iOS (Keychain, AdServices, ATT) yerel köprüleri yazıldı ama **oyuncu derlemesi ve cihaz olmadığı için derlenmedi ve cihazda sınanmadı**. Veri sınıfları: oyun gelir beyanı `ESTIMATED`, makbuz doğrulayıcı onaylarsa `REAL_VERIFIED`; iOS atfı kesin tekil değildir ve izin vermeyen kullanıcı `UNKNOWN` kalır.
+> **Dürüst durum.** Paket registry'de yayınlanmadı (UPM Git etiketi `BLOCKED_EXTERNAL`). Çekirdek mantık `dotnet test` ve Unity 6000.0.84f1 Editor PlayMode ile sınandı. Android (Keystore, Install Referrer) ve iOS (Keychain, AdServices, ATT) yerel köprüleri yazıldı ama **oyuncu derlemesi ve cihaz olmadığı için derlenmedi ve cihazda sınanmadı**. Veri sınıfları: oyun gelir beyanı `ESTIMATED`, makbuz doğrulayıcı onaylarsa `REAL_VERIFIED`; iOS atfı kesin tekil değildir ve izin vermeyen kullanıcı `UNKNOWN` kalır.
 
 ## Türkçe
 
 ### 1. Kurulum
 
-1. `sdks/unity` içinde `npm pack`; çıkan `com.feralin.unity-0.2.0.tgz` dosyasını Package Manager → **Add package from tarball** ile ekleyin (registry açılınca `manifest.json` ile).
+1. Git deposundan: Package Manager → **Add package from git URL** → `https://github.com/feralincom/sdk.git?path=sdks/unity#sdks/unity/v0.2.0` (Git kurulu olmalı; etiket `sdks/unity/v0.2.0` gönderilmeden adres çözülmez, etiket site sahibinin onayını bekler). O zamana kadar: `sdks/unity` içinde `npm pack`; çıkan `com.feralin.unity-0.2.0.tgz` dosyasını **Add package from tarball** ile ekleyin.
 2. Proje anahtarı public `pk_` olmalıdır; `sk_` SDK'da reddedilir.
 3. Android: Play Install Referrer için `com.android.installreferrer:installreferrer:2.2` gerekir. External Dependency Manager kuruluysa paketteki `Editor/FeralinDependencies.xml` ekler; değilse `mainTemplate.gradle` içine `implementation 'com.android.installreferrer:installreferrer:2.2'` yazın. Keystore köprüsü (`Runtime/Plugins/Android/FeralinKeystore.java`) Unity'nin Gradle derlemesine otomatik girer.
 4. iOS: `Runtime/Plugins/iOS/FeralinNative.mm` otomatik girer. AdServices ve ATT çerçeveleri çalışma zamanında yüklenir (Xcode'da bağlama gerekmez); Keychain için `Security.framework` Unity iOS şablonunda bağlıdır, bağlı değilse Xcode'da ekleyin. Evrensel bağlantılar için Associated Domains oyunun kendi işidir.
@@ -62,11 +62,11 @@ FERALIN_UNITY_EDITOR='E:\Unity\Editor\6000.0.84f1\Editor\Unity.exe' DATABASE_URL
 
 ## English
 
-> **Honest status.** The package is not published (UPM channel is `BLOCKED_EXTERNAL`). The core logic is covered by `dotnet test` and Unity 6000.0.84f1 Editor PlayMode tests. The Android (Keystore, Install Referrer) and iOS (Keychain, AdServices, ATT) native bridges are written but **were not compiled or run on a device, because there is no player build or device in this repository**. Data classes: a game's revenue claim is `ESTIMATED`, `REAL_VERIFIED` only if a server-side receipt verifier confirms it; iOS attribution is not deterministic and users who decline stay `UNKNOWN`.
+> **Honest status.** The package is not published (the UPM Git tag is `BLOCKED_EXTERNAL`). The core logic is covered by `dotnet test` and Unity 6000.0.84f1 Editor PlayMode tests. The Android (Keystore, Install Referrer) and iOS (Keychain, AdServices, ATT) native bridges are written but **were not compiled or run on a device, because there is no player build or device in this repository**. Data classes: a game's revenue claim is `ESTIMATED`, `REAL_VERIFIED` only if a server-side receipt verifier confirms it; iOS attribution is not deterministic and users who decline stay `UNKNOWN`.
 
 ### 1. Install
 
-1. Run `npm pack` in `sdks/unity` and add the `com.feralin.unity-0.2.0.tgz` through Package Manager → **Add package from tarball** (via `manifest.json` once a registry exists).
+1. From the Git repository: Package Manager → **Add package from git URL** → `https://github.com/feralincom/sdk.git?path=sdks/unity#sdks/unity/v0.2.0` (Git must be installed; the URL resolves only after the `sdks/unity/v0.2.0` tag is pushed, which waits for the site owner's approval). Until then: run `npm pack` in `sdks/unity` and add the `com.feralin.unity-0.2.0.tgz` through **Add package from tarball**.
 2. Use the public `pk_` project key; `sk_` keys are rejected.
 3. Android: Play Install Referrer needs `com.android.installreferrer:installreferrer:2.2`. With External Dependency Manager installed, `Editor/FeralinDependencies.xml` adds it; otherwise add `implementation 'com.android.installreferrer:installreferrer:2.2'` to `mainTemplate.gradle`. The Keystore bridge (`Runtime/Plugins/Android/FeralinKeystore.java`) is picked up by Unity's Gradle build automatically.
 4. iOS: `Runtime/Plugins/iOS/FeralinNative.mm` is picked up automatically. AdServices and ATT frameworks are loaded at runtime (no Xcode linking); Keychain needs `Security.framework`, which the Unity iOS template links (add it in Xcode if not). Universal Links need Associated Domains in your app.

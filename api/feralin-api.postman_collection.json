@@ -2709,6 +2709,44 @@
           "response": []
         },
         {
+          "name": "Hızlı kurulum: tek proje, kaynaklar, kaynak başına anahtar ve kısa link tek işlemde (scope projects:write)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/projects/quick-setup",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "projects",
+                "quick-setup"
+              ]
+            },
+            "description": "UI-028. Ürün adıyla tek proje açılır; her girdi o projede bir kaynaktır (web sitesi, iOS, Android, oyun, masaüstü, sunucu) ve\nher kaynağa bağlı bir anahtar üretilir (`sources[].key.secret_once` yalnız bu yanıtta görünür). Olaylar kaynak anahtarıyla ayrılır,\nistatistik kaynak bazında tutulur. Adres verilirse algılama yapılır (`/projects/{id}/sources/detect` ile aynı kurallar ve SSRF\nkoruması): site adresi → alan adı, CMS ve Feralin etiketi; App Store bağlantısı → bundle id ve ad; Google Play bağlantısı →\npaket adı (bağlantıdan) ve uygulama adı (herkese açık sayfadan, okunamazsa yok). `url` yalnız web, ios ve android türünde\nverilir (öteki türde 400 `quick_setup_url_not_supported`); tür ile uyuşmayan adres 400 `quick_setup_url_mismatch`.\nAdres taşıyan kaynak varsa site ve mağaza adresleriyle tek kısa link açılır (`link.create: false` ile kapatılır); mağaza adresi\nvarsa atıf açıktır. Link için ayrıca `links:write` gerekir (yoksa 403 `insufficient_scope`).\nProje platformu kaynaklardan türetilir: önce mobil (Flutter, React Native ya da Unity SDK'sı seçildiyse o), sonra oyun, sonra\nilk kaynak. Hepsi tek veritabanı işlemidir: bir adım düşerse (proje tavanı 429 `tenant_project_quota_exceeded`, arşivli\nworkspace 409, link kotası 429, aynı tür ve tanımlayıcı 409 `source_identifier_taken`) hiçbir satır kalmaz. Aynı\n`Idempotency-Key` ile tekrar ikinci proje açmaz: yanıt tek seferlik anahtar taşıdığı için saklanmaz, tekrar 409\n`idempotency_not_replayable` alır. Yetki `POST /v1/projects` ile aynıdır (owner ve admin; projeye kısıtlı kimlik 403).\nDenetim kaydına yalnız kaynak türleri ve sayısı yazılır; ad, adres ve tanımlayıcı yazılmaz.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"\",\n  \"sources\": []\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
           "name": "Proje ayrıntısı; tenant dışı proje 404 ile maskelenir",
           "request": {
             "method": "GET",
@@ -2858,6 +2896,265 @@
               ]
             },
             "description": "Anahtarı iptal et (revoked_at damgalanır; idempotent)"
+          },
+          "response": []
+        },
+        {
+          "name": "Proje veri kaynakları ve kaynak başına kurulum durumu (scope projects:read)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/projects/:id/sources",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "projects",
+                ":id",
+                "sources"
+              ],
+              "query": [
+                {
+                  "key": "include_archived",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "include_status",
+                  "value": "",
+                  "disabled": true,
+                  "description": "false: yalnız tanımlar (süzgeç listesi); olay deposu okunmaz, durumlar unknown ve analytics_status skipped"
+                }
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{project_id}}"
+                }
+              ]
+            },
+            "description": "Bir projede web sitesi, iOS ve Android uygulaması, oyun (Unity, Godot, Unreal), masaüstü ve sunucu kaynakları birlikte bulunur.\nHer olay tek bir kaynağa düşer: önce kaynağa bağlı anahtar, sonra web alan adı tam eşleşmesi, sonra alan adı verilmemiş en eski\nweb kaynağı, web dışında türün en eski kaynağı. Hiçbiri tutmazsa olay `unassigned` satırında sayılır, kaybolmaz.\nToplam (`total_events_30d`) kaynakların ve atanmamışın toplamıdır; çift sayım yoktur. Durum ClickHouse'tan okunur ve saklanmaz:\n`waiting_first_event` (hiç olay yok), `receiving` (son olay 24 saat içinde), `idle` (daha eski), `unknown` (depo okunamadı,\n`analytics_status: unavailable`). Olay sayısı son 30 gündür ve doğrulanmış Test Lab olaylarını saymaz."
+          },
+          "response": []
+        },
+        {
+          "name": "Veri kaynağı ekle; kaynağa bağlı ilk anahtar bir kez döner (scope projects:write)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/projects/:id/sources",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "projects",
+                ":id",
+                "sources"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{project_id}}"
+                }
+              ]
+            },
+            "description": "Yalnız owner ve admin oturumu yazar; denetim kaydına tür ve alan adları yazılır, ad ve tanımlayıcı yazılmaz.\n`identifier`: web için alan adı (tam adres yapıştırılabilir; şema, yol, port ve `www.` atılır), iOS için bundle id, Android için\npaket adı, oyun ve masaüstü için uygulama kimliği. Yalnız web alan adı olay eşlemesinde kullanılır; öteki türlerde ayrım kaynak\nanahtarıyladır (SDK değişikliği gerekmez). Aynı projede aynı tanımlayıcıyla uygulama kaydı (`mobile_apps`) varsa kaynak ona bağlanır.\n`create_key` varsayılan true: yanıttaki `key.secret_once` yalnız bu yanıtta görünür. Proje başına en çok 50 etkin kaynak\n(409 `source_limit_reached`); aynı türde aynı tanımlayıcı 409 `source_identifier_taken`; biçim hatası 400 `invalid_source_identifier`.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"kind\": \"web\",\n  \"name\": \"\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Sihirli kurulum: site adresi ve mağaza bağlantılarından kaynak önerisi (scope projects:write)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/projects/:id/sources/detect",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "projects",
+                ":id",
+                "sources",
+                "detect"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{project_id}}"
+                }
+              ]
+            },
+            "description": "Kaynak oluşturmaz, hiçbir şey saklamaz. Alan adı → web; `apps.apple.com` → iOS (bundle id Apple'ın herkese açık\n`itunes.apple.com/lookup` ucundan); `play.google.com` → Android (paket adı bağlantıdan; uygulama adı herkese açık ayrıntı\nsayfasının `og:title` etiketinden, İngilizce, yönlendirme izlenmez, gövde en çok 2 MB; okunamazsa `name` null ve paket adı\nyine algılanır). Web için ana sayfa bir kez okunur:\nCMS (WordPress, Shopify, Wix, Webflow, Squarespace), Feralin web SDK etiketi ve etiketteki anahtarın bu projeye ait olup\nolmadığı (anahtar yanıtta yoktur). Dış istek SSRF korumalıdır: DNS sabitli, özel ağ adresi yasak, yalnız https, yönlendirme\nen çok 3, istek başına 5 sn, gövde en çok 512 KB. Tanınmayan girdi `manual` döner ve kullanıcı türü elle seçer.\nProjede aynı tür ve tanımlayıcıyla etkin kaynak varsa `existing_source_id` dolu döner. En çok 10 girdi.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"inputs\": []\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Tek veri kaynağı ve kurulum durumu (scope projects:read)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/projects/:id/sources/:sourceId",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "projects",
+                ":id",
+                "sources",
+                ":sourceId"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{project_id}}"
+                },
+                {
+                  "key": "sourceId",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "Tek veri kaynağı ve kurulum durumu (scope projects:read)"
+          },
+          "response": []
+        },
+        {
+          "name": "Kaynak adı, tanımlayıcısı ya da SDK'sı (scope projects:write)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/projects/:id/sources/:sourceId",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "projects",
+                ":id",
+                "sources",
+                ":sourceId"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{project_id}}"
+                },
+                {
+                  "key": "sourceId",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "Tür değişmez. Arşivli kaynak 409 `source_archived`. `identifier` ve `sdk` null ile temizlenir.",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Kaynağı arşivle (silme değil; scope projects:write)",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/projects/:id/sources/:sourceId",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "projects",
+                ":id",
+                "sources",
+                ":sourceId"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{project_id}}"
+                },
+                {
+                  "key": "sourceId",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "Kaynak eşlemeden çıkar, olayları silinmez ve atanmamış satırında sayılır. Kaynağa bağlı anahtarlar iptal edilmez (uygulama veri\ngöndermeyi sürdürür); iptal `DELETE /projects/{id}/keys/{keyId}` ile ayrıca yapılır. İdempotenttir."
+          },
+          "response": []
+        },
+        {
+          "name": "Kaynağa bağlı yeni ingest anahtarı; ham değer yalnız bu yanıtta (scope projects:write)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/projects/:id/sources/:sourceId/keys",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "projects",
+                ":id",
+                "sources",
+                ":sourceId",
+                "keys"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{project_id}}"
+                },
+                {
+                  "key": "sourceId",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "Bu anahtarla gelen olay doğrudan bu kaynakta sayılır. Arşivli kaynak 409 `source_archived`."
           },
           "response": []
         },
@@ -4430,6 +4727,14 @@
                 ":id",
                 "realtime"
               ],
+              "query": [
+                {
+                  "key": "source_id",
+                  "value": "",
+                  "disabled": true,
+                  "description": "Proje veri kaynağı (`src_…`) ya da `unassigned` (hiçbir kaynağa düşmeyen olaylar). Yalnız tek project_id ile. Kaynak bu projede yoksa ya da arşivliyse 404 `source_not_found`. Verilmezse projenin tamamı: toplam kaynakların ve atanmamışın toplamıdır."
+                }
+              ],
               "variable": [
                 {
                   "key": "id",
@@ -4654,6 +4959,12 @@
                   "value": "",
                   "disabled": true,
                   "description": "Kitle kimliği (`aud_…`); aktör kümesi kitle üyeliğiyle daraltılır. Yalnız tek project_id ile; `audiences:read` scope gerekir. Sandbox ucu reddeder."
+                },
+                {
+                  "key": "source_id",
+                  "value": "",
+                  "disabled": true,
+                  "description": "Proje veri kaynağı (`src_…`) ya da `unassigned` (hiçbir kaynağa düşmeyen olaylar). Yalnız tek project_id ile. Kaynak bu projede yoksa ya da arşivliyse 404 `source_not_found`. Verilmezse projenin tamamı: toplam kaynakların ve atanmamışın toplamıdır."
                 }
               ]
             },
@@ -7323,6 +7634,12 @@
                   "key": "platform",
                   "value": "",
                   "disabled": true
+                },
+                {
+                  "key": "source_id",
+                  "value": "",
+                  "disabled": true,
+                  "description": "Proje veri kaynağı (`src_…`): şablon kaynağın SDK'sından, SDK verilmemişse türünün varsayılanından seçilir (web → web, ios → ios-swift, android, unity; masaüstü ve sunucu türlerinde şablonsuz dil 400 `setup_platform_required`). Kaynak bu projede yoksa 404 `source_not_found`. `platform` verilirse o kazanır."
                 },
                 {
                   "key": "collect_url",
@@ -12282,6 +12599,243 @@
                 }
               }
             }
+          },
+          "response": []
+        },
+        {
+          "name": "Reklam ağı dönüşüm hedefleri (Meta, Google Ads, TikTok; scope projects:read)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/projects/:id/ad-conversions",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "projects",
+                ":id",
+                "ad-conversions"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{project_id}}"
+                }
+              ]
+            },
+            "description": "A17. Proje başına ağ başına tek hedef: `meta_capi` (Meta Conversions API), `google_ads_conversions` (Google Data Manager API ile Google Ads\ndönüşüm eylemi) ve `tiktok_events` (TikTok Events API 2.0). Kimlik bilgisi hiçbir yanıtta dönmez; yalnız `credential.configured` ve son\ndört karakter (`credential.hint`). `networks` her ağın ayar alanlarını, kabul ettiği olay adlarını, platform kapsamını ve istek sınırını\nsöyler. `secret_key_configured: false` ise hedef kurulamaz (503 `secret_key_not_configured`)."
+          },
+          "response": []
+        },
+        {
+          "name": "Reklam ağı hedefi kur (scope projects:write; oturum ve step-up)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/projects/:id/ad-conversions",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "projects",
+                ":id",
+                "ad-conversions"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{project_id}}"
+                }
+              ]
+            },
+            "description": "Müşteri kendi kimliğini girer: Meta `settings.pixel_id` + `credentials.access_token`; TikTok `settings.pixel_code` + `credentials.access_token`;\nGoogle `settings.customer_id` (isteğe bağlı `login_customer_id`) + `credentials.service_account_json` (hizmet hesabı e-postası Google Ads\nhesabına eklenmelidir). `event_mapping`: Feralin olay adı → Meta/TikTok standart olay adı ya da Google dönüşüm eylemi kimliği (en çok 20).\n`value_policy`: `verified_only` (varsayılan; yalnız defterde REAL_VERIFIED satış tutarı), `measured`, `none`. Hedef kapalı doğar. Yalnız\nkullanıcı oturumu (API anahtarı 403 `session_required`); MFA açıksa son 5 dakikada step-up (403 `member_step_up_required`). 409\n`ad_conversion_destination_exists`, 422 `ad_conversion_invalid` ya da `ad_conversion_credentials_invalid`, 503 `secret_key_not_configured`.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"network\": \"meta_capi\",\n  \"settings\": {\n    \"pixel_id\": \"123456789012345\"\n  },\n  \"credentials\": {\n    \"access_token\": \"<META_ACCESS_TOKEN>\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Reklam ağı hedefini düzenle, aç ya da kapat (scope projects:write; oturum ve step-up)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/projects/:id/ad-conversions/:did",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "projects",
+                ":id",
+                "ad-conversions",
+                ":did"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{project_id}}"
+                },
+                {
+                  "key": "did",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "Verilen alanlar değişir; `credentials` verilirse kimlik yenilenir. `enabled: true` kimlik ve en az bir eşleme ister (409 `ad_conversion_not_ready`);\naçılınca olay deposu imleci o ana konur, geçmiş olay gönderilmez. Kapatınca bekleyen teslimler `cancelled` (`destination_disabled`) olur.\nYalnız `consent.advertising === true` olaylar gider; silme ya da reklam izni geri çekme bekleyen teslimleri iptal eder. Denetim kaydı\nalan adlarını ve açık/kapalı durumunu yazar, değerleri yazmaz.",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Reklam ağı hedefini sil (scope projects:write; oturum ve step-up)",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/projects/:id/ad-conversions/:did",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "projects",
+                ":id",
+                "ad-conversions",
+                ":did"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{project_id}}"
+                },
+                {
+                  "key": "did",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "Hedef, şifreli kimlik ve teslim günlüğü silinir. Ağa gitmiş olay geri alınamaz."
+          },
+          "response": []
+        },
+        {
+          "name": "Reklam ağına deneme olayı gönder (scope projects:write; oturum)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/projects/:id/ad-conversions/:did/test",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "projects",
+                ":id",
+                "ad-conversions",
+                ":did",
+                "test"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{project_id}}"
+                },
+                {
+                  "key": "did",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "Hedef kapalıyken de çalışır. Meta ve TikTok'ta test olay kodu zorunludur (gövdede `test_event_code` ya da hedef ayarında; yoksa 422\n`ad_conversion_test_code_required`): olay ağın test görünümüne düşer. Google'da `validateOnly` ile istek doğrulanır, dönüşüm yazılmaz.\nDeneme olayı gerçek kişi verisi taşımaz. Hedef başına dakikada 10 deneme (429 `ad_conversion_test_rate_limited`).",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Reklam ağı teslim günlüğü (scope projects:read)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/projects/:id/ad-conversions/:did/deliveries",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "projects",
+                ":id",
+                "ad-conversions",
+                ":did",
+                "deliveries"
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "cursor",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "limit",
+                  "value": "25",
+                  "disabled": true
+                }
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{project_id}}"
+                },
+                {
+                  "key": "did",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "En yeni önce, imleçli. Satır durum, deneme sayısı, ağın HTTP kodu ve sabit hata kodunu taşır; gövde ve kişisel veri yoktur. Durumlar:\n`pending`, `succeeded`, `failed` (geri çekilerek yeniden denenecek), `dead` (kalıcı hata, DLQ), `cancelled` (`consent_withdrawn`, `erasure`,\n`destination_disabled`)."
           },
           "response": []
         },
@@ -18064,6 +18618,28 @@
                 }
               }
             },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Herkese açık plan kataloğu ve fiyatlar (salt okunur)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/public/plans",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "public",
+                "plans"
+              ]
+            },
+            "description": "Fiyat sayfasının tek kaynağı. Plan kodu, ad ve sıra (`plans`), yöneticinin ayarladığı etkin fiyat satırları (`saas_plan_prices`) ve\nplan sınırları (`plan_limits`). Tutar küçük birimde tam sayıdır ve vergi hariçtir (`tax_included: false`); vergiyi ödeme anında kayıtlı\nsatıcı hesaplar. Fiyat satırı olmayan planın `price_status` değeri `not_set` ve `prices` dizisi boştur; tutar uydurulmaz. Free ve\nsözleşmeli plan (Enterprise, sınırları `null`) bilinçli olarak fiyat satırı taşımaz. Kiracı verisi (organizasyon planı, kiracı aşımı,\nabonelik) ve sağlayıcı fiyat referansı (`provider_price_ref`) dönmez. Sorgu parametresi yoktur; bilinmeyen parametre 400 döner.\nÖnbellek: `Cache-Control: public, max-age=300, stale-while-revalidate=600`. IP başına sınır vardır (429).",
             "auth": {
               "type": "noauth"
             }

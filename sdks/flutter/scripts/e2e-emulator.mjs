@@ -3,22 +3,24 @@
 // (çevrimdışı kuyruk) → ağ geri (gönderim) → gerçek services/collect → collect worker → ClickHouse satırı.
 // Emülatördür, gerçek cihaz değildir; kurulum adb ile yapıldığından Play Install Referrer kanıtı yoktur ve kaynak dürüstçe `none` beklenir.
 //
-//   DATABASE_URL='postgres://...' CLICKHOUSE_URL=http://127.0.0.1:18127 node sdks/flutter/scripts/e2e-emulator.mjs [example|git|path]
+//   DATABASE_URL='postgres://...' CLICKHOUSE_URL=http://127.0.0.1:18127 node sdks/flutter/scripts/e2e-emulator.mjs [example|git|path|pub]
 //
-// Kaynak: `example` (varsayılan) sdks/flutter/example uygulamasını (path bağımlılığı) derler. `git` ve `path` temiz kurulumdur:
-// `flutter create` ile boş proje açılır, paket pub.dev dışından (HEAD'deki paket ağacından kurulan yerel git deposu ya da dizin yolu) eklenir,
-// senaryo girişi kopyalanır. İsteğe bağlı: FERALIN_EMULATOR_PORT (5562), FERALIN_EMULATOR_AVD (Test), FERALIN_FLUTTER_COLLECT_PORT (4761, doluysa sonraki boş port),
+// Kaynak: `example` (varsayılan) sdks/flutter/example uygulamasını (path bağımlılığı) derler. `git`, `path` ve `pub` temiz kurulumdur:
+// `flutter create` ile boş proje açılır, paket eklenir (git: HEAD'deki paket ağacından kurulan yerel git deposu, path: dizin yolu,
+// pub: pub.dev'de yayımlanmış sürüm; pubspec.lock `source: hosted` ve `url: https://pub.dev` denetlenir), senaryo girişi kopyalanır.
+// FERALIN_E2E_FROM_REGISTRY=1 verilir ve kaynak yazılmazsa `pub` kullanılır. İsteğe bağlı: FERALIN_EMULATOR_PORT (5562), FERALIN_EMULATOR_AVD (Test), FERALIN_FLUTTER_COLLECT_PORT (4761, doluysa sonraki boş port),
 // FERALIN_FLUTTER_WORK (kısa çalışma yolu), FERALIN_EMULATOR_REUSE=1 (açık kendi emülatörünü kullan, kapatma).
 import { spawnSync } from "node:child_process";
 import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { pathToFileURL } from "node:url";
+import { assertPubspecLock } from "../../../scripts/sdk-e2e/targets/lib/registry.mjs";
 import { checkOutbox, clickhouseProof, emulator, evidenceDir, installPairingAvailable, newInstallCode, pickPort, repo, requireDatabase, run, startCollect } from "../../../scripts/sdk-e2e/mobile-lib.mjs";
 
-const source = process.argv[2] ?? "example";
-if (!["example", "git", "path"].includes(source)) {
-  console.error("kullanım: e2e-emulator.mjs [example|git|path]");
+const source = process.argv[2] ?? (process.env.FERALIN_E2E_FROM_REGISTRY === "1" ? "pub" : "example");
+if (!["example", "git", "path", "pub"].includes(source)) {
+  console.error("kullanım: e2e-emulator.mjs [example|git|path|pub]");
   process.exit(2);
 }
 const database = requireDatabase();
@@ -71,12 +73,16 @@ function packageGitRepo() {
   return { url: pathToFileURL(gitRepo).href, ref };
 }
 
-/** Boş Flutter projesi; paket pub.dev dışından gelir. Kanıt: pubspec.lock içindeki kaynak satırı. */
+/** Boş Flutter projesi; paket git, yerel yol ya da pub.dev'den gelir. Kanıt: pubspec.lock içindeki kaynak satırı. */
 function prepareClean() {
   const app = join(work, "fr_flutter_clean");
   run("flutter", ["create", "--org", "com.feralin.e2e", "--platforms", "android", "--project-name", "fr_flutter_clean", app]);
   let dependency;
-  if (source === "git") {
+  const version = /^version: (\S+)/m.exec(readFileSync(join(sdk, "pubspec.yaml"), "utf8"))?.[1];
+  if (source === "pub") {
+    // Yalnız yayımlanmış sürüm: tam sürüm kısıtı, pub.dev'in varsayılan barındırıcısı.
+    dependency = `  feralin_flutter: ${version}\n`;
+  } else if (source === "git") {
     const { url, ref } = packageGitRepo();
     // Git URL'si: pub, uzaktaki bir Git deposundaki gibi klonlar ve verilen commit'i çözer.
     dependency = `  feralin_flutter:\n    git:\n      url: ${url}\n      path: sdks/flutter\n      ref: ${ref}\n`;
@@ -101,7 +107,8 @@ function prepareClean() {
   run("flutter", ["pub", "get"], { cwd: app });
   const lock = readFileSync(join(app, "pubspec.lock"), "utf8").replace(/\r\n/g, "\n");
   const entry = /\n {2}feralin_flutter:\n(?: {4}.*\n)+/.exec(lock)?.[0]?.trim();
-  if (!entry || !entry.includes(`source: ${source}`)) throw new Error(`pubspec.lock feralin_flutter kaynağı ${source} değil:\n${entry}`);
+  if (source === "pub") console.log(assertPubspecLock(lock, "feralin_flutter", version));
+  else if (!entry || !entry.includes(`source: ${source}`)) throw new Error(`pubspec.lock feralin_flutter kaynağı ${source} değil:\n${entry}`);
   console.log(`temiz kurulum (pubspec.lock):\n${entry}`);
   writeFileSync(join(evidence, "pubspec-lock-feralin.txt"), `${entry}\n`);
   return { app, component: "com.feralin.e2e.fr_flutter_clean/.MainActivity", target: "lib/main.dart" };

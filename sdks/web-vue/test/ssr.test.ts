@@ -3,7 +3,7 @@
 import { createSSRApp, defineComponent, h } from "vue";
 import { renderToString } from "vue/server-renderer";
 import { describe, expect, it, vi } from "vitest";
-import { FeralinPlugin, useFeralin } from "../src/index";
+import { FeralinErrorHandler, FeralinPlugin, useFeralin } from "../src/index";
 
 const options = { projectKey: "pk_test_vue_ssr_0001", collectUrl: "http://collector.test", consent: { analytics: true } };
 
@@ -11,6 +11,23 @@ describe("SSR", () => {
   it("ortamda window yok", () => {
     expect(typeof window).toBe("undefined");
     expect(typeof document).toBe("undefined");
+  });
+
+  it("hata eklentisi sunucuda olay üretmez, önceki işleyiciyi çağırır", async () => {
+    const previous = vi.fn();
+    const network = vi.fn();
+    const app = createSSRApp(
+      defineComponent({
+        setup() {
+          throw new Error("sunucu hatası");
+        },
+      }),
+    );
+    app.config.errorHandler = previous;
+    app.use(FeralinPlugin, { ...options, fetch: network as unknown as typeof fetch }).use(FeralinErrorHandler);
+    await renderToString(app).catch(() => "");
+    expect(previous).toHaveBeenCalledOnce();
+    expect(network).not.toHaveBeenCalled();
   });
 
   it("plugin ve composable sunucuda patlamaz; istemci, zamanlayıcı, ağ yok", async () => {

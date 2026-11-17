@@ -1,11 +1,11 @@
 // @vitest-environment node
 // window olmadan gerçek Angular enjektörü. PLATFORM_ID "server" iken tarayıcı benzeri ortam olsa bile istemci kurulmaz.
 import "@angular/compiler";
-import { Component, EnvironmentInjector, Injector, PLATFORM_ID, createEnvironmentInjector, inject } from "@angular/core";
+import { Component, EnvironmentInjector, ErrorHandler, Injector, PLATFORM_ID, createEnvironmentInjector, inject } from "@angular/core";
 import { bootstrapApplication } from "@angular/platform-browser";
 import { provideServerRendering, renderApplication } from "@angular/platform-server";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { FeralinService, provideFeralin } from "../src/index";
+import { FeralinService, provideFeralin, provideFeralinErrorHandler } from "../src/index";
 
 const options = { projectKey: "pk_test_angular_ssr_001", collectUrl: "http://collector.test", consent: { analytics: true } };
 
@@ -25,6 +25,19 @@ describe("SSR", () => {
   it("ortamda window yok", () => {
     expect(typeof window).toBe("undefined");
     expect(typeof document).toBe("undefined");
+  });
+
+  it("hata işleyicisi sunucuda olay üretmez, ağ çağırmaz, delegate'i çağırır", async () => {
+    const network = vi.fn();
+    const delegate = { handleError: vi.fn() };
+    const injector = createEnvironmentInjector(
+      [{ provide: PLATFORM_ID, useValue: "server" }, provideFeralin({ ...options, fetch: network as unknown as typeof fetch }), provideFeralinErrorHandler({ delegate })],
+      Injector.NULL as unknown as EnvironmentInjector,
+    );
+    injector.get(ErrorHandler).handleError(new Error("sunucu"));
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(delegate.handleError).toHaveBeenCalledOnce();
+    expect(network).not.toHaveBeenCalled();
   });
 
   it("gerçek renderApplication: uygulama sunucuda render edilir, servis boş yüzeydir", async () => {

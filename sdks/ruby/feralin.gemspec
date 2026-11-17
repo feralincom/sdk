@@ -13,6 +13,10 @@ Gem::Specification.new do |spec|
   spec.homepage = "https://feralin.com"
   spec.required_ruby_version = ">= 3.0"
   spec.metadata["rubygems_mfa_required"] = "true"
+  spec.metadata["homepage_uri"] = spec.homepage
+  spec.metadata["source_code_uri"] = "https://github.com/feralincom/sdk"
+  spec.metadata["changelog_uri"] = "https://github.com/feralincom/sdk/blob/main/sdks/ruby/CHANGELOG.md"
+  spec.metadata["documentation_uri"] = "https://github.com/feralincom/sdk/blob/main/docs/sdk/ruby.md"
 
   # Yol, geçerli dizinden bağımsız olsun diye gemspec'in dizinine göre çözülür.
   root = __dir__

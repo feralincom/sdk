@@ -13,13 +13,25 @@
 | Sürüm | 0.1.0 |
 | Yaşam döngüsü | INTEGRATION_TESTED |
 | Kaynak dizin | `sdks/cpp` |
-| Registry | CMake + imzalı Git release: **BLOCKED_EXTERNAL** (gereken: Public Git deposu, release kanalı ve imza anahtarı) |
+| Registry | CMake + imzalı Git release: **BLOCKED_EXTERNAL** (gereken: Herkese açık depo github.com/feralincom/sdk var; CMake FetchContent (GIT_TAG sdks/cpp/v0.1.0, SOURCE_SUBDIR sdks/cpp) için güncel içeriğin gönderimi ve sdks/cpp/v0.1.0 etiketi (site sahibinin onayı, docs/sdk/git-yayin-adimlari.md). İmzalı sürüm için ayrıca imza anahtarı) |
 | Derleme | `node scripts/sdk-dry-run/cmake.mjs sdks/cpp build` |
 | Test | `node scripts/sdk-dry-run/cmake.mjs sdks/cpp test` |
 
 ## Kurulum
 
 Registry yayını durumu **BLOCKED_EXTERNAL**: paket henüz `CMake + imzalı Git release` üzerinde yayınlanmış olarak doğrulanmadı; aşağıdaki adımlar kaynaktan ya da yerel pakettendir.
+
+```cmake
+include(FetchContent)
+FetchContent_Declare(
+  feralin
+  GIT_REPOSITORY https://github.com/feralincom/sdk.git
+  GIT_TAG        sdks/cpp/v0.1.0
+  GIT_SHALLOW    TRUE
+  SOURCE_SUBDIR  sdks/cpp)
+FetchContent_MakeAvailable(feralin)
+target_link_libraries(uygulamam PRIVATE feralin::feralin)
+```
 
 ```bash
 cmake -S sdks/cpp -B sdks/cpp/build -DCMAKE_BUILD_TYPE=Release
@@ -88,7 +100,7 @@ feralin_client_free(client);  /* kapatır, kalan olayları göndermeyi dener */
 | source | PASS |  |
 | build | PASS | Windows MinGW g++ 16.1 (WinHTTP, statik ve DLL) ve WSL2 Ubuntu 24.04 g++ 13.3 (libcurl 8.5, statik ve .so) -Werror ile derlendi. MSVC ve macOS denenmedi. |
 | test | PASS | ctest: feralin_tests 44, feralin_transport_tests 6 (gerçek yerel TCP sunucusu), feralin_c_tests 99 denetim; Windows ve WSL2'de ayrı ayrı geçti. |
-| registry | BLOCKED_EXTERNAL | Public depo, release kanalı ve imza anahtarı yok. |
+| registry | BLOCKED_EXTERNAL | 17 Kasım 2026: herkese açık depo var; sdks/cpp/v0.1.0 etiketi gönderilmedi, imza anahtarı yok. |
 | clean_install | PASS | cmake --install ile ayrı öneke kuruldu, boş dizindeki tüketici find_package(feralin) ile derlendi. CMake olmayan yol g++ ile de geçti. Registry'den kurulum yok. |
 | event_receipt | PASS | scripts/sdk-e2e/run.mjs cpp (Windows, WinHTTP): C++ ve C tüketicileri; 202, outbox, fr_click, izinsiz red, 401, idempotency; 12 outbox denetimi. libcurl gerçek toplayıcıya karşı koşmadı, yalnız yerel TCP sunucusuna karşı sınandı. |
 | documentation | PASS | docs/sdk/cpp.md: kurulum ve kullanım kod blokları README'den, yetenek ve zincir durumu yetenek dosyasından üretilir (scripts/sdk-dry-run/docs.mjs); registry yayını ve Super Admin kanıtı ayrı halkadır. |

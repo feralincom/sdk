@@ -5,6 +5,9 @@
   "description": "Feralin UTP v1 game analytics SDK for Unity: consent-first events, encrypted persistent offline queue, idempotent batches, automatic sessions, revenue (feralin_purchase) and ad revenue, Play Install Referrer / AdServices attribution and error capture. No fingerprinting, no device identifiers.",
   "unity": "2021.3",
   "license": "MIT",
+  "documentationUrl": "https://github.com/feralincom/sdk/blob/main/sdks/unity/README.md",
+  "changelogUrl": "https://github.com/feralincom/sdk/blob/main/sdks/unity/CHANGELOG.md",
+  "licensesUrl": "https://github.com/feralincom/sdk/blob/main/sdks/unity/LICENSE.md",
   "author": {
     "name": "Feralin",
     "url": "https://feralin.com"

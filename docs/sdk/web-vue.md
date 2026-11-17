@@ -11,21 +11,16 @@
 | Dil | TypeScript |
 | Paket | `@feralin/vue` |
 | Sürüm | 0.1.0 |
-| Yaşam döngüsü | INTEGRATION_TESTED |
+| Yaşam döngüsü | INSTALL_VERIFIED |
 | Kaynak dizin | `sdks/web-vue` |
-| Registry | npm: **BLOCKED_EXTERNAL** (gereken: @feralin npm organizasyonu, 2FA, OIDC trusted publishing) |
+| Registry | npm: **PUBLISHED** (sonraki adım: her paket için npm trusted publishing (OIDC); npm 2FA'yı atlayan anahtarla doğrudan yayını Ocak 2027'de kapatıyor) |
 | Derleme | `pnpm --filter @feralin/vue build` |
 | Test | `pnpm --filter @feralin/vue test` |
 
 ## Kurulum
 
-Registry yayını durumu **BLOCKED_EXTERNAL**: paket henüz `npm` üzerinde yayınlanmış olarak doğrulanmadı; aşağıdaki adımlar kaynaktan ya da yerel pakettendir.
-
 ```bash
-pnpm --filter @feralin/web build
-cd packages/sdk-web && npm pack
-cd ../../sdks/web-vue && npm pack
-npm install ./feralin-web-0.1.0.tgz ./feralin-vue-0.1.0.tgz
+npm install @feralin/web @feralin/vue
 ```
 
 ## İlk kullanım
@@ -58,14 +53,14 @@ export default defineNuxtPlugin((nuxtApp) => {
 
 | Yetenek | Durum |
 |---|---|
-| event | SUPPORTED (yayınsız; çerçeve katmanı #1 üstünde) |
-| batch | SUPPORTED (yayınsız; #1 localStorage kuyruğu) |
-| consent | SUPPORTED (yayınsız; fr_click reklam izni yoksa çıkarılır) |
-| identity | SUPPORTED (yayınsız; identify, reset, group, setUserProperties, setGlobalProperties tutamakta, çekirdek @feralin/web; gerçek collect ile jsdom e2e geçti) |
+| event | SUPPORTED (çerçeve katmanı #1 üstünde) |
+| batch | SUPPORTED (#1 localStorage kuyruğu) |
+| consent | SUPPORTED (fr_click reklam izni yoksa çıkarılır) |
+| identity | SUPPORTED (identify, reset, group, setUserProperties, setGlobalProperties tutamakta, çekirdek @feralin/web; gerçek collect ile jsdom e2e geçti) |
 | attribution | PARTIAL (#1 ile aynı; utm_* okunur) |
 | deeplink | PLANNED |
 | revenue | PARTIAL (handle.trackRevenue → çekirdek feralin_purchase; vitest; verified yalnız sunucuda) |
-| error | PLANNED |
+| error | PARTIAL (FeralinErrorHandler: app.config.errorHandler, önceki işleyiciyi zincirler, @feralin/web/errors üzerinden fr_error, origin uncaught_exception; izin, örnekleme, sınır ve PII süzgeci çekirdekten; depoda, yayın bekliyor: npm'deki 0.1.0 içinde yok. vitest ve 17 Kasım 2026 yerel paketle scripts/sdk-e2e/run.mjs web-vue: jsdom, gerçek collect 202, outbox ve ClickHouse'ta tam bir kez, izinsiz hata olay üretmedi. Gerçek tarayıcı ve Nuxt sınanmadı; sembolleştirme yok) |
 | replay | PLANNED |
 | tracing | PLANNED |
 
@@ -75,9 +70,9 @@ export default defineNuxtPlugin((nuxtApp) => {
 |---|---|---|
 | source | PASS |  |
 | build | PASS |  |
-| test | PASS | vitest 12/12; gerçek vue-router, window'suz Vue SSR. Nuxt uygulaması koşmadı. |
-| registry | BLOCKED_EXTERNAL | @feralin npm organizasyonu yok. |
-| clean_install | PASS | npm pack çıktıları boş dizine kuruldu, ESM ve CommonJS yüklendi. |
-| event_receipt | PASS | scripts/sdk-e2e/run.mjs web-vue: jsdom ve gerçek toplayıcı. Gerçek tarayıcı ve Nuxt build NOT_RUN. |
+| test | PASS | vitest 19/19 (17 Kasım 2026, FeralinErrorHandler dahil); gerçek vue-router, window'suz Vue SSR. Nuxt uygulaması koşmadı. |
+| registry | PASS | npm'de yayımlandı: @feralin/vue@0.1.0 (17 Kasım 2026, git b1a7d127, org @feralin; ilk yayın site sahibinin tek onayıyla, docs/sdk/npm-yayin-adimlari.md B yolu; RELEASE_CANDIDATE dört göz koşulu bu yayında aranmadı). Registry'den geri okuma: latest 0.1.0, dist.integrity sha512-NDtfiGxvEVlG… yerel kuru koşu paketinin özetiyle birebir aynı, sahip org @feralin. npm ilk yayında 2 dosyalık 0.0.0-stage yer tutucu sürümünü de oluşturdu; Feralin yayını değildir. |
+| clean_install | PASS | npm pack çıktıları boş dizine kuruldu, ESM ve CommonJS yüklendi. Registry'den temiz kurulum: FERALIN_E2E_FROM_REGISTRY=1 scripts/sdk-e2e/run.mjs web-vue (17 Kasım 2026): @feralin/web@0.1.0 ve @feralin/vue@0.1.0 npmjs.org'dan kuruldu (özetler registry'deki dist.integrity ile aynı). |
+| event_receipt | PASS | scripts/sdk-e2e/run.mjs web-vue: jsdom ve gerçek toplayıcı. Gerçek tarayıcı ve Nuxt build NOT_RUN. Registry'den kurulan paketlerle: Vue SSR ve jsdom, gerçek collect 202, outbox'ta 11 satır, ClickHouse'ta 5 olay tam bir kez, izinsiz 2 olay yok. |
 | documentation | PASS | docs/sdk/web-vue.md: kurulum ve kullanım kod blokları README'den, yetenek ve zincir durumu yetenek dosyasından üretilir (scripts/sdk-dry-run/docs.mjs); registry yayını ve Super Admin kanıtı ayrı halkadır. |
 | super_admin_proof | NOT_STARTED |  |

@@ -10,7 +10,7 @@ iOS, iPadOS, macOS, tvOS ve watchOS için UTP v1 istemcisi. `URLSession` ve `act
 | `swift build`, `swift test` | Linux x86_64: derleme uyarısız, 89 XCTest geçti. Darwin'e bağlı testler (TransportTests, dSYM çerçeve yakalama) ve iOS/macOS derlemesi `NOT_RUN` |
 | Gerçek `services/collect` | `node scripts/sdk-e2e/run.mjs ios-swift` Linux'ta geçti: temiz tüketici, outbox 7 satır, ClickHouse'ta 3 olay tam bir kez. Olay platformu Linux'ta `other` gider; iOS cihaz ve simülatör `NOT_RUN` |
 | Gerçek cihaz ve App Store | `BLOCKED_EXTERNAL`: Apple Developer hesabı, yayınlı uygulama, Apple Ads kampanyası |
-| SPM yayını (Git tag) | `BLOCKED_EXTERNAL`: herkese açık Git deposu yok |
+| SPM yayını (Git tag) | `BLOCKED_EXTERNAL`: herkese açık depo var (<https://github.com/feralincom/sdk>), kök `Package.swift` dışa aktarımla gelir; sürüm etiketi `0.2.0` henüz gönderilmedi, gönderim ve etiket site sahibinin onayını bekler |
 
 Apple'a özgü API imzaları ve sürümleri developer.apple.com belgesinden doğrulandı; derleyiciyle doğrulanmadı. Xcode ile ilk derlemede denenecek riskler aşağıda. İlk Linux derlemesi iki gerçek hata buldu ve düzeltildi: sonlu olmayan sayı (`NaN`) özellik olarak düşmek yerine `null` gidiyordu, testlerde actor çağrıları derlenmiyordu.
 
@@ -20,7 +20,20 @@ Swift 5.9 araç zinciri (Xcode 15+). iOS 14, macOS 11, tvOS 14, watchOS 7.
 
 ## Kurulum
 
-Yayın olmadığından bugün yerel yolla:
+Paket herkese açık depodadır: <https://github.com/feralincom/sdk>. Swift Package Manager bildirimi yalnız depo kökünde aradığı için depo kökünde `sdks/swift` kaynağını gösteren bir `Package.swift` vardır. Sürüm etiketi kökte düz semver'dir (`0.2.0`); paket kimliği adresin son parçasıdır (`sdk`).
+
+Xcode: **File → Add Package Dependencies…** → `https://github.com/feralincom/sdk.git` → **Exact Version** `0.2.0` → ürün `Feralin`. Ya da `Package.swift`:
+
+```swift
+// Package.swift
+.package(url: "https://github.com/feralincom/sdk.git", exact: "0.2.0")
+// hedef bağımlılığı
+.product(name: "Feralin", package: "sdk")
+```
+
+Etiket depoya gönderilmeden çözümleme "no versions" hatası verir; yayımlanmış etiketler <https://github.com/feralincom/sdk/tags> sayfasındadır. SPM depoyu bütünüyle klonlar (öteki SDK'lar dahil, birkaç MB); derlemeye yalnız `sdks/swift/Sources/Feralin` girer.
+
+Etiket yokken ya da yerel kopyayla:
 
 ```swift
 // Package.swift

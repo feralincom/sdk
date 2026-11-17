@@ -2,6 +2,7 @@
 
 ## Yayımlanmamış
 
+- Herkese açık depodan kurulum: `sdks/godot/v0.2.0` etiketinden seyrek klonla yalnız `sdks/godot/addons/feralin` indirilip oyunun `addons/` dizinine kopyalanır. Etiket henüz gönderilmedi (17 Kasım 2026).
 - Kurulum eşleştirme kodu: `configure(..., {"install_code": "..."})` izin sonrası kuyruğa giren ilk olaya `fr_install_code` olarak eklenir (16 Kasım 2026).
 - İlk gerçek koşu (Godot 4.7.2 headless): `feralin_store.gd` içindeki iki tür çıkarımı ayrıştırma hatası düzeltildi (addon hiç derlenmiyordu).
 - `FeralinCrypto.sha256_hex("")` boş girdide `HashingContext.update` hatası veriyordu; boş metin artık doğru özeti döndürür.

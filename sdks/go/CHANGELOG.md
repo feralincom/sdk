@@ -1,9 +1,10 @@
 # Değişiklik günlüğü
 
-Modül yayınlanmadı: herkese açık kalıcı modül yolu ve Git tag yok (`BLOCKED_EXTERNAL`); `feralin.dev/sdks/go` yolu geçicidir. Doğrulama durumu `sdks/capabilities.yaml` içindedir.
+Modül henüz etiketlenmedi (`BLOCKED_EXTERNAL`): kalıcı modül yolu `github.com/feralincom/sdk/sdks/go`, sürüm etiketi `sdks/go/v<sürüm>`; herkese açık depoya gönderim ve etiket site sahibinin onayını bekler. Doğrulama durumu `sdks/capabilities.yaml` içindedir.
 
 ## Yayınlanmamış
 
+- Modül yolu kalıcı hale geldi: `feralin.dev/sdks/go` yerine `github.com/feralincom/sdk/sdks/go` (herkese açık depo, alt dizin modülü). İçe aktarma satırı değişir; API aynıdır (17 Kasım 2026).
 - Hata yakalama (X4): `CaptureError` → `fr_error`; `WithAppVersion`, `WithErrorSampleRate`, `ErrorProperties`, `ScrubErrorMessage`, `ErrorFingerprint`. Mesaj PII temizliği, satırsız `paket.İşlev` çerçeveleri, FNV-1a 64 parmak izi, süreç başına 20 ve parmak izi başına 3 olay sınırı; birim testli (16 Kasım 2026).
 
 ## 0.1.0 (yayınlanmadı)

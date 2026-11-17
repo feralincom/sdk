@@ -110,6 +110,17 @@ export interface FeralinOptions {
     maxPerFingerprint?: number;
     windowMs?: number;
   };
+  /**
+   * İsteğe bağlı kalıcı kuyruk dizini. Verilirse kuyruk bu dizindeki günlük dosyasına da yazılır; süreç çökerse ya da `close`
+   * gönderemeden çıkarsa olaylar sonraki açılışta (ya da aynı dizini kullanan başka bir süreçte) aynı batch bileşimi ve aynı
+   * Idempotency-Key ile gönderilir. Dizin yoksa oluşturulur (yalnız süreç kullanıcısına açık); yazılamıyorsa kurucu fırlatır.
+   * Her istemci örneği kendi dosyasına yazar; birden çok süreç aynı dizini güvenle paylaşır. Olay gövdeleri diskte düz JSON durur.
+   */
+  storageDirectory?: string;
+  /** Kalıcı kuyruğun olay gövdesi üst sınırı (bayt); aşılınca en eski olaylar atılır. Varsayılan 10 MiB. */
+  storageMaxBytes?: number;
+  /** Kalıcı kuyrukta bundan eski olay gönderilmez (ms). Varsayılan 7 gün, en çok 90 gün (toplayıcı sınırı). */
+  storageMaxAgeMs?: number;
   /** Test için zaman ve rastgelelik kaynağı. */
   now?: () => number;
   random?: () => number;
@@ -126,4 +137,6 @@ export interface FeralinStatus {
   /** Kalan geri çekilme süresi (ms). */
   backoffMs: number;
   endpoint: string;
+  /** Kalıcı kuyruk açıksa günlük dosyası, içindeki olay sayısı ve gövde baytı; kapalıysa ya da yazım hatasıyla kapandıysa null. */
+  storage: { path: string; events: number; bytes: number } | null;
 }

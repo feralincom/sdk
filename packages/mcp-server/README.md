@@ -10,16 +10,14 @@ Yalnız stdio destekleyen MCP istemcilerini HTTPS üzerinden Feralin MCP sunucus
 |---|---|
 | Kod, birim testleri | Geçiyor |
 | `npm pack` temiz kurulum + gerçek `services/mcp` + saas-api + PostgreSQL | `scripts/e2e-real-mcp.mjs` ile doğrulandı (`initialize`, `tools/list`, `tools/call`, yanlış anahtar) |
-| npm yayını | `BLOCKED_EXTERNAL`: `@feralin` npm organizasyonu gerekir, yayın yapılmadı |
+| npm yayını | npm'de yayımlandı: `@feralin/mcp-server@0.1.0` (17 Kasım 2026, `@feralin` organizasyonu); sürüm ve özet registry'den geri okundu |
 
 ## Kurulum
 
-Yayın olmadığından `npx @feralin/mcp-server` bugün çalışmaz. Yerel paket kurun:
+Köprü komutu (`feralin-mcp-server`) genel kurulumla PATH'e eklenir:
 
 ```bash
-cd packages/mcp-server
-npm pack
-npm install --global ./feralin-mcp-server-0.1.0.tgz
+npm install --global @feralin/mcp-server
 ```
 
 ## Kullanım

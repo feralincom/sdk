@@ -9,14 +9,14 @@
 | Birim testleri (gerçek NestJS 12, platform-express, gerçek HTTP) | Geçiyor |
 | Temiz kurulum + gerçek `services/collect` | `scripts/sdk-e2e/run.mjs node-nest` ile geçti |
 | Fastify adaptörü, NestJS 10 ve 11 | Sınanmadı |
-| npm yayını | `BLOCKED_EXTERNAL`: `@feralin` organizasyonu yok |
+| npm yayını | npm'de yayımlandı: `@feralin/nest@0.1.0` (17 Kasım 2026, `@feralin` organizasyonu); sürüm ve özet registry'den geri okundu |
 
 ## Kurulum
 
+Çekirdek peer bağımlılığıdır, iki paket birlikte kurulur:
+
 ```bash
-cd sdks/node && npm pack
-cd ../node-nest && npm pack
-npm install ./feralin-node-0.1.0.tgz ./feralin-nest-0.1.0.tgz
+npm install @feralin/node @feralin/nest
 ```
 
 ## Kullanım

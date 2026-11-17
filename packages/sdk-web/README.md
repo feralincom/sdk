@@ -1,15 +1,11 @@
 # @feralin/web — Feralin Web SDK (UTP v1)
 
-**Durum:** `IMPLEMENTING` → birim testli; **npm'de henüz yayımlanmadı** (registry hesabı yok → `BLOCKED_EXTERNAL`). Yayın yaşam döngüsü: `docs/sdk/capability-matrix.md`, `feralin_proje_v21.md` §42.
+**Durum:** npm'de yayımlandı: `@feralin/web@0.1.0` (17 Kasım 2026, `@feralin` organizasyonu); sürüm ve özet registry'den geri okundu. Yayın yaşam döngüsü: `docs/sdk/capability-matrix.md`, `feralin_proje_v21.md` §42.
 
 ## Kurulum
-npm yayını olmadığından paket dosyasından kurulur (`node scripts/sdk-e2e/run.mjs web` aynı adımları boş dizinde sınar: `npm pack`, kurulum, ESM ve CommonJS içe aktarma, gerçek toplayıcıya olay):
+npm'den kurulur (`FERALIN_E2E_FROM_REGISTRY=1 node scripts/sdk-e2e/run.mjs web` aynı kurulumu boş dizinde npmjs.org'dan sınar: ESM ve CommonJS içe aktarma, gerçek toplayıcıya olay):
 ```bash
-# depo kökünde
-pnpm --filter @feralin/web build
-npm pack ./packages/sdk-web
-# uygulamanızın dizininde (DEPO: deponun yolu)
-npm install DEPO/feralin-web-0.1.0.tgz
+npm install @feralin/web
 ```
 Derleme aracı olmayan sitelerde betik Feralin'in kendi adresinden yüklenir: `https://feralin.com/sdk/feralin.iife.js` (genel `feralin` nesnesi).
 

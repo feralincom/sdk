@@ -4,12 +4,20 @@
 // `-read-only` açılır ve yalnız o kapatılır.
 //   DATABASE_URL='postgres://...' node sdks/react-native/scripts/e2e-emulator.mjs
 // İsteğe bağlı: FERALIN_RN_WORK (kısa çalışma yolu, Windows yol sınırı), FERALIN_RN_AVD, FERALIN_RN_EMULATOR_PORT, FERALIN_RN_VERSION.
+// FERALIN_E2E_FROM_REGISTRY=1: paket yerelde üretilmez, yayımlanmış `@feralin/react-native@<package.json sürümü>` npmjs.org'dan
+// kurulur ve kilit dosyasından kaynağı denetlenir (temiz kurulum halkası).
+// SDK_E2E_CLICKHOUSE_URL=http://127.0.0.1:18127 verilirse collect worker koşuya özgü ClickHouse veritabanına yayımlar ve `once`
+// olaylarının orada tam bir kez sayıldığı denetlenir (veritabanı sonda silinir; scripts/sdk-e2e/mobile-lib.mjs clickhouseProof).
 import { spawn, spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { clickhouseProof } from "../../../scripts/sdk-e2e/mobile-lib.mjs";
 
+const NPM_REGISTRY = "https://registry.npmjs.org/";
+const fromRegistry = process.env.FERALIN_E2E_FROM_REGISTRY === "1";
+const clickhouseUrl = process.env.SDK_E2E_CLICKHOUSE_URL;
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const repo = join(root, "../..");
 const isWindows = process.platform === "win32";
@@ -84,11 +92,14 @@ function createApp() {
     mkdirSync(work, { recursive: true });
     // Yalnız bu çalışma için tek seferlik; proje bağımlılığı olmaz.
     run("npx", ["-y", "@react-native-community/cli@20.2.0", "init", appName, "--version", rnVersion, "--skip-git-init", "--install-pods", "false"], { cwd: work });
-    const packDir = join(work, "pack");
-    mkdirSync(packDir);
-    run("npm", ["pack", "--pack-destination", packDir], { cwd: root });
-    const tarball = join(packDir, readdirSync(packDir).find((name) => name.endsWith(".tgz")));
-    run("npm", ["install", "--no-audit", "--no-fund", tarball], { cwd: appDir });
+    if (fromRegistry) installFromRegistry();
+    else {
+      const packDir = join(work, "pack");
+      mkdirSync(packDir);
+      run("npm", ["pack", "--pack-destination", packDir], { cwd: root });
+      const tarball = join(packDir, readdirSync(packDir).find((name) => name.endsWith(".tgz")));
+      run("npm", ["install", "--no-audit", "--no-fund", tarball], { cwd: appDir });
+    }
   }
 
   const app = readFileSync(join(root, "e2e/App.tsx"), "utf8").replaceAll("__COLLECT_PORT__", collectPort).replaceAll("__PROJECT_KEY__", projectKey);
@@ -98,6 +109,19 @@ function createApp() {
   const manifest = readFileSync(manifestPath, "utf8").replace(/android:usesCleartextTraffic="[^"]*"/, 'android:usesCleartextTraffic="true"');
   writeFileSync(manifestPath, manifest);
   return join(appDir, "android");
+}
+
+/** Yayımlanmış sürümü npmjs.org'dan kurar; kilit dosyasındaki sürüm ve kaynak beklenenden farklıysa koşu düşer. */
+function installFromRegistry() {
+  const manifest = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
+  const spec = `${manifest.name}@${manifest.version}`;
+  console.log(`registry'den kurulacak: ${spec}`);
+  run("npm", ["install", "--no-audit", "--no-fund", "--registry", NPM_REGISTRY, "--prefer-online", spec], { cwd: appDir });
+  const entry = JSON.parse(readFileSync(join(appDir, "package-lock.json"), "utf8")).packages?.[`node_modules/${manifest.name}`];
+  if (!entry) throw new Error(`kurulmadı: ${manifest.name}`);
+  if (entry.version !== manifest.version) throw new Error(`${manifest.name}: kurulan sürüm ${entry.version}, beklenen ${manifest.version}`);
+  if (!String(entry.resolved ?? "").startsWith(NPM_REGISTRY)) throw new Error(`${manifest.name} registry'den gelmedi: ${entry.resolved}`);
+  console.log(`registry kaynağı: ${entry.resolved} (${entry.integrity})`);
 }
 
 function buildApk(androidDir) {
@@ -204,8 +228,14 @@ try {
   emulator = await bootEmulator();
   const steps = await runScenario(apk);
   const checks = join(work, "checks.txt");
-  writeFileSync(checks, `${verify(steps).join("\n")}\n`);
+  const lines = verify(steps);
+  writeFileSync(checks, `${lines.join("\n")}\n`);
   run("go", ["run", join(repo, "sdks/android/scripts/outbox_check.go"), checks], { cwd: join(repo, "services/collect") });
+  if (clickhouseUrl) {
+    // Outbox'a düşen `once` olayları worker ile ClickHouse'a yayımlanır; tekilleştirilmiş okumada her biri tam bir kez görünmeli.
+    const eventIds = lines.filter((line) => line.startsWith("once ")).map((line) => line.slice(5));
+    await clickhouseProof({ binary: join(work, isWindows ? "collect.exe" : "collect"), work, database, clickhouseUrl, label: "react_native", eventIds });
+  } else console.log("  ATLANDI ClickHouse denetimi: SDK_E2E_CLICKHOUSE_URL verilmedi");
   console.log("E2E react-native emülatör: GEÇTİ");
 } catch (err) {
   exitCode = 1;

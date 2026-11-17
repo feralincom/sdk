@@ -14,7 +14,7 @@ import (
 	"os"
 	"time"
 
-	feralin "feralin.dev/sdks/go"
+	feralin "github.com/feralincom/sdk/sdks/go"
 )
 
 func main() {
