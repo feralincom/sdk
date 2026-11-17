@@ -1,0 +1,43 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{606BD070-F3E3-4CC0-B1C9-92D0790FA56D}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Feralin.Sdk", "src\Feralin.Sdk\Feralin.Sdk.csproj", "{7F7259E7-2611-4E47-A650-B66AD4948E24}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Feralin.Sdk.AspNetCore", "src\Feralin.Sdk.AspNetCore\Feralin.Sdk.AspNetCore.csproj", "{4AAC6E70-9451-49F7-BE61-29440B502703}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{CEEEC6F8-B29E-4D7A-9C83-4CABE375ADB9}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Feralin.Sdk.Tests", "tests\Feralin.Sdk.Tests\Feralin.Sdk.Tests.csproj", "{0424762F-7B39-486A-89AC-76C60B19106E}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{7F7259E7-2611-4E47-A650-B66AD4948E24}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7F7259E7-2611-4E47-A650-B66AD4948E24}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7F7259E7-2611-4E47-A650-B66AD4948E24}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7F7259E7-2611-4E47-A650-B66AD4948E24}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4AAC6E70-9451-49F7-BE61-29440B502703}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4AAC6E70-9451-49F7-BE61-29440B502703}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4AAC6E70-9451-49F7-BE61-29440B502703}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4AAC6E70-9451-49F7-BE61-29440B502703}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0424762F-7B39-486A-89AC-76C60B19106E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0424762F-7B39-486A-89AC-76C60B19106E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0424762F-7B39-486A-89AC-76C60B19106E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0424762F-7B39-486A-89AC-76C60B19106E}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{7F7259E7-2611-4E47-A650-B66AD4948E24} = {606BD070-F3E3-4CC0-B1C9-92D0790FA56D}
+		{4AAC6E70-9451-49F7-BE61-29440B502703} = {606BD070-F3E3-4CC0-B1C9-92D0790FA56D}
+		{0424762F-7B39-486A-89AC-76C60B19106E} = {CEEEC6F8-B29E-4D7A-9C83-4CABE375ADB9}
+	EndGlobalSection
+EndGlobal

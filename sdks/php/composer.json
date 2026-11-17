@@ -1,0 +1,34 @@
+{
+    "name": "feralin/feralin-php",
+    "version": "0.1.0",
+    "description": "Feralin PHP server SDK: UTP v1 events, consent passthrough, idempotent batches, backoff. No runtime dependencies.",
+    "type": "library",
+    "license": "MIT",
+    "keywords": ["feralin", "analytics", "attribution", "utp"],
+    "require": {
+        "php": ">=8.1",
+        "ext-json": "*"
+    },
+    "suggest": {
+        "ext-curl": "Tercih edilen HTTP istemcisi; yoksa PHP akış sarmalayıcısı kullanılır."
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^10.5"
+    },
+    "autoload": {
+        "psr-4": {
+            "Feralin\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Feralin\\Tests\\": "tests/"
+        }
+    },
+    "scripts": {
+        "test": "phpunit tests"
+    },
+    "config": {
+        "sort-packages": true
+    }
+}

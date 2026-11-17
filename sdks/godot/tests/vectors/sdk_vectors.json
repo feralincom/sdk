@@ -1,0 +1,1633 @@
+{
+  "scrub": [
+    {
+      "in": "Authorization: Bearer abc.def.ghi password=hunter2 eyJhbGciOi.eyJzdWIiOiIx.sig0123456789 +90 532 123 45 67 /home/ali/x /Users/veli/y 2001:db8:85a3:0:0:8a2e:370:7334 aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "max": 200,
+      "out": "Authorization=[redacted] abc.def.ghi password=[redacted] [token] [number] /home/[user]/x /Users/[user]/y [ip] [token]"
+    },
+    {
+      "in": "Authorization: Bearer abc.def.ghi password=hunter2 eyJhbGciOi.eyJzdWIiOiIx.sig0123456789 +90 532 123 45 67 /home/ali/x /Users/veli/y 2001:db8:85a3:0:0:8a2e:370:7334 aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "max": 64,
+      "out": "Authorization=[redacted] abc.def.ghi password=[redacted] [token]"
+    },
+    {
+      "in": "Authorization: Bearer abc.def.ghi password=hunter2 eyJhbGciOi.eyJzdWIiOiIx.sig0123456789 +90 532 123 45 67 /home/ali/x /Users/veli/y 2001:db8:85a3:0:0:8a2e:370:7334 aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "max": 16,
+      "out": "Authorization=[r"
+    },
+    {
+      "in": "kullanici ali@example.com dosya C:\\Users\\Veli\\Desktop\\x.cs hata",
+      "max": 200,
+      "out": "kullanici [email] dosya C:\\Users\\[user]\\Desktop\\x.cs hata"
+    },
+    {
+      "in": "kullanici ali@example.com dosya C:\\Users\\Veli\\Desktop\\x.cs hata",
+      "max": 64,
+      "out": "kullanici [email] dosya C:\\Users\\[user]\\Desktop\\x.cs hata"
+    },
+    {
+      "in": "kullanici ali@example.com dosya C:\\Users\\Veli\\Desktop\\x.cs hata",
+      "max": 16,
+      "out": "kullanici [email"
+    },
+    {
+      "in": "GET https://api.example.com/v1/items?token=abc&user=ali#frag failed",
+      "max": 200,
+      "out": "GET https://api.example.com/v1/items?[redacted] failed"
+    },
+    {
+      "in": "GET https://api.example.com/v1/items?token=abc&user=ali#frag failed",
+      "max": 64,
+      "out": "GET https://api.example.com/v1/items?[redacted] failed"
+    },
+    {
+      "in": "GET https://api.example.com/v1/items?token=abc&user=ali#frag failed",
+      "max": 16,
+      "out": "GET https://api."
+    },
+    {
+      "in": "see http://example.com/path/only and https://x.y/z?q=1",
+      "max": 200,
+      "out": "see http://example.com/path/only and https://x.y/z?[redacted]"
+    },
+    {
+      "in": "see http://example.com/path/only and https://x.y/z?q=1",
+      "max": 64,
+      "out": "see http://example.com/path/only and https://x.y/z?[redacted]"
+    },
+    {
+      "in": "see http://example.com/path/only and https://x.y/z?q=1",
+      "max": 16,
+      "out": "see http://examp"
+    },
+    {
+      "in": "ip 10.0.0.1 and 192.168.1.255 and 999.1.2.3",
+      "max": 200,
+      "out": "ip [ip] and [ip] and [ip]"
+    },
+    {
+      "in": "ip 10.0.0.1 and 192.168.1.255 and 999.1.2.3",
+      "max": 64,
+      "out": "ip [ip] and [ip] and [ip]"
+    },
+    {
+      "in": "ip 10.0.0.1 and 192.168.1.255 and 999.1.2.3",
+      "max": 16,
+      "out": "ip [ip] and [ip]"
+    },
+    {
+      "in": "hex 0123456789abcdef0123456789abcdef0123 and short abcdef0123",
+      "max": 200,
+      "out": "hex [token] and short abcdef0123"
+    },
+    {
+      "in": "hex 0123456789abcdef0123456789abcdef0123 and short abcdef0123",
+      "max": 64,
+      "out": "hex [token] and short abcdef0123"
+    },
+    {
+      "in": "hex 0123456789abcdef0123456789abcdef0123 and short abcdef0123",
+      "max": 16,
+      "out": "hex [token] and "
+    },
+    {
+      "in": "api_key=ABC123 secret: xyz token = qqq Password:pw1 PWD=zz authorization=foo",
+      "max": 200,
+      "out": "api_key=[redacted] secret=[redacted] token=[redacted] Password=[redacted] PWD=[redacted] authorization=[redacted]"
+    },
+    {
+      "in": "api_key=ABC123 secret: xyz token = qqq Password:pw1 PWD=zz authorization=foo",
+      "max": 64,
+      "out": "api_key=[redacted] secret=[redacted] token=[redacted] Password=["
+    },
+    {
+      "in": "api_key=ABC123 secret: xyz token = qqq Password:pw1 PWD=zz authorization=foo",
+      "max": 16,
+      "out": "api_key=[redacte"
+    },
+    {
+      "in": "Bearer  eyJ0eXAi_-.abcdef  Bearer tok.en+/=",
+      "max": 200,
+      "out": "Bearer [token]  Bearer [token]"
+    },
+    {
+      "in": "Bearer  eyJ0eXAi_-.abcdef  Bearer tok.en+/=",
+      "max": 64,
+      "out": "Bearer [token]  Bearer [token]"
+    },
+    {
+      "in": "Bearer  eyJ0eXAi_-.abcdef  Bearer tok.en+/=",
+      "max": 16,
+      "out": "Bearer [token]  "
+    },
+    {
+      "in": "tel +1 (555) 123-4567 ve 0532 123 45 67 ve 1234567890123",
+      "max": 200,
+      "out": "tel [number] ve [number] ve [number]"
+    },
+    {
+      "in": "tel +1 (555) 123-4567 ve 0532 123 45 67 ve 1234567890123",
+      "max": 64,
+      "out": "tel [number] ve [number] ve [number]"
+    },
+    {
+      "in": "tel +1 (555) 123-4567 ve 0532 123 45 67 ve 1234567890123",
+      "max": 16,
+      "out": "tel [number] ve "
+    },
+    {
+      "in": "satir1\nsatir2\r\nsatir3\t sekme",
+      "max": 200,
+      "out": "satir1 satir2  satir3\t sekme"
+    },
+    {
+      "in": "satir1\nsatir2\r\nsatir3\t sekme",
+      "max": 64,
+      "out": "satir1 satir2  satir3\t sekme"
+    },
+    {
+      "in": "satir1\nsatir2\r\nsatir3\t sekme",
+      "max": 16,
+      "out": "satir1 satir2  s"
+    },
+    {
+      "in": "   boşluklu başlık   ",
+      "max": 200,
+      "out": "boşluklu başlık"
+    },
+    {
+      "in": "   boşluklu başlık   ",
+      "max": 64,
+      "out": "boşluklu başlık"
+    },
+    {
+      "in": "   boşluklu başlık   ",
+      "max": 16,
+      "out": "boşluklu başlık"
+    },
+    {
+      "in": "Çok uzun ileti ğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğ",
+      "max": 200,
+      "out": "Çok uzun ileti ğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğ"
+    },
+    {
+      "in": "Çok uzun ileti ğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğ",
+      "max": 64,
+      "out": "Çok uzun ileti ğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğ"
+    },
+    {
+      "in": "Çok uzun ileti ğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğğ",
+      "max": 16,
+      "out": "Çok uzun ileti ğ"
+    },
+    {
+      "in": "mail a.b+c@d-e.co.uk, x@y.z (kısa tld değil) q@w.io",
+      "max": 200,
+      "out": "mail [email], x@y.z (kısa tld değil) [email]"
+    },
+    {
+      "in": "mail a.b+c@d-e.co.uk, x@y.z (kısa tld değil) q@w.io",
+      "max": 64,
+      "out": "mail [email], x@y.z (kısa tld değil) [email]"
+    },
+    {
+      "in": "mail a.b+c@d-e.co.uk, x@y.z (kısa tld değil) q@w.io",
+      "max": 16,
+      "out": "mail [email], x@"
+    },
+    {
+      "in": "/home/mehmet/proj/file.cs ve /Users/Zeynep/x ve C:\\users\\kemal\\a",
+      "max": 200,
+      "out": "/home/[user]/proj/file.cs ve /Users/[user]/x ve C:\\users\\[user]\\a"
+    },
+    {
+      "in": "/home/mehmet/proj/file.cs ve /Users/Zeynep/x ve C:\\users\\kemal\\a",
+      "max": 64,
+      "out": "/home/[user]/proj/file.cs ve /Users/[user]/x ve C:\\users\\[user]\\"
+    },
+    {
+      "in": "/home/mehmet/proj/file.cs ve /Users/Zeynep/x ve C:\\users\\kemal\\a",
+      "max": 16,
+      "out": "/home/[user]/pro"
+    },
+    {
+      "in": "fe80::1ff:fe23:4567:890a ve 1:2:3:4 ve ::1",
+      "max": 200,
+      "out": "fe80::[ip] ve [ip] ve ::1"
+    },
+    {
+      "in": "fe80::1ff:fe23:4567:890a ve 1:2:3:4 ve ::1",
+      "max": 64,
+      "out": "fe80::[ip] ve [ip] ve ::1"
+    },
+    {
+      "in": "fe80::1ff:fe23:4567:890a ve 1:2:3:4 ve ::1",
+      "max": 16,
+      "out": "fe80::[ip] ve [i"
+    },
+    {
+      "in": "TOKEN_ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-abcdefgh karışık",
+      "max": 200,
+      "out": "[token] karışık"
+    },
+    {
+      "in": "TOKEN_ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-abcdefgh karışık",
+      "max": 64,
+      "out": "[token] karışık"
+    },
+    {
+      "in": "TOKEN_ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-abcdefgh karışık",
+      "max": 16,
+      "out": "[token] karışık"
+    },
+    {
+      "in": "NullReferenceException: Object reference not set to an instance of an object",
+      "max": 200,
+      "out": "NullReferenceException: Object reference not set to an instance of an object"
+    },
+    {
+      "in": "NullReferenceException: Object reference not set to an instance of an object",
+      "max": 64,
+      "out": "NullReferenceException: Object reference not set to an instance "
+    },
+    {
+      "in": "NullReferenceException: Object reference not set to an instance of an object",
+      "max": 16,
+      "out": "NullReferenceExc"
+    },
+    {
+      "in": "",
+      "max": 200,
+      "out": ""
+    },
+    {
+      "in": "",
+      "max": 64,
+      "out": ""
+    },
+    {
+      "in": "",
+      "max": 16,
+      "out": ""
+    },
+    {
+      "in": "a",
+      "max": 200,
+      "out": "a"
+    },
+    {
+      "in": "a",
+      "max": 64,
+      "out": "a"
+    },
+    {
+      "in": "a",
+      "max": 16,
+      "out": "a"
+    },
+    {
+      "in": "https://host/path?x=1&y=2 http://h?a",
+      "max": 200,
+      "out": "https://host/path?[redacted] http://h?[redacted]"
+    },
+    {
+      "in": "https://host/path?x=1&y=2 http://h?a",
+      "max": 64,
+      "out": "https://host/path?[redacted] http://h?[redacted]"
+    },
+    {
+      "in": "https://host/path?x=1&y=2 http://h?a",
+      "max": 16,
+      "out": "https://host/pat"
+    },
+    {
+      "in": "secret=a,b token:'quoted' api-key=\"zzz\"",
+      "max": 200,
+      "out": "secret=[redacted],b token:'quoted' api-key=\"zzz\""
+    },
+    {
+      "in": "secret=a,b token:'quoted' api-key=\"zzz\"",
+      "max": 64,
+      "out": "secret=[redacted],b token:'quoted' api-key=\"zzz\""
+    },
+    {
+      "in": "secret=a,b token:'quoted' api-key=\"zzz\"",
+      "max": 16,
+      "out": "secret=[redacted"
+    },
+    {
+      "in": "olay 2026-11-12T10:20:30Z süre 12345 ms",
+      "max": 200,
+      "out": "olay [number]T10:20:30Z süre 12345 ms"
+    },
+    {
+      "in": "olay 2026-11-12T10:20:30Z süre 12345 ms",
+      "max": 64,
+      "out": "olay [number]T10:20:30Z süre 12345 ms"
+    },
+    {
+      "in": "olay 2026-11-12T10:20:30Z süre 12345 ms",
+      "max": 16,
+      "out": "olay [number]T10"
+    }
+  ],
+  "frames": [
+    {
+      "in": "A.B.C (System.String x) (at /Users/ali/a.cs:10)\nD.E.F () (at /home/b/b.cs:20)",
+      "max": 12,
+      "type": "Boom",
+      "frames": [
+        "A.B.C",
+        "D.E.F"
+      ],
+      "fingerprint": "0304a1627b3f4036"
+    },
+    {
+      "in": "A.B.C (System.String x) (at /Users/ali/a.cs:10)\nD.E.F () (at /home/b/b.cs:20)",
+      "max": 12,
+      "type": "NullReferenceException",
+      "frames": [
+        "A.B.C",
+        "D.E.F"
+      ],
+      "fingerprint": "d017019ee7bcc377"
+    },
+    {
+      "in": "A.B.C (System.String x) (at /Users/ali/a.cs:10)\nD.E.F () (at /home/b/b.cs:20)",
+      "max": 12,
+      "type": "Error",
+      "frames": [
+        "A.B.C",
+        "D.E.F"
+      ],
+      "fingerprint": "cd375a4111c8c368"
+    },
+    {
+      "in": "A.B.C (System.String x) (at /Users/ali/a.cs:10)\nD.E.F () (at /home/b/b.cs:20)",
+      "max": 12,
+      "type": "System.IO.IOException: ali@x.com",
+      "frames": [
+        "A.B.C",
+        "D.E.F"
+      ],
+      "fingerprint": "8253b17f0b963c45"
+    },
+    {
+      "in": "A.B.C (System.String x) (at /Users/ali/a.cs:10)\nD.E.F () (at /home/b/b.cs:20)",
+      "max": 3,
+      "type": "Boom",
+      "frames": [
+        "A.B.C",
+        "D.E.F"
+      ],
+      "fingerprint": "0304a1627b3f4036"
+    },
+    {
+      "in": "A.B.C (System.String x) (at /Users/ali/a.cs:10)\nD.E.F () (at /home/b/b.cs:20)",
+      "max": 3,
+      "type": "NullReferenceException",
+      "frames": [
+        "A.B.C",
+        "D.E.F"
+      ],
+      "fingerprint": "d017019ee7bcc377"
+    },
+    {
+      "in": "A.B.C (System.String x) (at /Users/ali/a.cs:10)\nD.E.F () (at /home/b/b.cs:20)",
+      "max": 3,
+      "type": "Error",
+      "frames": [
+        "A.B.C",
+        "D.E.F"
+      ],
+      "fingerprint": "cd375a4111c8c368"
+    },
+    {
+      "in": "A.B.C (System.String x) (at /Users/ali/a.cs:10)\nD.E.F () (at /home/b/b.cs:20)",
+      "max": 3,
+      "type": "System.IO.IOException: ali@x.com",
+      "frames": [
+        "A.B.C",
+        "D.E.F"
+      ],
+      "fingerprint": "8253b17f0b963c45"
+    },
+    {
+      "in": "A.B.C (System.Int32 y) (at C:\\Users\\veli\\x.cs:999)\nD.E.F () [0x0001f] in <abc123>:0",
+      "max": 12,
+      "type": "Boom",
+      "frames": [
+        "A.B.C",
+        "D.E.F"
+      ],
+      "fingerprint": "0304a1627b3f4036"
+    },
+    {
+      "in": "A.B.C (System.Int32 y) (at C:\\Users\\veli\\x.cs:999)\nD.E.F () [0x0001f] in <abc123>:0",
+      "max": 12,
+      "type": "NullReferenceException",
+      "frames": [
+        "A.B.C",
+        "D.E.F"
+      ],
+      "fingerprint": "d017019ee7bcc377"
+    },
+    {
+      "in": "A.B.C (System.Int32 y) (at C:\\Users\\veli\\x.cs:999)\nD.E.F () [0x0001f] in <abc123>:0",
+      "max": 12,
+      "type": "Error",
+      "frames": [
+        "A.B.C",
+        "D.E.F"
+      ],
+      "fingerprint": "cd375a4111c8c368"
+    },
+    {
+      "in": "A.B.C (System.Int32 y) (at C:\\Users\\veli\\x.cs:999)\nD.E.F () [0x0001f] in <abc123>:0",
+      "max": 12,
+      "type": "System.IO.IOException: ali@x.com",
+      "frames": [
+        "A.B.C",
+        "D.E.F"
+      ],
+      "fingerprint": "8253b17f0b963c45"
+    },
+    {
+      "in": "A.B.C (System.Int32 y) (at C:\\Users\\veli\\x.cs:999)\nD.E.F () [0x0001f] in <abc123>:0",
+      "max": 3,
+      "type": "Boom",
+      "frames": [
+        "A.B.C",
+        "D.E.F"
+      ],
+      "fingerprint": "0304a1627b3f4036"
+    },
+    {
+      "in": "A.B.C (System.Int32 y) (at C:\\Users\\veli\\x.cs:999)\nD.E.F () [0x0001f] in <abc123>:0",
+      "max": 3,
+      "type": "NullReferenceException",
+      "frames": [
+        "A.B.C",
+        "D.E.F"
+      ],
+      "fingerprint": "d017019ee7bcc377"
+    },
+    {
+      "in": "A.B.C (System.Int32 y) (at C:\\Users\\veli\\x.cs:999)\nD.E.F () [0x0001f] in <abc123>:0",
+      "max": 3,
+      "type": "Error",
+      "frames": [
+        "A.B.C",
+        "D.E.F"
+      ],
+      "fingerprint": "cd375a4111c8c368"
+    },
+    {
+      "in": "A.B.C (System.Int32 y) (at C:\\Users\\veli\\x.cs:999)\nD.E.F () [0x0001f] in <abc123>:0",
+      "max": 3,
+      "type": "System.IO.IOException: ali@x.com",
+      "frames": [
+        "A.B.C",
+        "D.E.F"
+      ],
+      "fingerprint": "8253b17f0b963c45"
+    },
+    {
+      "in": "UnityEngine.Debug:LogError(Object)\nGame.Player:Update() (at Assets/Player.cs:42)\n\nGame.Boot:Start () in /build/x/Boot.cs:7",
+      "max": 12,
+      "type": "Boom",
+      "frames": [
+        "UnityEngine.Debug:LogError",
+        "Game.Player:Update",
+        "Game.Boot:Start"
+      ],
+      "fingerprint": "7c8ea08cf5300d3e"
+    },
+    {
+      "in": "UnityEngine.Debug:LogError(Object)\nGame.Player:Update() (at Assets/Player.cs:42)\n\nGame.Boot:Start () in /build/x/Boot.cs:7",
+      "max": 12,
+      "type": "NullReferenceException",
+      "frames": [
+        "UnityEngine.Debug:LogError",
+        "Game.Player:Update",
+        "Game.Boot:Start"
+      ],
+      "fingerprint": "318c50c9f5fc5016"
+    },
+    {
+      "in": "UnityEngine.Debug:LogError(Object)\nGame.Player:Update() (at Assets/Player.cs:42)\n\nGame.Boot:Start () in /build/x/Boot.cs:7",
+      "max": 12,
+      "type": "Error",
+      "frames": [
+        "UnityEngine.Debug:LogError",
+        "Game.Player:Update",
+        "Game.Boot:Start"
+      ],
+      "fingerprint": "08141ca1e8a8f723"
+    },
+    {
+      "in": "UnityEngine.Debug:LogError(Object)\nGame.Player:Update() (at Assets/Player.cs:42)\n\nGame.Boot:Start () in /build/x/Boot.cs:7",
+      "max": 12,
+      "type": "System.IO.IOException: ali@x.com",
+      "frames": [
+        "UnityEngine.Debug:LogError",
+        "Game.Player:Update",
+        "Game.Boot:Start"
+      ],
+      "fingerprint": "48b05395f51d70fe"
+    },
+    {
+      "in": "UnityEngine.Debug:LogError(Object)\nGame.Player:Update() (at Assets/Player.cs:42)\n\nGame.Boot:Start () in /build/x/Boot.cs:7",
+      "max": 3,
+      "type": "Boom",
+      "frames": [
+        "UnityEngine.Debug:LogError",
+        "Game.Player:Update",
+        "Game.Boot:Start"
+      ],
+      "fingerprint": "7c8ea08cf5300d3e"
+    },
+    {
+      "in": "UnityEngine.Debug:LogError(Object)\nGame.Player:Update() (at Assets/Player.cs:42)\n\nGame.Boot:Start () in /build/x/Boot.cs:7",
+      "max": 3,
+      "type": "NullReferenceException",
+      "frames": [
+        "UnityEngine.Debug:LogError",
+        "Game.Player:Update",
+        "Game.Boot:Start"
+      ],
+      "fingerprint": "318c50c9f5fc5016"
+    },
+    {
+      "in": "UnityEngine.Debug:LogError(Object)\nGame.Player:Update() (at Assets/Player.cs:42)\n\nGame.Boot:Start () in /build/x/Boot.cs:7",
+      "max": 3,
+      "type": "Error",
+      "frames": [
+        "UnityEngine.Debug:LogError",
+        "Game.Player:Update",
+        "Game.Boot:Start"
+      ],
+      "fingerprint": "08141ca1e8a8f723"
+    },
+    {
+      "in": "UnityEngine.Debug:LogError(Object)\nGame.Player:Update() (at Assets/Player.cs:42)\n\nGame.Boot:Start () in /build/x/Boot.cs:7",
+      "max": 3,
+      "type": "System.IO.IOException: ali@x.com",
+      "frames": [
+        "UnityEngine.Debug:LogError",
+        "Game.Player:Update",
+        "Game.Boot:Start"
+      ],
+      "fingerprint": "48b05395f51d70fe"
+    },
+    {
+      "in": "  at Foo.Bar.Baz(Int32 a, String b) in C:\\src\\Foo.cs:line 55\n  at Foo.Main()",
+      "max": 12,
+      "type": "Boom",
+      "frames": [
+        "Foo.Bar.Baz in C:\\src\\Foo.cs:line #",
+        "Foo.Main"
+      ],
+      "fingerprint": "f7940f8f164ff0d1"
+    },
+    {
+      "in": "  at Foo.Bar.Baz(Int32 a, String b) in C:\\src\\Foo.cs:line 55\n  at Foo.Main()",
+      "max": 12,
+      "type": "NullReferenceException",
+      "frames": [
+        "Foo.Bar.Baz in C:\\src\\Foo.cs:line #",
+        "Foo.Main"
+      ],
+      "fingerprint": "2daa7e6fcede6d14"
+    },
+    {
+      "in": "  at Foo.Bar.Baz(Int32 a, String b) in C:\\src\\Foo.cs:line 55\n  at Foo.Main()",
+      "max": 12,
+      "type": "Error",
+      "frames": [
+        "Foo.Bar.Baz in C:\\src\\Foo.cs:line #",
+        "Foo.Main"
+      ],
+      "fingerprint": "8d3a887eefd3a08a"
+    },
+    {
+      "in": "  at Foo.Bar.Baz(Int32 a, String b) in C:\\src\\Foo.cs:line 55\n  at Foo.Main()",
+      "max": 12,
+      "type": "System.IO.IOException: ali@x.com",
+      "frames": [
+        "Foo.Bar.Baz in C:\\src\\Foo.cs:line #",
+        "Foo.Main"
+      ],
+      "fingerprint": "ecd09db20c94e0db"
+    },
+    {
+      "in": "  at Foo.Bar.Baz(Int32 a, String b) in C:\\src\\Foo.cs:line 55\n  at Foo.Main()",
+      "max": 3,
+      "type": "Boom",
+      "frames": [
+        "Foo.Bar.Baz in C:\\src\\Foo.cs:line #",
+        "Foo.Main"
+      ],
+      "fingerprint": "f7940f8f164ff0d1"
+    },
+    {
+      "in": "  at Foo.Bar.Baz(Int32 a, String b) in C:\\src\\Foo.cs:line 55\n  at Foo.Main()",
+      "max": 3,
+      "type": "NullReferenceException",
+      "frames": [
+        "Foo.Bar.Baz in C:\\src\\Foo.cs:line #",
+        "Foo.Main"
+      ],
+      "fingerprint": "2daa7e6fcede6d14"
+    },
+    {
+      "in": "  at Foo.Bar.Baz(Int32 a, String b) in C:\\src\\Foo.cs:line 55\n  at Foo.Main()",
+      "max": 3,
+      "type": "Error",
+      "frames": [
+        "Foo.Bar.Baz in C:\\src\\Foo.cs:line #",
+        "Foo.Main"
+      ],
+      "fingerprint": "8d3a887eefd3a08a"
+    },
+    {
+      "in": "  at Foo.Bar.Baz(Int32 a, String b) in C:\\src\\Foo.cs:line 55\n  at Foo.Main()",
+      "max": 3,
+      "type": "System.IO.IOException: ali@x.com",
+      "frames": [
+        "Foo.Bar.Baz in C:\\src\\Foo.cs:line #",
+        "Foo.Main"
+      ],
+      "fingerprint": "ecd09db20c94e0db"
+    },
+    {
+      "in": "Foo::Bar(int)\n0x00007ff6 Foo::Baz\n#12 0xdeadbeef in Qux",
+      "max": 12,
+      "type": "Boom",
+      "frames": [
+        "Foo::Bar",
+        "#x Foo::Baz",
+        "## #x in Qux"
+      ],
+      "fingerprint": "8a9c51eafe103c22"
+    },
+    {
+      "in": "Foo::Bar(int)\n0x00007ff6 Foo::Baz\n#12 0xdeadbeef in Qux",
+      "max": 12,
+      "type": "NullReferenceException",
+      "frames": [
+        "Foo::Bar",
+        "#x Foo::Baz",
+        "## #x in Qux"
+      ],
+      "fingerprint": "8977facf31a22961"
+    },
+    {
+      "in": "Foo::Bar(int)\n0x00007ff6 Foo::Baz\n#12 0xdeadbeef in Qux",
+      "max": 12,
+      "type": "Error",
+      "frames": [
+        "Foo::Bar",
+        "#x Foo::Baz",
+        "## #x in Qux"
+      ],
+      "fingerprint": "29d516c14dedf70c"
+    },
+    {
+      "in": "Foo::Bar(int)\n0x00007ff6 Foo::Baz\n#12 0xdeadbeef in Qux",
+      "max": 12,
+      "type": "System.IO.IOException: ali@x.com",
+      "frames": [
+        "Foo::Bar",
+        "#x Foo::Baz",
+        "## #x in Qux"
+      ],
+      "fingerprint": "a17cb8164e9db7e0"
+    },
+    {
+      "in": "Foo::Bar(int)\n0x00007ff6 Foo::Baz\n#12 0xdeadbeef in Qux",
+      "max": 3,
+      "type": "Boom",
+      "frames": [
+        "Foo::Bar",
+        "#x Foo::Baz",
+        "## #x in Qux"
+      ],
+      "fingerprint": "8a9c51eafe103c22"
+    },
+    {
+      "in": "Foo::Bar(int)\n0x00007ff6 Foo::Baz\n#12 0xdeadbeef in Qux",
+      "max": 3,
+      "type": "NullReferenceException",
+      "frames": [
+        "Foo::Bar",
+        "#x Foo::Baz",
+        "## #x in Qux"
+      ],
+      "fingerprint": "8977facf31a22961"
+    },
+    {
+      "in": "Foo::Bar(int)\n0x00007ff6 Foo::Baz\n#12 0xdeadbeef in Qux",
+      "max": 3,
+      "type": "Error",
+      "frames": [
+        "Foo::Bar",
+        "#x Foo::Baz",
+        "## #x in Qux"
+      ],
+      "fingerprint": "29d516c14dedf70c"
+    },
+    {
+      "in": "Foo::Bar(int)\n0x00007ff6 Foo::Baz\n#12 0xdeadbeef in Qux",
+      "max": 3,
+      "type": "System.IO.IOException: ali@x.com",
+      "frames": [
+        "Foo::Bar",
+        "#x Foo::Baz",
+        "## #x in Qux"
+      ],
+      "fingerprint": "a17cb8164e9db7e0"
+    },
+    {
+      "in": "a()\nb(c(d))\ne (f (g (h (i))))",
+      "max": 12,
+      "type": "Boom",
+      "frames": [
+        "a",
+        "b",
+        "e (f )"
+      ],
+      "fingerprint": "ae8c88d58c880275"
+    },
+    {
+      "in": "a()\nb(c(d))\ne (f (g (h (i))))",
+      "max": 12,
+      "type": "NullReferenceException",
+      "frames": [
+        "a",
+        "b",
+        "e (f )"
+      ],
+      "fingerprint": "e3f8e3e1a5c3063a"
+    },
+    {
+      "in": "a()\nb(c(d))\ne (f (g (h (i))))",
+      "max": 12,
+      "type": "Error",
+      "frames": [
+        "a",
+        "b",
+        "e (f )"
+      ],
+      "fingerprint": "b23080da27296cd9"
+    },
+    {
+      "in": "a()\nb(c(d))\ne (f (g (h (i))))",
+      "max": 12,
+      "type": "System.IO.IOException: ali@x.com",
+      "frames": [
+        "a",
+        "b",
+        "e (f )"
+      ],
+      "fingerprint": "803699691ce12ff2"
+    },
+    {
+      "in": "a()\nb(c(d))\ne (f (g (h (i))))",
+      "max": 3,
+      "type": "Boom",
+      "frames": [
+        "a",
+        "b",
+        "e (f )"
+      ],
+      "fingerprint": "ae8c88d58c880275"
+    },
+    {
+      "in": "a()\nb(c(d))\ne (f (g (h (i))))",
+      "max": 3,
+      "type": "NullReferenceException",
+      "frames": [
+        "a",
+        "b",
+        "e (f )"
+      ],
+      "fingerprint": "e3f8e3e1a5c3063a"
+    },
+    {
+      "in": "a()\nb(c(d))\ne (f (g (h (i))))",
+      "max": 3,
+      "type": "Error",
+      "frames": [
+        "a",
+        "b",
+        "e (f )"
+      ],
+      "fingerprint": "b23080da27296cd9"
+    },
+    {
+      "in": "a()\nb(c(d))\ne (f (g (h (i))))",
+      "max": 3,
+      "type": "System.IO.IOException: ali@x.com",
+      "frames": [
+        "a",
+        "b",
+        "e (f )"
+      ],
+      "fingerprint": "803699691ce12ff2"
+    },
+    {
+      "in": "x1y2z3 line 456 0xABC",
+      "max": 12,
+      "type": "Boom",
+      "frames": [
+        "x#y#z# line # #x"
+      ],
+      "fingerprint": "5f963622afe44704"
+    },
+    {
+      "in": "x1y2z3 line 456 0xABC",
+      "max": 12,
+      "type": "NullReferenceException",
+      "frames": [
+        "x#y#z# line # #x"
+      ],
+      "fingerprint": "629be9625e2e724a"
+    },
+    {
+      "in": "x1y2z3 line 456 0xABC",
+      "max": 12,
+      "type": "Error",
+      "frames": [
+        "x#y#z# line # #x"
+      ],
+      "fingerprint": "4b856092a9a3deeb"
+    },
+    {
+      "in": "x1y2z3 line 456 0xABC",
+      "max": 12,
+      "type": "System.IO.IOException: ali@x.com",
+      "frames": [
+        "x#y#z# line # #x"
+      ],
+      "fingerprint": "dbf65430dc2baec0"
+    },
+    {
+      "in": "x1y2z3 line 456 0xABC",
+      "max": 3,
+      "type": "Boom",
+      "frames": [
+        "x#y#z# line # #x"
+      ],
+      "fingerprint": "5f963622afe44704"
+    },
+    {
+      "in": "x1y2z3 line 456 0xABC",
+      "max": 3,
+      "type": "NullReferenceException",
+      "frames": [
+        "x#y#z# line # #x"
+      ],
+      "fingerprint": "629be9625e2e724a"
+    },
+    {
+      "in": "x1y2z3 line 456 0xABC",
+      "max": 3,
+      "type": "Error",
+      "frames": [
+        "x#y#z# line # #x"
+      ],
+      "fingerprint": "4b856092a9a3deeb"
+    },
+    {
+      "in": "x1y2z3 line 456 0xABC",
+      "max": 3,
+      "type": "System.IO.IOException: ali@x.com",
+      "frames": [
+        "x#y#z# line # #x"
+      ],
+      "fingerprint": "dbf65430dc2baec0"
+    },
+    {
+      "in": "",
+      "max": 12,
+      "type": "Boom",
+      "frames": [],
+      "fingerprint": "2ba4ed212c777250"
+    },
+    {
+      "in": "",
+      "max": 12,
+      "type": "NullReferenceException",
+      "frames": [],
+      "fingerprint": "78970e547f5e9b15"
+    },
+    {
+      "in": "",
+      "max": 12,
+      "type": "Error",
+      "frames": [],
+      "fingerprint": "54a0e8c17ebb21a1"
+    },
+    {
+      "in": "",
+      "max": 12,
+      "type": "System.IO.IOException: ali@x.com",
+      "frames": [],
+      "fingerprint": "0af1b34f65710ad8"
+    },
+    {
+      "in": "",
+      "max": 3,
+      "type": "Boom",
+      "frames": [],
+      "fingerprint": "2ba4ed212c777250"
+    },
+    {
+      "in": "",
+      "max": 3,
+      "type": "NullReferenceException",
+      "frames": [],
+      "fingerprint": "78970e547f5e9b15"
+    },
+    {
+      "in": "",
+      "max": 3,
+      "type": "Error",
+      "frames": [],
+      "fingerprint": "54a0e8c17ebb21a1"
+    },
+    {
+      "in": "",
+      "max": 3,
+      "type": "System.IO.IOException: ali@x.com",
+      "frames": [],
+      "fingerprint": "0af1b34f65710ad8"
+    },
+    {
+      "in": "f1\nf2\nf3\nf4\nf5\nf6\nf7\nf8\nf9\nf10\nf11\nf12\nf13\nf14",
+      "max": 12,
+      "type": "Boom",
+      "frames": [
+        "f#",
+        "f#",
+        "f#",
+        "f#",
+        "f#",
+        "f#",
+        "f#",
+        "f#",
+        "f#",
+        "f#",
+        "f#",
+        "f#"
+      ],
+      "fingerprint": "26f438c4524f050f"
+    },
+    {
+      "in": "f1\nf2\nf3\nf4\nf5\nf6\nf7\nf8\nf9\nf10\nf11\nf12\nf13\nf14",
+      "max": 12,
+      "type": "NullReferenceException",
+      "frames": [
+        "f#",
+        "f#",
+        "f#",
+        "f#",
+        "f#",
+        "f#",
+        "f#",
+        "f#",
+        "f#",
+        "f#",
+        "f#",
+        "f#"
+      ],
+      "fingerprint": "f277de4864ee351a"
+    },
+    {
+      "in": "f1\nf2\nf3\nf4\nf5\nf6\nf7\nf8\nf9\nf10\nf11\nf12\nf13\nf14",
+      "max": 12,
+      "type": "Error",
+      "frames": [
+        "f#",
+        "f#",
+        "f#",
+        "f#",
+        "f#",
+        "f#",
+        "f#",
+        "f#",
+        "f#",
+        "f#",
+        "f#",
+        "f#"
+      ],
+      "fingerprint": "279152a0c7305b43"
+    },
+    {
+      "in": "f1\nf2\nf3\nf4\nf5\nf6\nf7\nf8\nf9\nf10\nf11\nf12\nf13\nf14",
+      "max": 12,
+      "type": "System.IO.IOException: ali@x.com",
+      "frames": [
+        "f#",
+        "f#",
+        "f#",
+        "f#",
+        "f#",
+        "f#",
+        "f#",
+        "f#",
+        "f#",
+        "f#",
+        "f#",
+        "f#"
+      ],
+      "fingerprint": "88c79fe2184a84e2"
+    },
+    {
+      "in": "f1\nf2\nf3\nf4\nf5\nf6\nf7\nf8\nf9\nf10\nf11\nf12\nf13\nf14",
+      "max": 3,
+      "type": "Boom",
+      "frames": [
+        "f#",
+        "f#",
+        "f#"
+      ],
+      "fingerprint": "8ed12ffdaeac69d8"
+    },
+    {
+      "in": "f1\nf2\nf3\nf4\nf5\nf6\nf7\nf8\nf9\nf10\nf11\nf12\nf13\nf14",
+      "max": 3,
+      "type": "NullReferenceException",
+      "frames": [
+        "f#",
+        "f#",
+        "f#"
+      ],
+      "fingerprint": "1cfebad15779d8a1"
+    },
+    {
+      "in": "f1\nf2\nf3\nf4\nf5\nf6\nf7\nf8\nf9\nf10\nf11\nf12\nf13\nf14",
+      "max": 3,
+      "type": "Error",
+      "frames": [
+        "f#",
+        "f#",
+        "f#"
+      ],
+      "fingerprint": "65574bf9b857c09d"
+    },
+    {
+      "in": "f1\nf2\nf3\nf4\nf5\nf6\nf7\nf8\nf9\nf10\nf11\nf12\nf13\nf14",
+      "max": 3,
+      "type": "System.IO.IOException: ali@x.com",
+      "frames": [
+        "f#",
+        "f#",
+        "f#"
+      ],
+      "fingerprint": "38cdf1b204be43d9"
+    },
+    {
+      "in": "ali@example.com.Method (at a.cs:1)\nhttps://h/p?q=1.Fn",
+      "max": 12,
+      "type": "Boom",
+      "frames": [
+        "[email]",
+        "https://h/p?[redacted]"
+      ],
+      "fingerprint": "d765fc9b3483b21e"
+    },
+    {
+      "in": "ali@example.com.Method (at a.cs:1)\nhttps://h/p?q=1.Fn",
+      "max": 12,
+      "type": "NullReferenceException",
+      "frames": [
+        "[email]",
+        "https://h/p?[redacted]"
+      ],
+      "fingerprint": "d787ef35bf8c2031"
+    },
+    {
+      "in": "ali@example.com.Method (at a.cs:1)\nhttps://h/p?q=1.Fn",
+      "max": 12,
+      "type": "Error",
+      "frames": [
+        "[email]",
+        "https://h/p?[redacted]"
+      ],
+      "fingerprint": "a557dabab9601b86"
+    },
+    {
+      "in": "ali@example.com.Method (at a.cs:1)\nhttps://h/p?q=1.Fn",
+      "max": 12,
+      "type": "System.IO.IOException: ali@x.com",
+      "frames": [
+        "[email]",
+        "https://h/p?[redacted]"
+      ],
+      "fingerprint": "843bfe977dda0e72"
+    },
+    {
+      "in": "ali@example.com.Method (at a.cs:1)\nhttps://h/p?q=1.Fn",
+      "max": 3,
+      "type": "Boom",
+      "frames": [
+        "[email]",
+        "https://h/p?[redacted]"
+      ],
+      "fingerprint": "d765fc9b3483b21e"
+    },
+    {
+      "in": "ali@example.com.Method (at a.cs:1)\nhttps://h/p?q=1.Fn",
+      "max": 3,
+      "type": "NullReferenceException",
+      "frames": [
+        "[email]",
+        "https://h/p?[redacted]"
+      ],
+      "fingerprint": "d787ef35bf8c2031"
+    },
+    {
+      "in": "ali@example.com.Method (at a.cs:1)\nhttps://h/p?q=1.Fn",
+      "max": 3,
+      "type": "Error",
+      "frames": [
+        "[email]",
+        "https://h/p?[redacted]"
+      ],
+      "fingerprint": "a557dabab9601b86"
+    },
+    {
+      "in": "ali@example.com.Method (at a.cs:1)\nhttps://h/p?q=1.Fn",
+      "max": 3,
+      "type": "System.IO.IOException: ali@x.com",
+      "frames": [
+        "[email]",
+        "https://h/p?[redacted]"
+      ],
+      "fingerprint": "843bfe977dda0e72"
+    }
+  ],
+  "aes": [
+    {
+      "key": "030a11181f262d343b424950575e656c737a81888f969da4abb2b9c0c7ced5dc",
+      "iv": "c8c7c6c5c4c3c2c1c0bfbebd",
+      "plain": "{\"event_id\":\"01ARZ3NDEKTSV4RRFFQ69G5FAV\",\"event_name\":\"level_start\"}",
+      "aad": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+      "line": "enc1:c8c7c6c5c4c3c2c1c0bfbebd57148065175434ffeb73f3b583a27645379e755370a270f6cbfdf511229650995929bb80c4dfad08569296fe372e944371139ece3264b471b33cc2608d8d9681a7f9df0af210f4a1b1881836ba08de85109e7ecd"
+    },
+    {
+      "key": "030a11181f262d343b424950575e656c737a81888f969da4abb2b9c0c7ced5dc",
+      "iv": "c8c7c6c5c4c3c2c1c0bfbebd",
+      "plain": "",
+      "aad": "ID",
+      "line": "enc1:c8c7c6c5c4c3c2c1c0bfbebd091c7a460790a11e3e6e1d21649db459"
+    },
+    {
+      "key": "030a11181f262d343b424950575e656c737a81888f969da4abb2b9c0c7ced5dc",
+      "iv": "c8c7c6c5c4c3c2c1c0bfbebd",
+      "plain": "türkçe ğüşiöç €",
+      "aad": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+      "line": "enc1:c8c7c6c5c4c3c2c1c0bfbebd58f5596119f9e7c5a2d34e4c1d57d86da67285ba1405b90ed05a51e4bb96dc21e706609e774324c6"
+    },
+    {
+      "key": "030a11181f262d343b424950575e656c737a81888f969da4abb2b9c0c7ced5dc",
+      "iv": "c8c7c6c5c4c3c2c1c0bfbebd",
+      "plain": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "aad": "",
+      "line": "enc1:c8c7c6c5c4c3c2c1c0bfbebd544e9d6b0a4238d8fa6fa9f7d9ea3f7c1dbc3e654c9f43dae0d3b93b08a86eb0176884cdfae6835202c88bf02a389864670a8bd36826ee65ae32df74aa869a98adf5850f8a4f372fc36cbf30758af6063534ce6ac8b745d8d30b1bfee1e254f181a5adb8ff7178a3176b73ff53a85ecd384af927ee69770d09afe1845e8418ec935cf399e6a791d6cfd12c437656eb6c83acff9f444f6a5b9aef244dad5a0fe591a18b8c6c60bb0debfd7b9381337ed886391ac9bd00247a3cd1c80ccfb3041d3b0192bc1d51d35facd7e4be827b492b5c4d788a40b367755391ad0fa61d348e9f4acb1228225fcc9e3efc3e724f048068e6fa8e97fab65f6a367ceba462f2d29dd4b8869556aaa2e4d9e4b2607d1cf112bc2e548fc56c384007350ff3f25f3041f1fb3c8ce144d5234a0ec212be6d51376b2084f8bb2fabb55ed2831dadd4b909f3fa91a695fc8ae50b9c1d858762a7e009bfcfa3b74a3cff5bcd7a130a67bbabacb49519487de5d126d36cd169b1cc60cfd0bf2e329596b05f69801c427c5d46b723387a58abd2d717a4eb15ddc51728e3da210c9eee5612d52fb613db3e5055d1304c6c274508b18ab412a4e091e6bde47146005a03f5884661b536bf3370fd3e5b0ea92ecc4aedb790c59ef198a54abefe1ee5378fd4bcadff98c535acffc129417f702a3525eee18f29d04efbebd17d9ff70b1f4b037ab899ee69ce3e91fa75669391b4822488eeed44cddc11378d55b94b78f4232f2bad89575a84fae1bb32a6b5661bfc31820f5b14862ded2ba74b6587cec64a2ed30fb5f38f3ede8b4461bdd7c18c76ab21d7e38f1765a8ab46910d83596afe89fed2f329656db35af191a141bacdf77925bf1a6a704ddf79944478753a44f961a411ebe92d3a7d365227154b5d765f85f811df51b31f8d6c5d5fe0b1387a6b3f6723e58b2bedfc6d1b60426ef5a4714f25067fdb763abc1e59a398597eb855f2f5047dd64615e5ac32a723cd978d95edfdeb2f4d0cb09056b693509d5d4b81e4e95314f62e997c76955cc1476cee0447797137f076fc95e3a67b04b0567bd43571e67a890899306334101b63a1556405fbed0fccb67e1499cdc472cba051505fbace49602de9bbac0e0faad39734b80a43cee461368e2ac27d8a006421b015446f4539f0a2ae3e00c30dae57fdbb6971b17b75190f973629cec6c4564935d19023c042f92b3f2d5a67f74682bb44abc1affef33809cddc590e7a4ce00b44021000452fbcb405d3ca299b70123740d078461227551ff0d6f2722f884ad71eee09d21cb418da935c7588bd39f2bfcea50b797998a7841942169dfb5f18c3b2f76f0ab477da1de40e304bac91c6f8cb7c0a37316df95b4fd4f3f7db172681b835bee3ed564a80aa4418f91623dffe5a49845864a504be84c9ceae5786d57e678292"
+    },
+    {
+      "key": "030a11181f262d343b424950575e656c737a81888f969da4abb2b9c0c7ced5dc",
+      "iv": "c8c7c6c5c4c3c2c1c0bfbebd",
+      "plain": "a",
+      "aad": "01BX5ZZKBKACTAV9WEVGEMMVRZ",
+      "line": "enc1:c8c7c6c5c4c3c2c1c0bfbebd4dd764b0b9f63642539928b7384920258e"
+    }
+  ],
+  "revenue": [
+    {
+      "input": {
+        "transaction_id": "T1",
+        "amount_minor": 4999,
+        "currency": "TRY",
+        "product_id": "gold_pack",
+        "quantity": 1,
+        "purchase_type": "purchase",
+        "receipt_provider": null,
+        "receipt_token": null,
+        "properties": null
+      },
+      "props": {
+        "transaction_id": "T1",
+        "amount_minor": 4999,
+        "currency": "TRY",
+        "quantity": 1,
+        "purchase_type": "purchase",
+        "product_id": "gold_pack"
+      }
+    },
+    {
+      "input": {
+        "transaction_id": "T2",
+        "amount_minor": 0,
+        "currency": "USD",
+        "product_id": null,
+        "quantity": 1,
+        "purchase_type": "subscription_cancel",
+        "receipt_provider": null,
+        "receipt_token": null,
+        "properties": null
+      },
+      "props": {
+        "transaction_id": "T2",
+        "amount_minor": 0,
+        "currency": "USD",
+        "quantity": 1,
+        "purchase_type": "subscription_cancel"
+      }
+    },
+    {
+      "input": {
+        "transaction_id": "T3",
+        "amount_minor": 5,
+        "currency": "USD",
+        "product_id": null,
+        "quantity": 1,
+        "purchase_type": "subscription_cancel",
+        "receipt_provider": null,
+        "receipt_token": null,
+        "properties": null
+      },
+      "props": null
+    },
+    {
+      "input": {
+        "transaction_id": "",
+        "amount_minor": 100,
+        "currency": "USD",
+        "product_id": null,
+        "quantity": 1,
+        "purchase_type": "purchase",
+        "receipt_provider": null,
+        "receipt_token": null,
+        "properties": null
+      },
+      "props": null
+    },
+    {
+      "input": {
+        "transaction_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "amount_minor": 100,
+        "currency": "USD",
+        "product_id": null,
+        "quantity": 1,
+        "purchase_type": "purchase",
+        "receipt_provider": null,
+        "receipt_token": null,
+        "properties": null
+      },
+      "props": null
+    },
+    {
+      "input": {
+        "transaction_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "amount_minor": 100,
+        "currency": "usd",
+        "product_id": null,
+        "quantity": 1,
+        "purchase_type": "purchase",
+        "receipt_provider": null,
+        "receipt_token": null,
+        "properties": null
+      },
+      "props": null
+    },
+    {
+      "input": {
+        "transaction_id": "T4",
+        "amount_minor": -1,
+        "currency": "USD",
+        "product_id": null,
+        "quantity": 1,
+        "purchase_type": "purchase",
+        "receipt_provider": null,
+        "receipt_token": null,
+        "properties": null
+      },
+      "props": null
+    },
+    {
+      "input": {
+        "transaction_id": "T5",
+        "amount_minor": 9007199254740991,
+        "currency": "EUR",
+        "product_id": "p",
+        "quantity": 100000,
+        "purchase_type": "subscription_renew",
+        "receipt_provider": "google",
+        "receipt_token": "tok123",
+        "properties": {
+          "verified": true,
+          "note": "x",
+          "receipt_digest": "d",
+          "bad key": 1,
+          "level": 3
+        }
+      },
+      "props": {
+        "note": "x",
+        "transaction_id": "T5",
+        "level": 3,
+        "amount_minor": 9007199254740991,
+        "currency": "EUR",
+        "quantity": 100000,
+        "purchase_type": "subscription_renew",
+        "product_id": "p",
+        "receipt": {
+          "provider": "google",
+          "token": "tok123"
+        }
+      }
+    },
+    {
+      "input": {
+        "transaction_id": "T6",
+        "amount_minor": 9007199254740992,
+        "currency": "EUR",
+        "product_id": "p",
+        "quantity": 1,
+        "purchase_type": "purchase",
+        "receipt_provider": null,
+        "receipt_token": null,
+        "properties": null
+      },
+      "props": null
+    },
+    {
+      "input": {
+        "transaction_id": "T7",
+        "amount_minor": 10,
+        "currency": "EUR",
+        "product_id": "",
+        "quantity": 1,
+        "purchase_type": "purchase",
+        "receipt_provider": null,
+        "receipt_token": null,
+        "properties": null
+      },
+      "props": null
+    },
+    {
+      "input": {
+        "transaction_id": "T8",
+        "amount_minor": 10,
+        "currency": "EUR",
+        "product_id": "p",
+        "quantity": 100001,
+        "purchase_type": "purchase",
+        "receipt_provider": null,
+        "receipt_token": null,
+        "properties": null
+      },
+      "props": null
+    },
+    {
+      "input": {
+        "transaction_id": "T9",
+        "amount_minor": 10,
+        "currency": "EUR",
+        "product_id": "p",
+        "quantity": 0,
+        "purchase_type": "subscription_start",
+        "receipt_provider": "apple",
+        "receipt_token": "",
+        "properties": null
+      },
+      "props": null
+    },
+    {
+      "input": {
+        "transaction_id": "T10",
+        "amount_minor": 10,
+        "currency": "EUR",
+        "product_id": "p",
+        "quantity": 1,
+        "purchase_type": "purchase",
+        "receipt_provider": "stripe",
+        "receipt_token": "ttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttt",
+        "properties": null
+      },
+      "props": null
+    },
+    {
+      "input": {
+        "transaction_id": "T11",
+        "amount_minor": 10,
+        "currency": "EUR",
+        "product_id": "p",
+        "quantity": 1,
+        "purchase_type": "purchase",
+        "receipt_provider": "apple",
+        "receipt_token": "tttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttt",
+        "properties": null
+      },
+      "props": {
+        "transaction_id": "T11",
+        "amount_minor": 10,
+        "currency": "EUR",
+        "quantity": 1,
+        "purchase_type": "purchase",
+        "product_id": "p",
+        "receipt": {
+          "provider": "apple",
+          "token": "tttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttt"
+        }
+      }
+    }
+  ],
+  "adrevenue": [
+    {
+      "input": {
+        "network": "admob",
+        "ad_format": "rewarded",
+        "revenue_micros": 12500,
+        "currency": "USD",
+        "ad_unit": "ca-app-pub-1/2",
+        "precision": "estimated",
+        "placement": "main_menu",
+        "impression_id": "imp1",
+        "properties": null
+      },
+      "props": {
+        "network": "admob",
+        "ad_format": "rewarded",
+        "revenue_micros": 12500,
+        "currency": "USD",
+        "precision": "estimated",
+        "ad_unit": "ca-app-pub-1/2",
+        "placement": "main_menu",
+        "impression_id": "imp1"
+      }
+    },
+    {
+      "input": {
+        "network": "applovin_max",
+        "ad_format": "banner",
+        "revenue_micros": 0,
+        "currency": "EUR",
+        "ad_unit": null,
+        "precision": "unknown",
+        "placement": null,
+        "impression_id": null,
+        "properties": {
+          "verified": true,
+          "k": "v"
+        }
+      },
+      "props": {
+        "k": "v",
+        "network": "applovin_max",
+        "ad_format": "banner",
+        "revenue_micros": 0,
+        "currency": "EUR",
+        "precision": "unknown"
+      }
+    },
+    {
+      "input": {
+        "network": "AdMob",
+        "ad_format": "banner",
+        "revenue_micros": 1,
+        "currency": "USD",
+        "ad_unit": null,
+        "precision": "precise",
+        "placement": null,
+        "impression_id": null,
+        "properties": null
+      },
+      "props": null
+    },
+    {
+      "input": {
+        "network": "",
+        "ad_format": "banner",
+        "revenue_micros": 1,
+        "currency": "USD",
+        "ad_unit": null,
+        "precision": "precise",
+        "placement": null,
+        "impression_id": null,
+        "properties": null
+      },
+      "props": null
+    },
+    {
+      "input": {
+        "network": "admob",
+        "ad_format": "other",
+        "revenue_micros": -1,
+        "currency": "USD",
+        "ad_unit": null,
+        "precision": "precise",
+        "placement": null,
+        "impression_id": null,
+        "properties": null
+      },
+      "props": null
+    },
+    {
+      "input": {
+        "network": "admob",
+        "ad_format": "other",
+        "revenue_micros": 9007199254740991,
+        "currency": "usd",
+        "ad_unit": null,
+        "precision": "precise",
+        "placement": null,
+        "impression_id": null,
+        "properties": null
+      },
+      "props": null
+    },
+    {
+      "input": {
+        "network": "admob",
+        "ad_format": "app_open",
+        "revenue_micros": 5,
+        "currency": "USD",
+        "ad_unit": "",
+        "precision": "publisher_provided",
+        "placement": null,
+        "impression_id": null,
+        "properties": null
+      },
+      "props": null
+    },
+    {
+      "input": {
+        "network": "admob",
+        "ad_format": "native",
+        "revenue_micros": 5,
+        "currency": "USD",
+        "ad_unit": "uuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuu",
+        "precision": "publisher_provided",
+        "placement": null,
+        "impression_id": null,
+        "properties": null
+      },
+      "props": null
+    },
+    {
+      "input": {
+        "network": "admob",
+        "ad_format": "rewarded_interstitial",
+        "revenue_micros": 5,
+        "currency": "USD",
+        "ad_unit": null,
+        "precision": "unknown",
+        "placement": "ppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppp",
+        "impression_id": null,
+        "properties": null
+      },
+      "props": null
+    },
+    {
+      "input": {
+        "network": "abbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "ad_format": "interstitial",
+        "revenue_micros": 5,
+        "currency": "USD",
+        "ad_unit": null,
+        "precision": "unknown",
+        "placement": "pppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppp",
+        "impression_id": "iiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiii",
+        "properties": null
+      },
+      "props": {
+        "network": "abbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "ad_format": "interstitial",
+        "revenue_micros": 5,
+        "currency": "USD",
+        "precision": "unknown",
+        "placement": "pppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppp",
+        "impression_id": "iiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiii"
+      }
+    },
+    {
+      "input": {
+        "network": "abbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "ad_format": "interstitial",
+        "revenue_micros": 5,
+        "currency": "USD",
+        "ad_unit": null,
+        "precision": "unknown",
+        "placement": null,
+        "impression_id": null,
+        "properties": null
+      },
+      "props": null
+    }
+  ]
+}

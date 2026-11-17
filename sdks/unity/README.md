@@ -1,0 +1,149 @@
+# Feralin Unity SDK
+
+`com.feralin.unity`: Unity oyunları için UTP v1 olay SDK'sı. İzin yoksa olay üretmez, parmak izi veya cihaz kimliği toplamaz. Çalışma zamanı bağımlılığı yalnız Unity'nin kendi `UnityWebRequest` modülüdür (Android atfı için ayrıca Play Install Referrer kitaplığı, aşağıya bakın).
+
+> **Durum:** Registry'de yayınlanmadı. Paket kanalı (scoped registry veya Git) açılana kadar aşağıdaki gibi yerel kurulur. Android ve iOS yerel köprüleri (Keystore, Keychain, Install Referrer, AdServices) yazıldı ama oyuncu derlemesi ve cihaz olmadığı için **derlenmedi ve cihazda sınanmadı**. Ayrıntı için "Doğrulama" bölümüne bakın. Kurulum belgesi: [`docs/sdk/unity.md`](../../docs/sdk/unity.md) (TR ve EN).
+
+## Kurulum
+
+Unity Package Manager → **Add package from tarball**, veya `Packages/manifest.json`:
+
+```json
+{ "dependencies": { "com.feralin.unity": "file:/mutlak/yol/com.feralin.unity-0.2.0.tgz" } }
+```
+
+Paket üretmek: `sdks/unity` içinde `npm pack`.
+
+Android atfı için Google'ın `com.android.installreferrer:installreferrer:2.2` kitaplığı gerekir. Projede External Dependency Manager (EDM4U) varsa paketteki `Editor/FeralinDependencies.xml` bunu kendiliğinden ekler; yoksa `mainTemplate.gradle` içine `implementation 'com.android.installreferrer:installreferrer:2.2'` satırını ekleyin. Kitaplık yoksa SDK çökmez: referrer okunamaz ve ilk açılış `attribution_source=none` ile sayılır.
+
+## En kısa örnek
+
+```csharp
+using Feralin.Unity;
+using UnityEngine;
+
+public class Game : MonoBehaviour
+{
+    void Start()
+    {
+        var feralin = FeralinBehaviour.Initialize("pk_live_ORNEK", "https://collect.ornek.com");
+        // Karar oyunun izin ekranından gelir; SDK izni kendisi varsaymaz ve saklamaz.
+        feralin.SetConsent(new Consent(analytics: true, advertising: true));
+
+        feralin.Client.TrackLevelStart("dunya_1");
+        feralin.Client.TrackLevelComplete("dunya_1", attempt: 1, score: 1200, durationMs: 33500);
+    }
+}
+```
+
+Bileşen sahneye `Feralin/Feralin` menüsüyle de eklenebilir; o durumda anahtar ve adres Inspector'dan girilir. Yalnız public `pk_` anahtarı kabul edilir, `sk_` reddedilir. Geçersiz yapılandırma oyunu düşürmez: hata Console'a yazılır, `Client` `null` kalır.
+
+## İzin
+
+- Başlangıçta hiçbir izin yoktur; `analytics=false` iken `Track` olay üretmez ve `null` döner.
+- `Initialize` izin vermeden çağrılırsa istemci "karar yok" durumunda kalır: olay üretilmez, **diskteki kuyruk yüklenmez ve silinmez**. Oyun kararı `SetConsent` ile bildirince `analytics=true` kuyruğu yükler, `analytics=false` diskteki kuyruğu ve kimlik işaretlerini siler.
+- `SetConsent(new Consent(false))` veya `Client.OptOut()` bekleyen kuyruğu da siler.
+- `fr_click`, Play referrer, `utm_*` ve AdServices yalnız `advertising=true` iken kullanılır. iOS'ta ATT durumu `denied` ya da `restricted` ise reklam izni verilmiş olsa bile kullanılmaz.
+- Analitik izniyle rastgele bir `anonymous_id` üretilir ve PlayerPrefs'te tutulur; izin geri çekilince ve `Client.Reset()` çağrısında silinir. `SystemInfo.deviceUniqueIdentifier` kullanılmaz.
+- `Identify` için oyunun kendi oyuncu kimliğini verin; e-posta veya telefon vermeyin.
+
+## Olay sözleşmesi (diğer mobil SDK'larla ortak)
+
+| Yöntem | Olay | Özellikler |
+|---|---|---|
+| `TrackRevenue(RevenueInput)` | `feralin_purchase` | `transaction_id`, `amount_minor` (küçük birim, tam sayı), `currency` (ISO 4217), `quantity`, `purchase_type`, `product_id`, `receipt` |
+| `TrackAdRevenue(AdRevenueInput)` | `fr_ad_revenue` | `network`, `ad_format`, `revenue_micros` (para biriminin milyonda biri), `currency`, `precision`, `ad_unit`, `placement`, `impression_id` |
+| `Group(groupId, traits)` | `fr_group` | `group_id` ve özellikler |
+| `SetUserProperties(props)` | `fr_user_properties` | özellikler |
+| `CaptureError(...)` | `fr_error` | `error_type`, `message`, `fingerprint`, `top_frame`, `frame_count`, `app_version`, `handled`, `fatal`, `origin` |
+| `TrackLevelStart / Complete / Fail` | `level_start`, `level_complete`, `level_fail` | `level_id`, `attempt`, `score`, `duration_ms`, `fail_reason` |
+| `TrackEconomySource / Sink` | `economy_source`, `economy_sink` | `currency_name`, `amount`, `reason`, `item_id` |
+| `TrackRewardedAdShown / Complete` | `rewarded_ad_shown`, `rewarded_ad_complete` | `placement`, `network`, `reward_amount`, `reward_currency` |
+| `TrackIapOfferShown / Initiated` | `iap_offer_shown`, `iap_initiated` | `product_id`, `placement`, `transaction_id` (gelir değildir) |
+| `TrackIapPurchase(...)` | `feralin_purchase` | Eski yardımcı (aşağıya bakın) |
+
+### Gelir
+
+`TrackRevenue` Android, Flutter ve React Native `trackRevenue` ile aynı kuralları uygular: tutar küçük birimde tam sayıdır (49,99 TL için `4999`), para birimi ISO 4217, işlem kimliği zorunludur, abonelik iptali `0` taşır; `verified`, `verification*`, `receipt_provider`, `receipt_digest` anahtarları özelliklerden düşürülür; sözleşme dışı girdide olay üretilmez ve `null` döner. **İstemci beyanıdır:** sunucu satırı yalnız makbuz doğrulayıcısı onaylarsa REAL_VERIFIED sayar, aksi halde ESTIMATED kalır. `Receipt` verilirse toplayıcı yalnız sağlayıcı adını ve belirtecin SHA-256 özetini saklar. Sunucu tarafı doğrulama için makbuzu/`purchaseToken`'ı kendi sunucunuzdan `POST /v1/projects/:id/finance/receipts/verify` ucuna gönderin.
+
+```csharp
+feralin.Client.TrackRevenue(new RevenueInput
+{
+    TransactionId = purchase.TransactionId,   // mağaza işlem kimliği
+    AmountMinor = 4999,
+    Currency = "TRY",
+    ProductId = "gem_pack",
+    Receipt = new Receipt(ReceiptProvider.Google, purchase.PurchaseToken),
+});
+```
+
+`TrackIapPurchase(productId, price, currency, transactionId)` geriye uyumluluk için durur ve **artık `iap_purchase` olayı üretmez**: ondalık tutarı para biriminin küçük birimine çevirip `feralin_purchase` olarak gönderir. Sözleşme `transactionId` ister; boşsa olay üretilmez.
+
+### Reklam geliri
+
+`TrackAdRevenue` satın alma gelirinden ayrıdır; deftere `feralin_purchase` olarak girmez ve reklam ağlarının bildirdiği tahmini gelirdir (sunucu doğrulaması yok).
+
+### Hata yakalama
+
+`FeralinBehaviour` (varsayılan açık) `Application.logMessageReceivedThreaded` (istisna kayıtları; `captureErrorLogs` ile `Debug.LogError` ve assert), `AppDomain.UnhandledException` ve `TaskScheduler.UnobservedTaskException` kancalarını bağlar. Her hata `CaptureError` üzerinden geçer:
+
+- İleti ve yığın kişisel veriden (e-posta, IP, telefon, JWT/belirteç, `password=`/`token=` değerleri, kullanıcı yolu, URL sorgusu) arındırılır.
+- Yığın çerçeveleri dosya yolu, satır, adres ve bağımsız değişken olmadan normalleştirilir; hata türü ve ilk altı çerçevenin SHA-256 özetinin ilk 16 karakteri `fingerprint` olur.
+- Örnekleme (`errorSampleRate`) ve hız sınırı: dakikada en çok `errorsPerMinute` (10), aynı parmak izi için dakikada 2. Sınıra takılan hata sayılır (`GetStatus().ErrorsSuppressed`); sayı tel üzerinde taşınmaz. Alan adları ve türleri `packages/schemas/utp/v1/event.schema.json` ve toplayıcı filtresiyle aynıdır; `origin` Unity istisnaları için `uncaught_exception`, elle çağrı için `manual`. Parmak izi biçimi platforma özgüdür (SHA-256 ilk 16 onaltılık karakter).
+
+### Oturum
+
+Otomatik `session_id` vardır. Oyun arka planda 30 dakika (`sessionTimeoutMinutes`) kalırsa dönüşte yeni oturum başlar; `Client.Reset()` oturumu da yeniler. Mobilde `OnApplicationPause`, masaüstünde odak kaybı arka plan sayılır. `SetSessionId` otomatik oturumu geçersiz kılar.
+
+## Kalıcı çevrimdışı kuyruk
+
+Kuyruk `Application.persistentDataPath/feralin/` altında diskte tutulur (WebGL hariç) ve oyun kapansa da gönderilene kadar korunur. Her olay **AES-256-GCM** ile şifrelenir (satır biçimi Android SDK ile aynı: `enc1:` + hex(iv ‖ şifreli metin ‖ etiket), ilişkilendirilmiş veri olay kimliği); GCM, Unity'nin Mono/IL2CPP profilinde `AesGcm` sınıfı bulunmadığı için yönetilen kodda yazılmıştır ve NIST vektörleri ile .NET `AesGcm` karşılaştırmasıyla sınanmıştır.
+
+| Platform | Anahtar koruması (`GetStatus().QueueProtection`) | Durum |
+|---|---|---|
+| Android | `android_keystore`: 32 baytlık veri anahtarı, dışarı aktarılamayan Keystore AES-256-GCM anahtarıyla sarılır (`FeralinKeystore.java`) | Cihazda sınanmadı |
+| iOS | `ios_keychain`: anahtar Keychain'de, `AfterFirstUnlockThisDeviceOnly` (`FeralinNative.mm`) | Cihazda sınanmadı |
+| Windows | `windows_dpapi` (kullanıcı kapsamı), DPAPI sınıfı Unity profilinde bulunursa | Editor'de bulunmayabilir; yoksa `local_file` |
+| macOS, Linux | `local_file`: anahtar kuyruğun yanındaki dosyada; yalnız sıradan inceleme ve dosya kopyalamaya karşı korur, aynı kullanıcı hesabına erişen anahtarı okuyabilir | Açıkça sınırlı |
+| WebGL | Kalıcı kuyruk kapalı (bellek içi) | |
+
+Anahtar alınamazsa (Keystore bozuk, Keychain okunamıyor) düz metne **düşülmez**: kuyruk bellekte kalır. Okunamayan satırlar (anahtar kaybı, bozulma) atılır. Tekrar gönderimde aynı `event_id` korunur (sunucu çift saymaz). Kuyruk üst sınırı (varsayılan 1000) ve en eski olayı atma kuralı diğer SDK'larla aynıdır; tek olay üst sınırı 256 Ki karakterdir. Karar verilmediyse disk dokunulmadan bekler (İzin bölümü).
+
+## Atıf ve bağlantılar
+
+- **Android Play Install Referrer:** kurulumda bir kez okunur, `app_first_open` olayına `attribution_source=play_install_referrer`, `fr_click` ve izin listesindeki `utm_*` yazılır. Play'in tıklama yokken döndürdüğü `organic` varsayılanı kanıt sayılmaz. Reklam izni yoksa referrer **okunmaz**; izin sonradan gelirse bir kez okunur ve kanıt `consent_followup` işaretli `deep_link_opened` ile taşınır. `fr_dl` ile gelen ertelenmiş derin bağlantı yolu `Client.ConsumeDeferredDeepLink()` ile bir kez teslim edilir.
+- **Uygulama bağlantıları:** `Application.deepLinkActivated` (ve soğuk açılıştaki `absoluteURL`) otomatik bağlanır. Yalnız `http(s)` bağlantılar kanıt sayılır; sorgudan yalnız `fr_click`, `fr_dl`, `utm_*` okunur, ham URL saklanmaz (`page_url` yalnız şema, host ve yoldur).
+- **iOS:** `FeralinBehaviour.BindInstall(cb)` AdServices token'ını (`AAAttribution.attributionToken()`) rastgele kurulum kimliğiyle `POST /v1/projects/{id}/attribution/apple-adservices/tokens` ucuna iletir ve `installId` döndürür; `apiUrl` ve `projectId` gerekir. `installId`'yi kendi sunucunuza iletin ve hesap bağını yalnız oradan, gizli API anahtarıyla `account-links` ucuyla kurun. **Apple tarafında kesin tekil atıf iddia edilmez:** sunucu bugün Apple'a sormaz, token yalnız saklanır; parmak izi yoktur. Durumlar: `received`, `skipped_no_consent`, `not_configured`, `unsupported`, `token_unavailable`, `rejected`, `temporary_failure`.
+
+## Gönderim
+
+- `FeralinBehaviour.Update` otomatik gönderimi sürer (varsayılan 2 sn veya batch dolunca). Arka plan iş parçacığı yoktur, WebGL için de aynı yol geçerlidir.
+- 202 → silinir. 401/403 → kuyruk atılır, oyun etkilenmez. Diğer 4xx (429 hariç) → o batch atılır. 429, 5xx ve ağ hatası → aynı içerik ve aynı `Idempotency-Key` ile üstel geri çekilmeyle (1 sn → 30 sn) yeniden denenir; `Retry-After` en çok 5 dakikaya kadar uygulanır.
+- `Flush(cb)` ve `Close(cb)` sonuçlarını geri çağrıyla bildirir, oyunu bloklamaz.
+
+Yerel geliştirmede `http://` adres kullanacaksanız Unity'nin **Allow downloads over HTTP** ayarı gerekir; yayında `https://` kullanın.
+
+## Desteklenmeyenler ve sınırlar
+
+- Android ve iOS yerel köprüleri (`FeralinKeystore.java`, `FeralinNative.mm`, Install Referrer JNI proxy'si) **oyuncu derlemesiyle derlenmedi, cihazda sınanmadı**. Çekirdek mantık (şifreleme, kuyruk, atıf, sözleşmeler) `dotnet test` ile; Editor yolu PlayMode ile sınandı.
+- Sunucu tarafı IAP makbuz doğrulaması bu pakette değildir (makbuz doğrulayıcıları sunucuda `BLOCKED_EXTERNAL`). iOS'ta SKAN/AdAttributionKit güncellemesi yoktur.
+- Native çökme (SIGSEGV, ANR) yakalanmaz; yalnız yönetilen istisna ve Unity hata kayıtları.
+- Distributed tracing ve session replay yok.
+- `UnityWebRequest` yalnız ana iş parçacığında çalışır; başka iş parçacığından `Flush` ağ hatası sayılır ve olay kuyrukta kalır. `Track` her iş parçacığından çağrılabilir.
+- Bağımsız oyuncu derlemesi (WebGL, iOS, Android, IL2CPP) denenmedi.
+
+## Doğrulama
+
+```bash
+# Çekirdek: netstandard2.1 + C# 9 ile derlenir, Unity gerekmez
+dotnet test "sdks/unity/Tests~/Feralin.Unity.Core.Tests"
+
+# Temiz kurulum ve gerçek toplayıcı (yalnız test veritabanı)
+DATABASE_URL='postgres://...' COLLECT_ADDR=127.0.0.1:4714 node scripts/sdk-e2e/run.mjs unity
+```
+
+Uçtan uca koşu gerçek `services/collect` ile `feralin_purchase`, oyun olayları, `fr_ad_revenue`, `fr_group`, `fr_user_properties` ve `fr_error` olaylarının alındığını, makbuz belirtecinin ve e-postanın outbox'a **sızmadığını**, çevrimdışı olayın yeniden başlatmadan sonra aynı `event_id` ile tek kez teslim edildiğini ve ilk açılışın kurulum başına bir kez sayıldığını `scripts/sdk-e2e/unity_event_check.go` ile veritabanında doğrular.
+
+`Tests/Runtime` altındaki PlayMode testleri Unity Editor içinde `UnityWebRequest`, `FeralinBehaviour`, şifreli kalıcı kuyruk ve hata kancasını sınar; projenin `manifest.json` dosyasında `"testables": ["com.feralin.unity"]` gerekir. Uçtan uca koşuya eklemek için `FERALIN_UNITY_EDITOR=<Unity.exe yolu>` verin. Verilmezse bu adım atlanır.
+
+`package.json` içindeki `2021.3` alt sınırı API kullanımına göre yazıldı, o sürümde koşulmadı.

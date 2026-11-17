@@ -1,0 +1,11 @@
+@PACKAGE_INIT@
+
+include(CMakeFindDependencyMacro)
+find_dependency(Threads)
+if("@FERALIN_TRANSPORT_RESOLVED@" STREQUAL "CURL")
+  find_dependency(CURL)
+endif()
+
+include("${CMAKE_CURRENT_LIST_DIR}/feralinTargets.cmake")
+
+check_required_components(feralin)

@@ -1,0 +1,41 @@
+# Testler bağımlılıksızdır. MinGW'de çalışma zamanı DLL'i PATH'teki başka bir araç zincirinden yüklenmesin diye statik bağlanır.
+set(FERALIN_TEST_LINK_OPTIONS "")
+if(MINGW)
+  set(FERALIN_TEST_LINK_OPTIONS -static)
+endif()
+
+set(FERALIN_TEST_CXX_WARNINGS $<$<OR:$<CXX_COMPILER_ID:GNU>,$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>>:-Wall -Wextra -Wshadow>)
+
+# C API, paylaşımlı kütüphane derlemesinde de sınanır; C++ başlığı yalnız statik bağlamada kullanılır.
+add_executable(feralin_c_tests test_c_api.c)
+set_target_properties(feralin_c_tests PROPERTIES C_STANDARD 99 C_STANDARD_REQUIRED ON C_EXTENSIONS OFF LINKER_LANGUAGE CXX)
+target_compile_options(feralin_c_tests PRIVATE $<$<OR:$<C_COMPILER_ID:GNU>,$<C_COMPILER_ID:Clang>,$<C_COMPILER_ID:AppleClang>>:-Wall -Wextra -Wpedantic -Werror>)
+target_link_libraries(feralin_c_tests PRIVATE feralin)
+target_link_options(feralin_c_tests PRIVATE ${FERALIN_TEST_LINK_OPTIONS})
+add_test(NAME feralin_c_tests COMMAND feralin_c_tests)
+
+if(NOT BUILD_SHARED_LIBS)
+  add_executable(feralin_tests test_client.cpp)
+  target_compile_definitions(feralin_tests PRIVATE FERALIN_SCHEMA_PATH="${CMAKE_CURRENT_SOURCE_DIR}/../../../packages/schemas/utp/v1/event.schema.json")
+  target_compile_options(feralin_tests PRIVATE ${FERALIN_TEST_CXX_WARNINGS})
+  target_link_libraries(feralin_tests PRIVATE feralin Threads::Threads)
+  target_link_options(feralin_tests PRIVATE ${FERALIN_TEST_LINK_OPTIONS})
+  add_test(NAME feralin_tests COMMAND feralin_tests)
+
+  add_executable(feralin_signals_tests test_signals.cpp)
+  target_compile_options(feralin_signals_tests PRIVATE ${FERALIN_TEST_CXX_WARNINGS})
+  target_link_libraries(feralin_signals_tests PRIVATE feralin Threads::Threads)
+  target_link_options(feralin_signals_tests PRIVATE ${FERALIN_TEST_LINK_OPTIONS})
+  add_test(NAME feralin_signals_tests COMMAND feralin_signals_tests)
+
+  if(NOT FERALIN_TRANSPORT_RESOLVED STREQUAL "NONE")
+    add_executable(feralin_transport_tests test_transport.cpp)
+    target_compile_options(feralin_transport_tests PRIVATE ${FERALIN_TEST_CXX_WARNINGS})
+    target_link_libraries(feralin_transport_tests PRIVATE feralin Threads::Threads)
+    if(WIN32)
+      target_link_libraries(feralin_transport_tests PRIVATE ws2_32)
+    endif()
+    target_link_options(feralin_transport_tests PRIVATE ${FERALIN_TEST_LINK_OPTIONS})
+    add_test(NAME feralin_transport_tests COMMAND feralin_transport_tests)
+  endif()
+endif()

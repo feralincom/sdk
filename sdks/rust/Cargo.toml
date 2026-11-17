@@ -1,0 +1,24 @@
+[package]
+name = "feralin"
+version = "0.1.0"
+edition = "2021"
+# ureq 3.5 ve getrandom 0.4 Rust 1.85 ister.
+rust-version = "1.85"
+description = "Feralin UTP v1 istemcisi: izin kapılı olay, bellek içi kuyruk, üstel geri çekilme"
+license = "MIT"
+readme = "README.md"
+keywords = ["analytics", "feralin", "tracking"]
+categories = ["api-bindings"]
+exclude = ["tauri-plugin-feralin/", "target/"]
+
+[dependencies]
+# Bloklayan HTTP istemcisi + rustls. Karar gerekçesi README'de.
+ureq = { version = "3.5", default-features = false, features = ["rustls"] }
+serde_json = "1"
+getrandom = "0.4"
+
+[workspace]
+members = ["tauri-plugin-feralin"]
+# Tauri derlemesi ağırdır ve masaüstü sistem kütüphaneleri ister; kök `cargo test` yalnız çekirdeği derler.
+default-members = ["."]
+resolver = "2"

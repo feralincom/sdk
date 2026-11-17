@@ -1,0 +1,34 @@
+name: feralin_flutter
+description: "Feralin UTP v1 SDK for Flutter: consent-first events, durable offline queue, Play Install Referrer on Android and app-supplied universal links on iOS."
+version: 0.2.0
+homepage: https://feralin.com
+topics:
+  - analytics
+  - attribution
+  - privacy
+
+environment:
+  sdk: ^3.10.0
+  flutter: ">=3.38.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  # Yalnız iOS'ta uygulama destek dizinini bulmak için; Android'de dizin yedekleme dışı olduğundan kanaldan gelir.
+  path_provider: ^2.1.6
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  plugin:
+    platforms:
+      android:
+        package: com.feralin.flutter
+        pluginClass: FeralinFlutterPlugin
+      # iOS'ta yerel kod yalnız kuyruk şifreleme anahtarı (Keychain) içindir; davranışın kalanı Dart'tadır (bkz. README, iOS sınırları).
+      ios:
+        pluginClass: FeralinFlutterPlugin
+        dartPluginClass: FeralinFlutterIos

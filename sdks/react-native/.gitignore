@@ -1,0 +1,6 @@
+dist/
+android/build/
+android/.gradle/
+android/maven-repo/
+android/local.properties
+*.tgz

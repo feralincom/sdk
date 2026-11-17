@@ -1,0 +1,42 @@
+{
+  "name": "@feralin/mcp-server",
+  "version": "0.1.0",
+  "description": "Feralin MCP stdio köprüsü: stdio istemcilerini HTTPS üzerinden Feralin MCP sunucusuna bağlar. Veritabanı ve sır taşımaz, anahtar ortam değişkeninden okunur. Çalışma zamanı bağımlılığı yoktur.",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "feralin-mcp-server": "dist/cli.js"
+  },
+  "main": "./dist/bridge.js",
+  "types": "./dist/bridge.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/bridge.d.ts",
+      "default": "./dist/bridge.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "prepack": "tsc -p tsconfig.json",
+    "lint": "eslint .",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "node --test test/*.test.mjs",
+    "test:e2e": "node scripts/e2e-real-mcp.mjs"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "typescript": "^5.9.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

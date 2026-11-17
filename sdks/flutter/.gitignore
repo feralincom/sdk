@@ -1,0 +1,17 @@
+# Üretilen dosyalar commit edilmez
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+build/
+*.iml
+.gradle/
+.kotlin/
+local.properties
+# Kütüphane paketinde kilit dosyası tutulmaz (pub.dev önerisi); örnek uygulama kendi kilidini tutar
+/pubspec.lock
+# İmzalama anahtarları ve paketler asla commit edilmez
+*.jks
+*.keystore
+*.apk
+*.aab

@@ -1,0 +1,12 @@
+# Gradle ve derleme çıktıları: üretilir, commit edilmez
+.gradle/
+.kotlin/
+build/
+captures/
+local.properties
+*.iml
+# İmzalama anahtarları ve paketler asla commit edilmez
+*.jks
+*.keystore
+*.apk
+*.aab

@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Unity olmadan çekirdek denetimi: Runtime kaynakları Unity'nin API yüzeyi (netstandard2.1) ve dil sürümü (C# 9) ile derlenir.
+       UNITY_5_3_OR_NEWER tanımlı olmadığı için motor dosyaları boş derlenir. -->
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <LangVersion>9.0</LangVersion>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <IsPackable>false</IsPackable>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <AssemblyName>Feralin.Unity</AssemblyName>
+    <RootNamespace>Feralin.Unity</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="..\..\Runtime\**\*.cs" />
+  </ItemGroup>
+</Project>

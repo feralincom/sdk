@@ -1,0 +1,67 @@
+group = "com.feralin.flutter"
+version = "0.2.0"
+
+buildscript {
+    ext.kotlin_version = "2.2.20"
+    repositories {
+        google()
+        mavenCentral()
+    }
+
+    dependencies {
+        classpath("com.android.tools.build:gradle:8.11.1")
+        classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version")
+    }
+}
+
+allprojects {
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+
+apply plugin: "com.android.library"
+apply plugin: "kotlin-android"
+
+android {
+    namespace = "com.feralin.flutter"
+
+    compileSdk = 36
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_11
+        targetCompatibility = JavaVersion.VERSION_11
+    }
+
+    kotlinOptions {
+        jvmTarget = "11"
+    }
+
+    sourceSets {
+        main.java.srcDirs += "src/main/kotlin"
+        test.java.srcDirs += "src/test/kotlin"
+    }
+
+    defaultConfig {
+        // Flutter 3.38 varsayılanı; registerDefaultNetworkCallback de API 24 ister.
+        minSdk = 24
+    }
+
+    testOptions {
+        unitTests.all {
+            testLogging {
+                events "failed", "skipped"
+            }
+        }
+    }
+}
+
+dependencies {
+    // Bu eklenti sdks/android AAR'ına bağlanmaz: pub.dev paketi yayınlanmamış bir Maven koordinatına veya depo
+    // dışı yola dayanamaz. Resmî kütüphane doğrudan kullanılır; neden implementation olduğu sdks/android/feralin
+    // derleme dosyasında açıklanır.
+    implementation("com.android.installreferrer:installreferrer:2.2")
+
+    testImplementation("junit:junit:4.13.2")
+}

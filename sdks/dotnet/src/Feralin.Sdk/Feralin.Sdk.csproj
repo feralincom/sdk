@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFrameworks>net8.0;net9.0</TargetFrameworks>
+    <RootNamespace>Feralin</RootNamespace>
+    <PackageId>Feralin.Sdk</PackageId>
+    <Description>Feralin .NET server SDK: UTP v1 events, consent passthrough, idempotent batches, exponential backoff. No runtime dependencies.</Description>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+  </PropertyGroup>
+  <ItemGroup>
+    <None Include="..\..\README.md" Pack="true" PackagePath="\" />
+    <None Include="..\..\LICENSE" Pack="true" PackagePath="\" />
+    <InternalsVisibleTo Include="Feralin.Sdk.Tests" />
+  </ItemGroup>
+</Project>

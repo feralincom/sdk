@@ -1,0 +1,3 @@
+# Depodaki diğer dillerle aynı geniş satır düzeni; ci-local sdk-rust adımı cargo fmt --check ile denetler.
+max_width = 140
+use_small_heuristics = "Max"

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Feralin Örnek</string>
+    <string name="consent_grant">Yalnız analitiğe izin ver</string>
+    <string name="consent_grant_ad">Analitik ve reklam ölçümüne izin ver</string>
+    <string name="consent_deny">Analitiği reddet</string>
+    <string name="track_event">Deneme olayı gönder</string>
+    <string name="flush_now">Kuyruğu şimdi gönder</string>
+    <string name="consent_pending">bekleniyor</string>
+    <string name="status_format">İzin: %1$s\nReklam ölçümü: %2$s\nKuyruktaki olay: %3$d\nSon gönderim: %4$s</string>
+    <string name="flush_format">HTTP %1$d, kabul %2$d, ret %3$d</string>
+    <string name="flush_none">henüz gönderilmedi</string>
+    <string name="report_error">Yakalanan bir hatayı bildir</string>
+    <string name="freeze_main">Ana iş parçacığını dondur (ANR testi)</string>
+</resources>

@@ -1,0 +1,7 @@
+; Yalnız addons/feralin ve tests dizinini Godot komut satırından çalıştırmak için asgari proje. Oyuna kopyalanan parça addons/feralin'dir.
+config_version=5
+
+[application]
+
+config/name="Feralin Godot SDK"
+config/features=PackedStringArray("4.2")

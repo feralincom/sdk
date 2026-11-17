@@ -1,0 +1,74 @@
+// Feralin React Native Android köprüsü. Çekirdek sdks/android (com.feralin:android) içindedir; burada yalnız köprü vardır.
+// Uygulama içinde derlenirken eklenti sürümlerini ve SDK düzeylerini uygulama belirler; bağımsız derleme settings.gradle ile olur.
+buildscript {
+    if (project == rootProject) {
+        repositories {
+            google()
+            mavenCentral()
+        }
+        dependencies {
+            classpath "com.android.tools.build:gradle:8.13.2"
+            classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:2.2.20"
+        }
+    }
+}
+
+apply plugin: "com.android.library"
+apply plugin: "org.jetbrains.kotlin.android"
+
+def rootExt = { String name, fallback -> rootProject.ext.has(name) ? rootProject.ext.get(name) : fallback }
+def standalone = project == rootProject
+def feralinCoreVersion = "0.1.0"
+
+// Maven Central yayını BLOCKED_EXTERNAL: çekirdek, npm paketiyle gelen yerel depodan çözülür. Çözümlemeyi uygulama modülü
+// yaptığı için depo tüm projelere eklenir; kapsam yalnız com.feralin grubudur.
+def vendorRepo = file("maven-repo")
+if (vendorRepo.exists()) {
+    rootProject.allprojects { p ->
+        p.repositories {
+            maven {
+                url = uri(vendorRepo)
+                content { includeGroup "com.feralin" }
+            }
+        }
+    }
+}
+
+android {
+    namespace "com.feralin.reactnative"
+    compileSdk rootExt("compileSdkVersion", 36)
+
+    defaultConfig {
+        minSdk rootExt("minSdkVersion", 24)
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    kotlinOptions {
+        jvmTarget = "17"
+    }
+
+    testOptions {
+        unitTests.all {
+            testLogging {
+                events "failed", "skipped"
+                exceptionFormat "full"
+            }
+        }
+    }
+}
+
+dependencies {
+    if (standalone) {
+        implementation "com.facebook.react:react-android:0.87.1"
+    } else {
+        // Sürümü uygulamanın React Native Gradle eklentisi belirler.
+        implementation "com.facebook.react:react-android"
+    }
+    implementation "com.feralin:android:$feralinCoreVersion"
+
+    testImplementation "junit:junit:4.13.2"
+}

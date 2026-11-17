@@ -1,0 +1,31 @@
+{
+  "name": "@feralin/react-native",
+  "version": "0.2.0",
+  "description": "Feralin React Native SDK: Android köprüsü sdks/android çekirdeğini kullanır, iOS tarafı BLOCKED_EXTERNAL.",
+  "license": "MIT",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "react-native": "./dist/index.js",
+  "files": [
+    "dist",
+    "android/build.gradle",
+    "android/src/main",
+    "android/maven-repo",
+    "react-native.config.js",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "node ../../node_modules/typescript/bin/tsc -p tsconfig.json",
+    "typecheck": "node ../../node_modules/typescript/bin/tsc -p tsconfig.json --noEmit",
+    "test": "node --test test/*.test.mjs",
+    "prepack": "node scripts/prepack.mjs"
+  },
+  "peerDependencies": {
+    "react-native": ">=0.76.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

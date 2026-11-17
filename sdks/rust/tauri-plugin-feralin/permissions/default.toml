@@ -1,0 +1,11 @@
+"$schema" = "schemas/schema.json"
+
+[default]
+description = "Olay gönderme ve izin güncelleme komutlarına izin verir. Komutlar varsayılan olarak kapalıdır."
+permissions = [
+  "allow-track",
+  "allow-identify",
+  "allow-set-consent",
+  "allow-flush",
+  "allow-status",
+]

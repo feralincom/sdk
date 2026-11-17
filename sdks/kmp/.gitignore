@@ -1,0 +1,8 @@
+.gradle/
+.kotlin/
+build/
+local.properties
+kotlin-js-store/
+examples/e2e-consumer/.gradle/
+examples/e2e-consumer/.kotlin/
+examples/e2e-consumer/build/

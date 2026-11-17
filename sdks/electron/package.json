@@ -1,0 +1,41 @@
+{
+  "name": "@feralin/electron",
+  "version": "0.1.0",
+  "description": "Feralin Node.js SDK için Electron köprüsü: ana süreç, contextIsolation uyumlu preload ve renderer erişimi.",
+  "license": "MIT",
+  "type": "module",
+  "exports": {
+    "./main": {
+      "import": { "types": "./dist/esm/main.d.ts", "default": "./dist/esm/main.js" },
+      "require": { "types": "./dist/cjs/main.d.ts", "default": "./dist/cjs/main.js" }
+    },
+    "./preload": {
+      "import": { "types": "./dist/esm/preload.d.ts", "default": "./dist/esm/preload.js" },
+      "require": { "types": "./dist/cjs/preload.d.ts", "default": "./dist/cjs/preload.js" }
+    },
+    "./renderer": {
+      "import": { "types": "./dist/esm/renderer.d.ts", "default": "./dist/esm/renderer.js" },
+      "require": { "types": "./dist/cjs/renderer.d.ts", "default": "./dist/cjs/renderer.js" }
+    }
+  },
+  "files": ["dist", "README.md", "CHANGELOG.md", "LICENSE"],
+  "sideEffects": false,
+  "engines": { "node": ">=20.0.0" },
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "prepack": "node scripts/build.mjs",
+    "lint": "eslint .",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "node --test test/*.test.mjs",
+    "test:e2e": "node ../../scripts/sdk-e2e/run.mjs electron"
+  },
+  "peerDependencies": {
+    "@feralin/node": "^0.1.0"
+  },
+  "devDependencies": {
+    "@feralin/node": "workspace:*",
+    "@types/node": "^24.0.0",
+    "typescript": "^5.9.0"
+  },
+  "publishConfig": { "access": "public" }
+}

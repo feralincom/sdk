@@ -1,0 +1,19 @@
+# frozen_string_literal: true
+
+require "rake/testtask"
+
+Rake::TestTask.new(:test) do |task|
+  task.libs = %w[lib test]
+  task.pattern = "test/*_test.rb"
+  task.warning = true
+end
+
+namespace :test do
+  # Gerçek rack ve railties ister; ayrı süreçte koşar, çünkü Railtie yalnız Rails önceden yüklüyse devreye girer.
+  desc "Gerçek Rack::Lint ve Rails uygulamasıyla tümleşik test (GEM_HOME içinde railties gerekir)"
+  task :rails do
+    ruby "-Ilib", "test/rails/rails_integration.rb"
+  end
+end
+
+task default: :test

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Feralin Sample</string>
+    <string name="consent_grant">Allow analytics only</string>
+    <string name="consent_grant_ad">Allow analytics and ad measurement</string>
+    <string name="consent_deny">Deny analytics</string>
+    <string name="track_event">Send test event</string>
+    <string name="flush_now">Send queue now</string>
+    <string name="consent_pending">pending</string>
+    <string name="status_format">Consent: %1$s\nAd measurement: %2$s\nQueued events: %3$d\nLast send: %4$s</string>
+    <string name="flush_format">HTTP %1$d, accepted %2$d, rejected %3$d</string>
+    <string name="flush_none">not sent yet</string>
+    <string name="report_error">Report a handled error</string>
+    <string name="freeze_main">Freeze the main thread (ANR test)</string>
+</resources>

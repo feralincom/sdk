@@ -1,0 +1,24 @@
+// Yalnız bağımsız derleme ve birim testi içindir; uygulama içinde bu dosya okunmaz. Çekirdek kaynaktan derlenir.
+pluginManagement {
+    repositories {
+        google()
+        mavenCentral()
+        gradlePluginPortal()
+    }
+}
+
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.PREFER_SETTINGS)
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+
+rootProject.name = "feralin-react-native"
+
+includeBuild("../../android") {
+    dependencySubstitution {
+        substitute(module("com.feralin:android")).using(project(":feralin"))
+    }
+}

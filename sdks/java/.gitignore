@@ -1,0 +1,5 @@
+# Gradle ve derleme çıktıları: üretilir, commit edilmez
+.gradle/
+build/
+*.iml
+.idea/

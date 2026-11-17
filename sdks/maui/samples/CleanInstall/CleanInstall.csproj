@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Yalnız temiz kurulum testi: scripts/sdk-e2e/targets/maui.mjs bu dizini boş klasöre kopyalar, paketleri yerel nupkg'den ekler.
+       Sade net9.0 hedefinde koşar; Android, iOS veya Windows cihazı değildir. -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net9.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <IsPackable>false</IsPackable>
+    <InvariantGlobalization>true</InvariantGlobalization>
+  </PropertyGroup>
+</Project>

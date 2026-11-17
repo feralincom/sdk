@@ -1,0 +1,212 @@
+# Feralin Swift SDK
+
+iOS, iPadOS, macOS, tvOS ve watchOS için UTP v1 istemcisi. `URLSession` ve `actor` kullanır, dış bağımlılığı yoktur. Olaylar `POST /v1/batch` üzerinden gider. Kapsam: izin kapılı olay, sınırlı kuyruk (isteğe bağlı kalıcı), 30 dk otomatik oturum, üstel geri çekilme, Apple attribution çağrıları.
+
+## Durum
+
+| Konu | Durum |
+|---|---|
+| Kod ve testler | **Platformdan bağımsız çekirdek Linux'ta derlendi ve sınandı (17 Kasım 2026, Swift 6.4.2).** Apple'a özgü bloklar (`#if canImport`: Darwin/MachO, AppTrackingTransparency, AdServices, StoreKit, AdAttributionKit, ObjectiveC) ve iOS hedefi hiç derlenmedi: macOS ve Xcode yok. `lifecycle: INTEGRATION_TESTED` |
+| `swift build`, `swift test` | Linux x86_64: derleme uyarısız, 89 XCTest geçti. Darwin'e bağlı testler (TransportTests, dSYM çerçeve yakalama) ve iOS/macOS derlemesi `NOT_RUN` |
+| Gerçek `services/collect` | `node scripts/sdk-e2e/run.mjs ios-swift` Linux'ta geçti: temiz tüketici, outbox 7 satır, ClickHouse'ta 3 olay tam bir kez. Olay platformu Linux'ta `other` gider; iOS cihaz ve simülatör `NOT_RUN` |
+| Gerçek cihaz ve App Store | `BLOCKED_EXTERNAL`: Apple Developer hesabı, yayınlı uygulama, Apple Ads kampanyası |
+| SPM yayını (Git tag) | `BLOCKED_EXTERNAL`: herkese açık Git deposu yok |
+
+Apple'a özgü API imzaları ve sürümleri developer.apple.com belgesinden doğrulandı; derleyiciyle doğrulanmadı. Xcode ile ilk derlemede denenecek riskler aşağıda. İlk Linux derlemesi iki gerçek hata buldu ve düzeltildi: sonlu olmayan sayı (`NaN`) özellik olarak düşmek yerine `null` gidiyordu, testlerde actor çağrıları derlenmiyordu.
+
+## Gereksinimler
+
+Swift 5.9 araç zinciri (Xcode 15+). iOS 14, macOS 11, tvOS 14, watchOS 7.
+
+## Kurulum
+
+Yayın olmadığından bugün yerel yolla:
+
+```swift
+// Package.swift
+.package(path: "../sdks/swift")
+// hedef bağımlılığı
+.product(name: "Feralin", package: "Feralin")
+```
+
+## En kısa örnek
+
+```swift
+import Feralin
+
+let client = try FeralinClient(configuration: .init(
+    projectKey: "pk_live_...",
+    collectURL: "https://collect.example.com",
+    consent: Consent(analytics: kullaniciAnalitikIzniVerdi)
+))
+
+try await client.track("order_completed", properties: ["order_id": "ord_1", "amount": 249.9], userID: "user_42")
+let sonuc = try await client.flush()   // ağ hatasında fırlatmaz, sonuç sonuc.error içinde
+await client.close()
+```
+
+`sk_` ile başlayan gizli anahtar reddedilir. Doğrulama hatası `FeralinError.invalidEvent` fırlatır; teslim hataları uygulamayı düşürmez.
+
+## Kurulumu doğrulama (eşleştirme kodu)
+
+Panelin "Kurulumu doğrula" ekranı tek kullanımlık bir kod üretir. Kod yapılandırmaya verilir; SDK onu süreçte kuyruğa giren ilk olaya `fr_install_code` özelliği olarak ekler ve sunucu bu kurulumu projeye bağlar.
+
+```swift
+let client = try FeralinClient(configuration: .init(
+    projectKey: "pk_live_...",
+    collectURL: "https://collect.example.com",
+    consent: Consent(analytics: true),
+    installCode: "ABCDE-FGHJK"
+))
+```
+
+Kod kişisel veri değildir ve 30 dakika geçerlidir; doğrulamadan sonra yapılandırmadan kaldırılabilir. Biçimi bozuk kod yok sayılır. `analytics` izni yokken olay üretilmediği için kod harcanmaz; doğrulamada düşen olay da kodu harcamaz. Linux'ta XCTest ile sınandı (17 Kasım 2026).
+
+## İzin
+
+SDK kararı saklamaz; kararın sahibi uygulamadır, her açılışta `consent` ile verilir, değişince `setConsent` çağrılır.
+
+- `analytics` yoksa olay üretilmez, `track` `nil` döner. Geri çekilince kuyruk ve saklı kurulum kimliği silinir.
+- `advertising` yoksa `fr_click` çıkarılır; AdServices token'ı alınmaz, devam kodu kullanılmaz, dönüşüm değeri bildirilmez.
+- SDK ATT penceresi göstermez. `requestTrackingAuthorization` ve `NSUserTrackingUsageDescription` uygulamanındır.
+- ATT istemcide zorlanır: `advertising: true` verilse bile `FeralinClient` ATT durumunu `track`, `submitAdServicesToken`, `redeemContinuityCode`, `updateConversionValue` ve `status` çağrılarının her birinde okur.
+
+| ATT durumu | Reklam izni |
+|---|---|
+| `authorized` | Uygulamanın kararı geçerli |
+| `denied`, `restricted`, Apple'ın ileride ekleyeceği bilinmeyen durum | Kapalı |
+| `notDetermined` | Kapalı. Uygulama ATT penceresini gösterene kadar `fr_click` gitmez, token alınmaz, dönüşüm değeri bildirilmez. Pencere sonrası `authorized` olursa yeniden `setConsent` gerekmez |
+| `unavailable` (ATT'nin olmadığı platform, ör. watchOS) | Uygulamanın kararı geçerli |
+
+ATT analitik iznini değiştirmez: `analytics` açıksa olaylar `fr_click` olmadan gider ve `consent.advertising` değeri `false` yazılır. ATT durumunu arayüzde göstermek için `FeralinApple.trackingAuthorizationStatus()`, hesap için `Consent.constrained(by:)` açıktır; SDK'nın doğru çalışması için çağrılmaları gerekmez.
+
+Kurulum kimliği rastgele bir ULID'dir, `UserDefaults` içinde yalnız analitik izni varken tutulur. IDFA, IDFV ve cihaz parmak izi okunmaz, gönderilmez. Normal web → App Store → kurulum yolu için kesin tekil atıf iddia edilmez.
+
+### Gizlilik bildirimi
+
+`Sources/Feralin/Resources/PrivacyInfo.xcprivacy` koda göre şunları beyan eder; App Store Connect etiketi uygulama sahibinindir:
+
+| Tür | Karşılığı | Kimliğe bağlı | Amaç |
+|---|---|---|---|
+| `ProductInteraction` | Olay adı ve özellikleri | Evet: olaylar `anonymous_id` ve varsa `user_id` taşır | Analytics |
+| `UserID` | `user_id` ve kalıcı rastgele kurulum kimliği | Evet | Analytics |
+| `AdvertisingData` | `fr_click`, AdServices token | Evet | Analytics |
+
+Kurulum kimliği donanıma değil, uygulama kurulumuna atanmış rastgele değerdir; IDFA, IDFV okunmadığından `DeviceID` beyan edilmez.
+
+`NSPrivacyTracking` değeri `false`: SDK IDFA okumaz, veri aracısına ve üçüncü taraf alan adına veri göndermez, tek hedefi müşterinin yapılandırdığı toplayıcıdır. `true` değeri izinsiz durumda engellenecek sabit alan adı listesi ister; toplayıcı adresi müşteriye özeldir ve analitik de aynı adrese gider.
+
+Doğrulanamayanlar: Bu sınıflandırma Apple tanımlarından yapılan yorumdur, App Review ile sınanmadı. `fr_click` başka şirketlerin sitelerinden gelen tıklamalarla eşleştiriliyorsa bu kullanım Apple'ın "tracking" tanımına girebilir; bu kararı yalnız kampanya kurgusunu bilen uygulama sahibi verebilir ve gerekiyorsa kendi manifestinde `NSPrivacyTracking` ile kendi alan adını beyan eder. Manifestin Xcode gizlilik raporundaki birleşik çıktısı denenmedi.
+
+## Attribution
+
+Kesin attribution garanti edilmez. Aşağıdaki hiçbir çağrı tek başına atıf kanıtı değildir ve `unknown` geçerli sonuçtur.
+
+```swift
+let client = try FeralinClient(configuration: .init(
+    projectKey: "pk_live_...",
+    collectURL: "https://collect.example.com",
+    consent: Consent(analytics: true, advertising: true),
+    attribution: AttributionConfiguration(apiURL: "https://api.example.com", projectID: "proj_...")
+))
+```
+
+| Yöntem | Ne yapar | Sınır |
+|---|---|---|
+| `submitAdServicesToken()` | `AAAttribution.attributionToken()` alır, `POST {api}/v1/projects/{id}/attribution/apple-adservices/tokens` | iOS 14.3, macOS 11.1; tvOS ve watchOS'ta `notSupported`. Sunucu Apple'a sormaz: yanıt `BLOCKED_EXTERNAL`, karar üretilmez |
+| `installIdentifier()` | Kurulum kimliğini (ADR-0007) döndürür | Reklam ölçümü izni (ATT dâhil) yoksa `nil`. Kimliği kendi sunucunuza iletin; sunucu gizli API anahtarıyla `POST /v1/projects/{id}/attribution/account-links` (`surface=app`, `subject_id=<kimlik>`) çağırır. SDK hesap kimliği yazmaz |
+| `bindInstall()` | AdServices token'ını bu kimlikle gönderir ve `InstallBinding(installID, adServices)` döndürür | Token alınamasa (`notSupported`, `tokenUnavailable`) da `installID` hesap bağı için geçerlidir. Derlenmedi: macOS yok |
+| `redeemContinuityCode(_:)` | `POST {api}/v1/projects/{id}/attribution/continuity-tokens/redeem` | Yalnız kullanıcı kodu girdiğinde çağırın; SDK panoyu okumaz. Sonuç eşleşen ilk açılıştır, indirme sayısı değildir. Sözleşmede macOS, tvOS, watchOS değeri yok: `notSupported` |
+| `updateConversionValue(fine:coarse:lock:frameworks:)` | SKAdNetwork (iOS 16.1) ve AdAttributionKit (iOS 17.4) | `called` yalnız çağrının hatasız döndüğünü söyler; bekleyen postback yoksa sistem çağrıyı yok sayar |
+
+Attribution uçlarında proje anahtarı `Authorization: Bearer` ile gider, `X-Feralin-Project-Key` yalnız toplayıcıdadır. Token saklanmaz ve loglanmaz.
+
+## Kalıcı kuyruk ve oturum
+
+`storageDirectory` verilirse kuyruk diskte de tutulur; uygulama kapanınca ya da çökünce gönderilmemiş olaylar bir sonraki açılışta geri yüklenir. Verilmezse kuyruk yalnız bellektedir (eski davranış). Dizin tek bir istemciye aittir.
+
+```swift
+let client = try FeralinClient(configuration: .init(
+    projectKey: "pk_live_...",
+    collectURL: "https://collect.example.com",
+    consent: Consent(analytics: kullaniciAnalitikIzniVerdi),
+    storageDirectory: FeralinClient.defaultStorageDirectory()   // Application Support/Feralin
+))
+```
+
+- Dosyalar `feralin-queue-v1.json` ve `feralin-session-v1.json`; her yazım atomiktir, iOS/tvOS/watchOS'ta `completeFileProtectionUntilFirstUserAuthentication` ile korunur ve yedekten hariç tutulur. Olay gövdeleri şifreli değildir.
+- Kuyruk her `track` ve her teslim sonucunda yazılır. Olaylar yalnız sunucu 202 döndüğünde (ya da 429 dışı 4xx ile kalıcı reddedildiğinde) silinir; 5xx, 429 ve ağ hatasında diskte kalır ve aynı `event_id` ile yeniden denenir. Sonucu bilinmeyen batch'in sabitlenmesi bellektedir: yeniden başlatmadan sonra batch kuyruk başından yeniden kurulur, olay kimlikleri aynı kalır.
+- Üst sınır `queueLimit` (varsayılan 1000): dolunca en eski olay atılır; geri yüklemede de aynı sınır uygulanır.
+- Dosya bozuksa sessizce sıfırlanır ve boş kuyrukla başlanır; JSON nesnesi olmayan ya da tekrar eden satırlar atılır. İlk kurulumda dosya yoktur, kuyruk boş başlar. Disk yazım hatası uygulamayı düşürmez, bellekteki kuyruk çalışır.
+- Açılışta `consent.analytics` kapalıysa diskteki kuyruk ve oturum silinir, gönderilmez; izin geri çekilince de silinir. Uygulama her açılışta gerçek izin değerini vermelidir.
+- Oturum: olaylara `session_id` otomatik yazılır (`sessionID` açıkça verilirse o geçer). Son etkinlikten `sessionTimeout` (varsayılan 30 dk, Android ve Flutter ile aynı) geçmişse yeni oturum başlar; kontrol `track`, `willEnterForeground()` ve `didEnterBackground()` çağrılarında yapılır. Son etkinlik zamanı diske yazıldığından süreç yeniden başlayınca da kural işler: 30 dk içinde açılırsa oturum sürer. `reset()` yeni oturum başlatır. `willEnterForeground()` ve `didEnterBackground()` uygulamanın yaşam döngüsü bildirimlerinden çağrılır; SDK bildirimlere kendiliğinden abone olmaz.
+
+## Oyun olayları, reklam geliri ve hata (X4)
+
+Sözleşme Android, Flutter, React Native ve Unity ile birebir aynıdır (`packages/schemas/utp/v1/event.schema.json`, `game-events.md`). Sözleşme dışı girdide `nil` döner ve olay üretilmez; istemci kapalıysa `FeralinError.clientClosed` fırlatılır.
+
+```swift
+try await client.trackLevelStart("1-3", attempt: 2)
+try await client.trackLevelComplete("1-3", score: 900, durationMillis: 41_000)
+try await client.trackEconomySource("gold", amount: 50, reason: "quest")   // sanal para, gerçek gelir değil
+try await client.trackAdRevenue(AdRevenueInput(network: "admob", adFormat: .rewarded, revenueMicros: 12_500, currency: "USD"))
+
+try await client.captureError(error, appVersion: "1.2.3")                  // fr_error
+await client.captureUncaughtExceptions(appVersion: "1.2.3")                // yakalanmamış NSException
+```
+
+- **Reklam geliri:** `fr_ad_revenue`, `revenue_micros` para biriminin milyonda biri ve tam sayıdır; satın alma gelirine ve reklam harcamasına karışmaz, istemci beyanıdır, sunucuda ESTIMATED kalır.
+- **Hata:** gider: hata türü adı, temizlenmiş mesaj, normalize çerçeve özeti `fingerprint` (adres, kaydırma ve yol gitmez; sistem modülleri uygulama çerçevesi varsa parmak izine girmez), `top_frame`, `app_version`. Ham yığın izi gitmez. İstemci başına en çok 20 olay, aynı parmak izi için 3; `configureErrorCapture(sampleRate:)` örnekleme verir. `captureUncaughtExceptions` yalnız Objective-C `NSException`'ı yakalar ve önceki işleyiciyi çağırmaya devam eder; Swift çalışma zamanı hataları ve sinyal çökmeleri yakalanmaz.
+- **Sembolleştirme (dSYM):** hata olayına uygulama görüntülerine düşen en çok 5 çerçevenin konumu `frames` olarak eklenir: `file` = `<modül>~<uuid>` (modül görüntünün dosya adı, izinsiz karakterler `_`; UUID görüntünün `LC_UUID` değeri, küçük harf ve tiresiz), göreli adres `line` ve `column`'a bölünür (`line = adres / 10.000.000 + 1`, `column = adres % 10.000.000`). Ham bellek adresi, dosya yolu ve işlev adı gitmez; sistem görüntüleri (`/System/`, `/usr/lib/`) atlanır. Sürümün dSYM'sini yükleyin; panel çerçeveyi okuma anında işlev adı, kaynak dosyası ve satıra çözer. Eşleşme UUID iledir: başka derlemenin dSYM'si uygulanmaz. Yükleme `symbols:write` yetkili gizli API anahtarıyla (proje anahtarı yükleyemez); Xcode'da yayın derlemesine **Run Script** adımı olarak (anahtar ortam değişkeninden okunur, dosyaya yazılmaz; `--url-query` curl 7.87+ ister, macOS 14 ve üstünde var):
+
+```bash
+for dwarf in "$DWARF_DSYM_FOLDER_PATH"/*.dSYM/Contents/Resources/DWARF/*; do
+  base64 -i "$dwarf" | curl --fail-with-body -X POST "https://feralin.com/api/v1/projects/$FERALIN_PROJECT_ID/dsyms" \
+    --url-query "module=$(basename "$dwarf")" --url-query "release=$MARKETING_VERSION" \
+    -H "Authorization: Bearer $FERALIN_SYMBOLS_KEY" -H "X-Feralin-Upload: dsym" \
+    -H "Content-Type: text/plain" --data-binary @-
+done
+```
+
+  Bitcode ya da App Store işlemesiyle dSYM değiştiyse App Store Connect'ten indirilen dSYM aynı komutla yüklenir. Çok mimarili (fat) dSYM mimari başına ayrı kayda bölünür. Dosya en çok 48 MiB, varsayılan 90 gün saklanır.
+- **Durum:** `Signals.swift`, `AppleFrames.swift` ve `SignalsTests.swift` yazıldı, macOS'ta DERLENMEDİ ve KOŞULMADI. Sözleşme mantığı Android ve React Native'deki birim testli karşılıklarla aynıdır. Sunucu tarafı (dSYM yükleme, UUID eşleşmesi, `llvm-symbolizer` çözümü) gerçek arm64 dSYM ile sınandı (`services/saas-api/test/fixtures/feralin-dsym-fixture.c`, Mac olmadan NDK LLVM araçlarıyla üretildi); SDK'nın cihazda ürettiği çerçeve sınanmadı.
+
+## Ağ
+
+`URLSessionTransport` yönlendirme izlemez, proje anahtarı başka adrese taşınmaz; 3xx kalıcı olmayan hata sayılır, olaylar kuyrukta kalır. Yanıt gövdesi indirme sırasında 64 KB ile kesilir. `URLSessionTransport(session:)` verilen oturumun yalnız yapılandırmasını kullanır, o oturumun delegesi çağrılmaz; özel ağ yığını için `Transport` uygulanır.
+
+## Desteklenmeyenler
+
+- Kuyruk şifreli değildir; `storageDirectory` verilmezse bellektedir ve süreç ölünce kaybolur. Kalıcı kuyruk ve oturum kodu yazıldı, derlenmedi ve koşmadı.
+- `page`, `screen`, `trackRevenue`, StoreKit makbuzu, Universal Links işleme, OTel yok. Hata, oyun ve reklam geliri yöntemleri vardır (aşağıda).
+- Tel `platform` değeri iOS ve visionOS'ta `ios`, macOS, tvOS, watchOS'ta `other`: UTP şemasında ayrı değer yok.
+- Yaşam döngüsü bildirimleri otomatik izlenmez; `willEnterForeground()` ve `didEnterBackground()` çağırmak, arka plana geçerken `flush()` çağırmak uygulamanındır.
+
+## Kimlik yöntemleri (UTP §8.2)
+
+```swift
+await client.setGlobalProperties(["app_release": .string("2.4.0")])          // fr_ ile başlamayan her olaya eklenir
+try await client.setUserProperties(["plan": .string("pro"), "seats": .int(12)]) // fr_user_properties
+try await client.group("acme-team", traits: ["plan": .string("team")])          // fr_group
+await client.clearGlobalProperties()
+```
+
+Kurallar diğer SDK'larla ve toplayıcıyla aynıdır (`Profile.swift`): anahtar `^[a-zA-Z][a-zA-Z0-9_]{0,63}$`, çağrı başına en çok 50 özellik, değer dizge (≤256 karakter, e-posta biçimi değil), sonlu sayı ya da mantıksal; kişisel veriye benzeyen anahtar ve `verified` gibi doğrulama alanları düşer; `group_id` 1-128 karakter, `@` ve kontrol karakteri içermez; global özellikte `.null` anahtarı siler, toplam en çok 50 anahtar, `reset()` globalleri de siler. Kod ve `ProfileTests.swift` macOS, Xcode ve `swift` olmadan yazıldı: **derlenmedi, testler koşmadı** (`NOT_RUN`, Mac M1 gerekir).
+
+## Geliştirme
+
+macOS ya da Swift araç zincirli Linux üzerinde:
+
+```bash
+cd sdks/swift
+swift build
+swift test
+DATABASE_URL='postgres://KULLANICI:PAROLA@127.0.0.1:5432/TEST_VERITABANI?sslmode=disable' node ../../scripts/sdk-e2e/run.mjs ios-swift
+```
+
+İlk derlemede bakılacak riskler (doğrulanamadı):
+
+1. iOS 14.0-14.2'de açılış: AdServices 14.3 ile gelir. Tüm sembolleri yeni sürüm erişimli olduğundan bağlayıcının çerçeveyi zayıf bağlaması beklenir; gerçek cihaz ya da simülatörde denenmeli.
+2. `AdAttributionKit` için Xcode 15.3 ve üstü gerekir; eski SDK'da `canImport` yanlış döner ve `notSupported` çalışır.
+3. Linux'ta `FoundationNetworking` ile derlenmesi amaçlandı, denenmedi.
+4. `FeralinApple.adServicesToken` ve `updateConversionValue` `@usableFromInline` oldu; `FeralinClient.init` varsayılan bağımsız değişkenlerinin bunlara başvurması derleyiciyle doğrulanmadı.

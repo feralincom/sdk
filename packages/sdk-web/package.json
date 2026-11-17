@@ -1,0 +1,50 @@
+{
+  "name": "@feralin/web",
+  "version": "0.1.0",
+  "description": "Feralin Web SDK — UTP v1 istemcisi (page_view, track, identify, consent, offline kuyruk, idempotent batch)",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/feralin.cjs",
+  "module": "./dist/feralin.mjs",
+  "types": "./dist/index.d.ts",
+  "browser": "./dist/feralin.iife.js",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/feralin.mjs",
+      "require": "./dist/feralin.cjs",
+      "default": "./dist/feralin.mjs"
+    },
+    "./snippet": "./dist/feralin.iife.js",
+    "./replay": { "types": "./dist/replay.d.ts", "import": "./dist/feralin-replay.mjs", "default": "./dist/feralin-replay.mjs" },
+    "./replay/snippet": "./dist/feralin-replay.iife.js",
+    "./flags": { "types": "./dist/flags.d.ts", "import": "./dist/feralin-flags.mjs", "default": "./dist/feralin-flags.mjs" },
+    "./flags/snippet": "./dist/feralin-flags.iife.js",
+    "./auto": { "types": "./dist/auto.d.ts", "import": "./dist/feralin-auto.mjs", "default": "./dist/feralin-auto.mjs" },
+    "./auto/snippet": "./dist/feralin-auto.iife.js",
+    "./errors": { "types": "./dist/errors.d.ts", "import": "./dist/feralin-errors.mjs", "default": "./dist/feralin-errors.mjs" },
+    "./errors/snippet": "./dist/feralin-errors.iife.js",
+    "./vitals": { "types": "./dist/vitals.d.ts", "import": "./dist/feralin-vitals.mjs", "default": "./dist/feralin-vitals.mjs" },
+    "./vitals/snippet": "./dist/feralin-vitals.iife.js"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "sideEffects": false,
+  "scripts": {
+    "build": "node scripts/build.mjs && tsc -p tsconfig.json --emitDeclarationOnly",
+    "test": "node --test",
+    "lint": "eslint .",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.0",
+    "typescript": "^5.9.0",
+    "ajv": "^8.17.1",
+    "ajv-formats": "^3.0.1"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

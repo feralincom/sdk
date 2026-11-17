@@ -1,0 +1,24 @@
+{
+	"FileVersion": 3,
+	"Version": 1,
+	"VersionName": "0.2.0",
+	"FriendlyName": "Feralin",
+	"Description": "Feralin UTP v1 olay gönderimi: izin öncelikli, kalıcı şifreli kuyruk, gelir ve reklam geliri, oyun olayları, hata yakalama, atıf, FHttpModule.",
+	"Category": "Analytics",
+	"CreatedBy": "Feralin",
+	"CreatedByURL": "https://feralin.com",
+	"DocsURL": "",
+	"MarketplaceURL": "",
+	"SupportURL": "",
+	"CanContainContent": false,
+	"IsBetaVersion": true,
+	"IsExperimentalVersion": true,
+	"Installed": false,
+	"Modules": [
+		{
+			"Name": "Feralin",
+			"Type": "Runtime",
+			"LoadingPhase": "Default"
+		}
+	]
+}

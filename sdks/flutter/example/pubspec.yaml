@@ -1,0 +1,21 @@
+name: feralin_flutter_example
+description: "Feralin Flutter SDK örnek uygulaması: izin, olay, gönderim ve durum."
+publish_to: "none"
+version: 0.1.0+1
+
+environment:
+  sdk: ^3.10.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+  feralin_flutter:
+    path: ../
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true

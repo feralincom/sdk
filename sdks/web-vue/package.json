@@ -1,0 +1,40 @@
+{
+  "name": "@feralin/vue",
+  "version": "0.1.0",
+  "description": "Feralin Web SDK için Vue 3 bağdaştırıcısı: plugin ve composable. SSR ve Nuxt uyumlu.",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/cjs/index.js",
+  "module": "./dist/esm/index.js",
+  "types": "./dist/esm/index.d.ts",
+  "exports": {
+    ".": {
+      "import": { "types": "./dist/esm/index.d.ts", "default": "./dist/esm/index.js" },
+      "require": { "types": "./dist/cjs/index.d.ts", "default": "./dist/cjs/index.js" }
+    }
+  },
+  "files": ["dist", "README.md", "CHANGELOG.md", "LICENSE"],
+  "sideEffects": false,
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "prepack": "node scripts/build.mjs",
+    "lint": "eslint .",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "test:e2e": "node ../../scripts/sdk-e2e/run.mjs web-vue"
+  },
+  "peerDependencies": {
+    "@feralin/web": "^0.1.0",
+    "vue": "^3.3.0"
+  },
+  "devDependencies": {
+    "@feralin/web": "workspace:*",
+    "@types/node": "^24.0.0",
+    "jsdom": "^30.1.3",
+    "typescript": "^5.9.0",
+    "vitest": "^5.1.0",
+    "vue": "^3.5.0",
+    "vue-router": "^4.5.0"
+  },
+  "publishConfig": { "access": "public" }
+}

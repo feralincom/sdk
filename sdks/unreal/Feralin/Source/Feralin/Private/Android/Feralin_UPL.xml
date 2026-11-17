@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Unreal Plugin Language: Android köprüsünü gradle projesine ekler ve Play Install Referrer bağımlılığını bildirir.
+     Bu dosya UBT ile hiç işlenmedi (bu makinede Unreal yok). -->
+<root xmlns:android="http://schemas.android.com/apk/res/android">
+  <prebuildCopies>
+    <copyFile src="$S(PluginDir)/Private/Android/FeralinAndroid.java" dst="$S(BuildDir)/src/com/feralin/unreal/FeralinAndroid.java" />
+  </prebuildCopies>
+  <buildGradleAdditions>
+    <insert>
+dependencies {
+    implementation 'com.android.installreferrer:installreferrer:2.2'
+}
+    </insert>
+  </buildGradleAdditions>
+  <proguardAdditions>
+    <insert>
+-keep class com.feralin.unreal.FeralinAndroid { *; }
+-keep class com.android.installreferrer.api.** { *; }
+    </insert>
+  </proguardAdditions>
+</root>
