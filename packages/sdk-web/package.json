@@ -25,7 +25,9 @@
     "./errors": { "types": "./dist/errors.d.ts", "import": "./dist/feralin-errors.mjs", "default": "./dist/feralin-errors.mjs" },
     "./errors/snippet": "./dist/feralin-errors.iife.js",
     "./vitals": { "types": "./dist/vitals.d.ts", "import": "./dist/feralin-vitals.mjs", "default": "./dist/feralin-vitals.mjs" },
-    "./vitals/snippet": "./dist/feralin-vitals.iife.js"
+    "./vitals/snippet": "./dist/feralin-vitals.iife.js",
+    "./smart": { "types": "./dist/smart.d.ts", "import": "./dist/feralin-smart.mjs", "default": "./dist/feralin-smart.mjs" },
+    "./smart/snippet": "./dist/feralin-smart.iife.js"
   },
   "files": [
     "dist",

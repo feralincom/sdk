@@ -56,15 +56,16 @@ namespace Feralin.Unity
         /// <summary>
         /// Uygulama bağlantısını işler (<c>Application.deepLinkActivated</c>). Yalnız http(s) bağlantılar kanıt sayılır; sorgudan yalnız
         /// <c>fr_click</c>, <c>fr_dl</c> ve standart <c>utm_*</c> okunur, ham URL saklanmaz. Reklam izni yoksa olay kanıtsız (<c>none</c>) gider.
-        /// İzin kararı verilmeden gelen bağlantı bellekte bekletilir.
+        /// İzin kararı verilmeden gelen bağlantı bellekte bekletilir. Fera Fly kısa linki (<see cref="FeralinOptions.ShortLinkHosts"/>) önce
+        /// yönlendiriciden çözümlenir; çözülen yolu <see cref="LastShortLink"/> verir.
         /// </summary>
         public void HandleDeepLink(string url)
         {
-            var link = DeepLink.Parse(url);
-            if (link == null)
-            {
-                return;
-            }
+            HandleLink(url, null);
+        }
+
+        private void AcceptLink(DeepLink link)
+        {
             var at = _now();
             lock (_gate)
             {
@@ -436,11 +437,12 @@ namespace Feralin.Unity
                 advertising = EffectiveAdvertising(_consent);
                 link = _linkEvidence;
             }
-            var referrer = advertising && raw != null ? AttributionParams.ParseQuery(raw) : null;
+            // Mağaza zinciri: Play kanıt vermezse AppGallery okunur. İzin yoksa hiçbiri okunmaz.
+            var referrer = advertising ? StoreReferrerChain.Resolve(raw, _huaweiReferrerSource) : null;
             var props = new Dictionary<string, object>(StringComparer.Ordinal);
             if (advertising && referrer != null && !referrer.IsEmpty && !referrer.IsPlayOrganicDefault)
             {
-                props["attribution_source"] = AttributionSource.PlayInstallReferrer;
+                props["attribution_source"] = referrer.Source;
                 referrer.WriteTo(props);
             }
             else if (advertising && link != null)
@@ -451,6 +453,54 @@ namespace Feralin.Unity
             else
             {
                 props["attribution_source"] = AttributionSource.None;
+            }
+            if (advertising && _metaAppId != null && _metaReferrerSource != null)
+            {
+                // Meta reklamından gelen kurulumun şifreli kampanya verisi; sunucu projenin anahtarıyla çözer, burada açılmaz.
+                try
+                {
+                    var meta = _metaReferrerSource.Read(_metaAppId);
+                    if (!string.IsNullOrEmpty(meta) && meta.Length <= 8192)
+                    {
+                        props["meta_install_referrer"] = meta;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Warn("meta referrer okunamadı: " + ex.GetType().Name);
+                }
+            }
+            if (_installStoreSource != null)
+            {
+                // Kurulum mağazası kişisel veri ya da atıf kanıtı değildir: reklam izninden bağımsız eklenir. Okuma hatası ilk açılışı
+                // durdurmaz; kapalı listede olmayan değer (ör. paket adı) olaya yazılmaz.
+                try
+                {
+                    var store = _installStoreSource.Read();
+                    if (InstallStore.IsKnown(store))
+                    {
+                        props[InstallStore.PropertyName] = store;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Warn("kurulum mağazası okunamadı: " + ex.GetType().Name);
+                }
+            }
+            if (_emulatorSource != null)
+            {
+                // Emülatör işareti yalnız true ise eklenir; cihaz kimliği değildir. Okuma hatası ilk açılışı durdurmaz.
+                try
+                {
+                    if (_emulatorSource.Read())
+                    {
+                        props[EmulatorCheck.PropertyName] = true;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Warn("emülatör denetimi yapılamadı: " + ex.GetType().Name);
+                }
             }
             var tracked = TrackWithPage(FirstOpenEventName, props, new TrackOptions { OccurredAt = at }, null);
             if (tracked == null)
@@ -490,7 +540,7 @@ namespace Feralin.Unity
                     return;
                 }
             }
-            var referrer = raw == null ? null : AttributionParams.ParseQuery(raw);
+            var referrer = StoreReferrerChain.Resolve(raw, _huaweiReferrerSource);
             if (referrer == null || referrer.IsEmpty || referrer.IsPlayOrganicDefault)
             {
                 StoreCall(() => _store.PutMarker(MarkerReferrerChecked, "1"));
@@ -498,7 +548,7 @@ namespace Feralin.Unity
             }
             var props = new Dictionary<string, object>(StringComparer.Ordinal)
             {
-                ["attribution_source"] = AttributionSource.PlayInstallReferrer,
+                ["attribution_source"] = referrer.Source,
                 ["consent_followup"] = true,
             };
             string firstOpenAt = null;

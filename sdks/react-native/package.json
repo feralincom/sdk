@@ -1,6 +1,6 @@
 {
   "name": "@feralin/react-native",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Feralin React Native SDK: Android köprüsü sdks/android çekirdeğini kullanır, iOS tarafı BLOCKED_EXTERNAL.",
   "license": "MIT",
   "main": "./dist/index.js",

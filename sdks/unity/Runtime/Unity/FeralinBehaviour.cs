@@ -41,7 +41,7 @@ namespace Feralin.Unity
         [SerializeField, Tooltip("Public proje anahtarı (pk_…). Gizli anahtar (sk_) reddedilir.")]
         private string projectKey = "";
 
-        [SerializeField, Tooltip("Toplayıcı kökü, ör. https://collect.feralin.com")]
+        [SerializeField, Tooltip("Toplayıcı kökü, ör. https://feralin.com/collect")]
         private string collectUrl = "";
 
         [SerializeField, Min(0f), Tooltip("Otomatik gönderim aralığı (saniye); 0 kapatır.")]
@@ -67,6 +67,15 @@ namespace Feralin.Unity
 
         [SerializeField, Tooltip("İlk açılış (app_first_open), Android Play Install Referrer ve uygulama bağlantısı (deep_link_opened) atfı.")]
         private bool autoAttribution = true;
+
+        [SerializeField, Tooltip("Facebook uygulama kimliği (Meta App ID). Android'de Meta reklamından gelen kurulumun kampanyası okunur (Meta Install Referrer).")]
+        private string metaAppId = "";
+
+        [SerializeField, Tooltip("SDK imza anahtarı kimliği (sgn_…). Değerle birlikte verilirse ilk açılış ve bağlantı açılışı olayları imzalanır (fr_sig).")]
+        private string signingKeyId = "";
+
+        [SerializeField, Tooltip("SDK imza anahtarı değeri (fsk_…). Uygulamaya gömülür; sürüm başına ayrı anahtar üretip eskisini panelden iptal edebilirsiniz.")]
+        private string signingKeySecret = "";
 
         [SerializeField, Tooltip("Attribution API kökü (BindInstall için), ör. https://api.feralin.com. Boşsa BindInstall not_configured döner.")]
         private string apiUrl = "";
@@ -99,7 +108,7 @@ namespace Feralin.Unity
         /// Koddan kurulum: sahneler arası kalıcı bir GameObject oluşturur. Zaten etkin bir bileşen varsa onu döndürür.
         /// Geçersiz anahtar veya adres oyunu düşürmez; hata Console'a yazılır, <see cref="Client"/> <c>null</c> kalır.
         /// </summary>
-        public static FeralinBehaviour Initialize(string projectKey, string collectUrl, Consent consent = null, string attributionApiUrl = null, string projectId = null)
+        public static FeralinBehaviour Initialize(string projectKey, string collectUrl, Consent consent = null, string attributionApiUrl = null, string projectId = null, SigningKey signingKey = null)
         {
             if (Instance != null)
             {
@@ -111,6 +120,8 @@ namespace Feralin.Unity
             behaviour.collectUrl = collectUrl;
             behaviour.apiUrl = attributionApiUrl ?? "";
             behaviour.projectId = projectId ?? "";
+            behaviour.signingKeyId = signingKey?.Id ?? "";
+            behaviour.signingKeySecret = signingKey?.Secret ?? "";
             behaviour.Configure(consent);
             return behaviour;
         }
@@ -155,6 +166,16 @@ namespace Feralin.Unity
                     AttributionApiUrl = apiUrl,
                     ProjectId = projectId,
                     TrackingStatusProvider = UnityAttribution.ReadTrackingStatus,
+                    MetaAppId = metaAppId,
+                    MetaReferrerSource = UnityAttribution.CreateMetaReferrerSource(),
+                    InstallStoreSource = UnityAttribution.CreateInstallStoreSource(),
+                    // İki alan da boşsa imza kapalıdır; yalnız biri doluysa kurucu yapılandırma hatası verir.
+                    SigningKey = string.IsNullOrEmpty(signingKeyId) && string.IsNullOrEmpty(signingKeySecret) ? null : new SigningKey(signingKeyId, signingKeySecret),
+                    EmulatorSource = UnityAttribution.CreateEmulatorSource(),
+                    HuaweiReferrerSource = UnityAttribution.CreateHuaweiReferrerSource(),
+                    // Kısa link çözümlemesinde yalnız cihaz sınıfı bildirilir; model ve sürüm gönderilmez.
+                    ShortLinkDevice = Application.platform == RuntimePlatform.IPhonePlayer ? "ios"
+                        : Application.platform == RuntimePlatform.Android ? "android" : "desktop",
                     Errors = new ErrorOptions { SampleRate = errorSampleRate, MaxPerMinute = errorsPerMinute },
                 });
                 if (captureErrors)

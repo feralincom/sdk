@@ -6,6 +6,7 @@ export { SDK_NAME, SDK_VERSION } from "./core";
 export type {
   Consent,
   DeferredDeepLink,
+  ShortLinkOpen,
   FeralinApi,
   FeralinConfig,
   FeralinStatus,

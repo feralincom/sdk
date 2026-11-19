@@ -45,11 +45,14 @@ class FeralinConfig {
     this.queueLimit = 1000,
     this.sessionTimeout = const Duration(minutes: 30),
     this.autoCaptureDeepLinks = true,
+    this.shortLinkHosts = const ['fera.fly'],
     this.appVersion,
     this.appBuild,
     this.attribution,
     this.debug = false,
     this.installCode,
+    this.metaAppId,
+    this.signingKey,
   });
 
   /// Public proje anahtarı; yalnız `x-feralin-project-key` başlığında taşınır.
@@ -76,6 +79,10 @@ class FeralinConfig {
   /// Android'de App Link niyetleri otomatik işlensin mi. iOS'ta yerel kod olmadığından etkisizdir.
   final bool autoCaptureDeepLinks;
 
+  /// Fera Fly kısa link hostları. Bu hostlardan birine (ya da alt alanına, `marka.fera.fly`) ait adresle açılışta SDK linki yönlendiriciden
+  /// çözümler. Markalı alanınız varsa listeye ekleyin.
+  final List<String> shortLinkHosts;
+
   /// Uygulama sürümü. Android'de verilmezse kanaldan okunur; iOS'ta yalnız buradan gelir.
   final String? appVersion;
 
@@ -92,6 +99,15 @@ class FeralinConfig {
   /// üretilen ilk olaya `fr_install_code` olarak eklenir; sunucu kodu olay verisinden söker ve bu kurulumu projeye bağlar.
   /// Kişisel veri değildir, 30 dakika geçerlidir; doğrulamadan sonra kaldırılabilir. Biçimi bozuk kod yok sayılır.
   final String? installCode;
+
+  /// Facebook uygulama kimliği (Meta App ID). Verilirse Android'de Meta reklamından gelen kurulumun kampanya verisi Facebook/Instagram
+  /// uygulamasından okunur (Meta Install Referrer; Facebook SDK gerekmez). Çözme anahtarı panelde projeye girilir, uygulamaya konmaz.
+  final String? metaAppId;
+
+  /// SDK imza anahtarı (panelde Atıf > Dolandırıcılık koruması). Verilirse ilk açılış ve link açılışı olayları imzalanır (`fr_sig`);
+  /// sunucu imzasız ya da bozuk imzalı kurulumu projenin kuralına göre işaretler ya da reddeder. Anahtar uygulamaya gömülüdür:
+  /// sürüm başına ayrı anahtar üretip eskisini panelden iptal edebilirsiniz.
+  final SigningKey? signingKey;
 
   /// Hata mesajı döner; geçerliyse `null`. Mesajda anahtar değeri bulunmaz.
   String? validationError() {
@@ -110,8 +126,31 @@ class FeralinConfig {
             attribution.projectId.trim().isEmpty)) {
       return 'attribution.apiUrl http(s) ve projectId dolu olmalı';
     }
+    return signingKey?.validationError();
+  }
+}
+
+/// SDK imza anahtarı: [id] panelde görünen kimlik (`sgn_…`), [secret] üretildiği anda bir kez gösterilen değer (`fsk_…`).
+class SigningKey {
+  const SigningKey({required this.id, required this.secret});
+
+  static final RegExp _idPattern = RegExp(r'^sgn_[a-z0-9]{12,40}$');
+
+  final String id;
+  final String secret;
+
+  /// Hata mesajı döner; geçerliyse `null`. Mesajda anahtar değeri bulunmaz.
+  String? validationError() {
+    if (!_idPattern.hasMatch(id)) return 'signingKey.id biçimi geçersiz';
+    if (secret.length < 16 || secret.length > 200) {
+      return 'signingKey.secret 16-200 karakter olmalı';
+    }
     return null;
   }
+
+  /// Anahtar değeri loglara ve hata dökümlerine düşmesin.
+  @override
+  String toString() => 'SigningKey(id=$id)';
 }
 
 /// Gönderim sonucu. [status] 0 ise istek yapılmadı veya ağ hatası oluştu.
@@ -177,6 +216,25 @@ enum DeferredDeepLinkStatus {
 
   /// SDK başlatılmadı.
   notInitialized,
+}
+
+/// Kısa linkle açılışın sonucu ([Feralin.handleShortLink]). [destination] dışarıdan gelen veridir: uygulama yolu kendi yönlendirme
+/// tablosuyla eşleştirmeli, doğrudan yetkili bir eylem çalıştırmamalıdır.
+class ShortLinkOpen {
+  const ShortLinkOpen({
+    required this.destination,
+    this.linkCode,
+    this.hasClickId = false,
+  });
+
+  /// Uygulamanın açacağı yol: çözümlenen linkin derin yolu (yoksa `/`), çözümlenemediyse adresin kendi yolu.
+  final String destination;
+
+  /// Kısa kod; çözümleme yapılmadıysa `null`.
+  final String? linkCode;
+
+  /// Tıklama kimliği alındı mı (reklam ölçümü izni yoksa olaya eklenmez).
+  final bool hasClickId;
 }
 
 /// Kurulumdan sonra uygulamaya verilen uygulama içi yol. [path] dışarıdan gelen veridir: Play bağlantısını başkası da

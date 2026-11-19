@@ -4,4 +4,8 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <!-- Ağ geri geldiğinde kuyruğu boşaltmak için; konum veya kimlik bilgisi sağlamaz. -->
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <!-- Huawei AppGallery kurulum yönlendiricisi: AppGallery'nin içerik sağlayıcısını görmek için (Android 11+ paket görünürlüğü). -->
+    <queries>
+        <package android:name="com.huawei.appmarket" />
+    </queries>
 </manifest>

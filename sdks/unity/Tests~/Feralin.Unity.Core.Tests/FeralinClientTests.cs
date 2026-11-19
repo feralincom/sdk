@@ -774,7 +774,7 @@ public class FeralinClientTests
         var status = client.GetStatus();
         Assert.DoesNotContain(Key, status.Endpoint);
         Assert.Equal("feralin-unity", status.Sdk);
-        Assert.Equal("0.2.0", status.Version);
+        Assert.Equal("0.3.0", status.Version);
     }
 
     [Fact]

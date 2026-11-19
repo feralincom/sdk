@@ -1,0 +1,45 @@
+{
+  "name": "@feralin/capacitor",
+  "version": "0.1.0",
+  "description": "Feralin Capacitor eklentisi: Android (sdks/android) ve iOS (sdks/swift) çekirdekleri, tarayıcıda @feralin/web yedeği.",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/esm/index.js",
+  "module": "./dist/esm/index.js",
+  "types": "./dist/esm/index.d.ts",
+  "exports": {
+    ".": { "types": "./dist/esm/index.d.ts", "default": "./dist/esm/index.js" }
+  },
+  "capacitor": {
+    "android": { "src": "android" },
+    "ios": { "src": "ios" }
+  },
+  "files": [
+    "dist",
+    "android/build.gradle",
+    "android/src/main",
+    "android/maven-repo",
+    "ios/Sources",
+    "Package.swift",
+    "FeralinCapacitor.podspec",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "node ../../node_modules/typescript/bin/tsc -p tsconfig.json",
+    "typecheck": "node ../../node_modules/typescript/bin/tsc -p tsconfig.json --noEmit",
+    "test": "node --test test/*.test.mjs",
+    "vendor": "node scripts/vendor.mjs",
+    "prepack": "node scripts/vendor.mjs && node ../../node_modules/typescript/bin/tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@feralin/web": "^0.1.0"
+  },
+  "peerDependencies": {
+    "@capacitor/core": ">=7.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

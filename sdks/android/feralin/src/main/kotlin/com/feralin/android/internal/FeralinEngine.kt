@@ -34,8 +34,24 @@ internal class FeralinEngine(
     private val random: Random = Random.Default,
     private val log: (String) -> Unit = {},
     private val sdkVersion: String = SDK_VERSION_FALLBACK,
+    /** Meta Install Referrer zarfı (Facebook/Instagram uygulaması); yalnız reklam ölçümü izniyle, ilk açılışta bir kez okunur. */
+    private val metaReferrer: () -> String? = { null },
+    /** Kurulum mağazası (Play, Galaxy Store, AppGallery, Amazon…); ilk açılışta bir kez okunur, kişisel veri değildir. */
+    private val installStore: () -> String? = { null },
+    /** Emülatör bildirimi; yalnız `true` ise ilk açılışa eklenir (evet/hayır, cihaz kimliği değildir). */
+    private val emulator: () -> Boolean = { false },
+    /** Root bildirimi; yalnız `true` ise ilk açılışa eklenir (evet/hayır, cihaz kimliği değildir). */
+    private val rooted: () -> Boolean = { false },
+    /** İşletim sistemi sürümü (ör. `14`); ilk açılışa eklenir. Reklam ağına uygulama olayı gönderiminde gerekir; cihaz kimliği değildir. */
+    private val osVersion: () -> String? = { null },
+    /** Google reklam kimliği; yalnız `collectAdvertisingId` açıksa ve reklam izni verildiyse ilk açılışta bir kez okunur. */
+    private val advertisingId: () -> String? = { null },
 ) {
-    @Volatile private var consent: Consent? = config.consent
+    // Uygulamanın verdiği karar olduğu gibi saklanır; `consent` çocuk kipi ve izin süresi uygulanmış, kullanılan değerdir.
+    @Volatile private var rawConsent: Consent? = config.consent
+    @Volatile private var lastPushToken: String? = null
+    @Volatile private var consent: Consent? = config.consent?.let(::childSafe)
+    @Volatile private var adConsentExpired = false
     @Volatile private var queuedSnapshot = 0
     @Volatile private var anonymousId: String? = null
     @Volatile private var sessionId: String? = null
@@ -84,21 +100,53 @@ internal class FeralinEngine(
     /** Attribution kanıtı (fr_click, utm_*, referrer okuma) yalnız açık reklam ölçümü izniyle kullanılır. */
     private val advertisingAllowed: Boolean get() = consent?.let { it.analytics && it.advertising == true } == true
 
+    /** Çocuklara yönelik uygulamada reklam ölçümü ve kişiselleştirme izni her zaman kapalıdır (COPPA). */
+    private fun childSafe(value: Consent): Consent = if (config.childDirected) value.copy(advertising = false, personalization = false) else value
+
+    /**
+     * İzin süresi: reklam izninin verildiği an bir kez yazılır (uygulama her açılışta aynı izni yeniden verse de sıfırlanmaz). Süre dolmuşsa
+     * izin "verilmemiş" (null) sayılır; `confirmAdvertisingConsent` zamanı yeniler. Durum iş parçacığında çağrılır.
+     */
+    private fun aged(value: Consent): Consent {
+        if (!value.analytics || value.advertising != true) {
+            if (value.advertising == false || !value.analytics) store.remove(KEY_AD_CONSENT_AT)
+            adConsentExpired = false
+            consent = value
+            return value
+        }
+        val now = clock()
+        val grantedAt = store.get(KEY_AD_CONSENT_AT)?.toLongOrNull() ?: now.also { store.put(KEY_AD_CONSENT_AT, it.toString()) }
+        val maxDays = config.consentMaxAgeDays
+        adConsentExpired = maxDays != null && now - grantedAt > maxDays * MS_PER_DAY
+        val result = if (adConsentExpired) value.copy(advertising = null) else value
+        consent = result
+        return result
+    }
+
+    /** Kullanıcı reklam ölçümü iznini yeniden onayladı: izin zamanı yenilenir ve uygulamanın son kararı yeniden uygulanır. */
+    fun confirmAdvertisingConsent() = state.execute {
+        val value = rawConsent?.let(::childSafe) ?: return@execute
+        if (value.analytics && value.advertising == true) store.put(KEY_AD_CONSENT_AT, clock().toString())
+        applyConsent(aged(value))
+    }
+
     fun start() = state.execute {
         store = storeProvider()
         anonymousId = store.get(KEY_ANONYMOUS_ID) ?: Ulid.next(clock())
         installId = store.get(KEY_INSTALL_ID)
         sessionId = Ulid.next(clock())
         queuedSnapshot = store.size()
-        consent?.let(::applyConsent)
+        consent?.let { applyConsent(aged(it)) }
     }
 
     /** İzin kararı. Ret: kuyruk ve depodaki kimlik silinir. Onay: kimlik yazılır, bekleyen olaylar serbest kalır. */
     fun setConsent(value: Consent) {
-        consent = value
+        rawConsent = value
+        val safe = childSafe(value)
+        consent = safe
         // Silme durum sırasında yapılır; getStatus ret anından itibaren doğru görünür.
-        if (!value.analytics) queuedSnapshot = 0
-        state.execute { applyConsent(value) }
+        if (!safe.analytics) queuedSnapshot = 0
+        state.execute { applyConsent(aged(safe)) }
     }
 
     private fun applyConsent(value: Consent) {
@@ -309,6 +357,29 @@ internal class FeralinEngine(
         return track(EVENT_GROUP, props)
     }
 
+    /**
+     * Push belirteci (kaldırma ölçümü, saas-api 0180): `fr_push_token` olayı. Sunucu belirteci olay deposuna yazmaz; panelde kaldırma
+     * ölçümü açıksa günde en çok bir kez içeriksiz bildirim gönderir. Aynı belirteç bu süreçte ikinci kez bildirilmez. Biçimi bozuk
+     * belirteç olay üretmez (`null`).
+     */
+    fun setPushToken(token: String): String? {
+        val value = token.trim()
+        if (value.length !in 20..4096 || !PUSH_TOKEN_PATTERN.matches(value)) {
+            log("fr_push_token: geçersiz belirteç, olay üretilmedi")
+            return null
+        }
+        if (value == lastPushToken) return null
+        val id = track(EVENT_PUSH_TOKEN, mapOf(PROP_PUSH_TOKEN to value))
+        if (id != null) lastPushToken = value
+        return id
+    }
+
+    /** Push bildirimi açılışı (madde 15): [PushOpen] alanlarıyla `fr_push_open`; kaldırma ölçümü bildirimi açılış sayılmaz (`null`). */
+    fun trackPushOpen(data: Map<String, String>): String? {
+        val props = PushOpen.properties(data) ?: return null
+        return track(PushOpen.EVENT, props)
+    }
+
     /** Kullanıcı özellikleri: `fr_user_properties`, [ProfileRules] ile süzülür. Geçerli özellik yoksa olay üretilmez (`null`). */
     fun setUserProperties(properties: Map<String, Any?>?): String? {
         val (clean, dropped) = ProfileRules.sanitize(properties)
@@ -398,8 +469,26 @@ internal class FeralinEngine(
     }
 
     /** Derin bağlantı URL'ini işler. Ham URL saklanmaz; izin beklenirken temizlenmiş hali yalnız bellekte tutulur. */
-    fun handleLink(url: String?) = state.execute {
-        val link = DeepLink.parse(url) ?: return@execute
+    fun handleLink(url: String?) = handleLink(url, null)
+
+    /** [onResult] durum iş parçacığında çağrılır: çözümlenen kısa link ya da (kısa link değilse, çözülemediyse, izin yoksa) `null`. */
+    fun handleLink(url: String?, onResult: ((ResolvedShortLink?) -> Unit)?) = state.execute {
+        val link = DeepLink.parse(url)
+        if (link == null) {
+            onResult?.invoke(null)
+            return@execute
+        }
+        // Fera Fly kısa linki (App Link doğrudan açıldı, yönlendirici atlandı): önce yönlendiriciden çözümlenir. Adreste zaten tıklama kimliği
+        // varsa (yönlendiriciden geçmiş) çözümleme gerekmez. Analitik izni yoksa istek de yapılmaz.
+        if (consent?.analytics == true && link.params.frClick == null && ShortLinks.isShortLink(url, config.shortLinkHosts)) {
+            resolveShortLink(url!!, link, onResult)
+            return@execute
+        }
+        acceptLink(link)
+        onResult?.invoke(null)
+    }
+
+    private fun acceptLink(link: DeepLink) {
         val at = clock()
         val current = consent
         when {
@@ -407,6 +496,30 @@ internal class FeralinEngine(
             current.analytics -> emitDeepLink(link, at)
         }
     }
+
+    /** Kısa linki ağ iş parçacığında çözümler; sonuç (ya da hata hâlinde linkin kendisi) durum iş parçacığında olaylaştırılır. */
+    private fun resolveShortLink(url: String, link: DeepLink, onResult: ((ResolvedShortLink?) -> Unit)?) {
+        val headers = ShortLinks.headers(osVersion(), advertisingAllowed)
+        net.execute {
+            val resolved = try {
+                transport.get(url, headers).takeIf { it.status == 200 }?.let { ShortLinks.parse(it.body) }
+            } catch (_: IOException) {
+                null
+            } catch (_: RuntimeException) {
+                null
+            }
+            state.execute {
+                lastShortLink = resolved
+                val effective = resolved?.let { ShortLinks.syntheticUrl(url, it) }?.let(DeepLink::parse) ?: link
+                acceptLink(effective)
+                onResult?.invoke(resolved)
+            }
+        }
+    }
+
+    /** Son çözümlenen kısa link (uygulama yönlendirmesi için `Feralin.lastShortLink`); bellekte tutulur, diske yazılmaz. */
+    @Volatile var lastShortLink: ResolvedShortLink? = null
+        private set
 
     private fun emitDeepLink(link: DeepLink, at: Long) {
         val props = LinkedHashMap<String, Any?>()
@@ -478,7 +591,7 @@ internal class FeralinEngine(
         val allowed = advertisingAllowed
         when {
             allowed && params != null && !params.isEmpty && !params.isPlayOrganicDefault -> {
-                props[PROP_SOURCE] = AttributionSource.PLAY_INSTALL_REFERRER
+                props[PROP_SOURCE] = params.source
                 params.writeTo(props)
             }
             allowed && link != null -> {
@@ -486,6 +599,54 @@ internal class FeralinEngine(
                 link.writeTo(props)
             }
             else -> props[PROP_SOURCE] = AttributionSource.NONE
+        }
+        // Kurulum mağazası izinden bağımsızdır: cihaz ya da kişi kimliği değil, uygulamanın hangi mağazadan kurulduğudur.
+        val store = try {
+            installStore()
+        } catch (t: Throwable) {
+            log("kurulum mağazası okunamadı: ${t.javaClass.simpleName}")
+            null
+        }
+        store?.let { props[PROP_INSTALL_STORE] = it }
+        val emulated = try {
+            emulator()
+        } catch (t: Throwable) {
+            log("emülatör denetimi yapılamadı: ${t.javaClass.simpleName}")
+            false
+        }
+        if (emulated) props[EmulatorCheck.PROPERTY] = true
+        val isRooted = try {
+            rooted()
+        } catch (t: Throwable) {
+            log("root denetimi yapılamadı: ${t.javaClass.simpleName}")
+            false
+        }
+        if (isRooted) props[RootCheck.PROPERTY] = true
+        val os = try {
+            osVersion()
+        } catch (t: Throwable) {
+            null
+        }
+        if (os != null && OS_VERSION_PATTERN.matches(os)) props[PROP_OS_VERSION] = os
+        if (allowed) {
+            // Meta reklamından gelen kurulumun şifreli kampanya verisi; sunucu projenin anahtarıyla çözer, burada açılmaz.
+            val meta = try {
+                metaReferrer()
+            } catch (t: Throwable) {
+                log("meta referrer okunamadı: ${t.javaClass.simpleName}")
+                null
+            }
+            meta?.let { props[PROP_META_REFERRER] = it }
+            // İsteğe bağlı reklam kimliği: varsayılan kapalı; çocuklara yönelik uygulamada hiçbir koşulda okunmaz.
+            if (config.collectAdvertisingId && !config.childDirected) {
+                val adId = try {
+                    advertisingId()
+                } catch (t: Throwable) {
+                    log("reklam kimliği okunamadı: ${t.javaClass.simpleName}")
+                    null
+                }
+                adId?.let { props[AdvertisingIdSource.PROPERTY] = it }
+            }
         }
         val id = Ulid.next(at)
         val markers = LinkedHashMap<String, String>()
@@ -529,7 +690,7 @@ internal class FeralinEngine(
         }
         val at = clock()
         val props = LinkedHashMap<String, Any?>()
-        props[PROP_SOURCE] = AttributionSource.PLAY_INSTALL_REFERRER
+        props[PROP_SOURCE] = params.source
         props[PROP_FOLLOW_UP] = true
         store.get(KEY_FIRST_OPEN_AT)?.toLongOrNull()?.let { props[PROP_FIRST_OPEN_AT] = EventJson.formatTime(it) }
         params.writeTo(props)
@@ -558,7 +719,18 @@ internal class FeralinEngine(
         val consented = if (current.advertising == true) properties else properties - PROP_FR_CLICK
         // Yapılandırmadaki kod ilk olaya eklenir. Sarmalayıcılar (React Native, Unity) kodu olay özelliği olarak da verebilir; o dokunulmadan geçer.
         val code = pendingInstallCode
-        val safeProperties = if (code != null) consented + (PROP_INSTALL_CODE to code) else consented
+        val withCode = if (code != null) consented + (PROP_INSTALL_CODE to code) else consented
+        // Atıf olayı reklam izninin verildiği anı taşır: sunucu projenin izin süresi kuralını bu değerle uygular.
+        val attributionEvent = name == EVENT_FIRST_OPEN || name == EVENT_DEEP_LINK
+        val grantedAt = if (attributionEvent && current.advertising == true) store.get(KEY_AD_CONSENT_AT)?.toLongOrNull() else null
+        val withConsentAt = if (grantedAt != null) withCode + (PROP_CONSENT_AT to EventJson.formatTime(grantedAt)) else withCode
+        // Atıf olayları imzalanır (anahtar verildiyse): imza olayın kimliğine ve kurulum kimliğine bağlıdır.
+        val key = config.signingKey
+        val safeProperties = if (key != null && attributionEvent) {
+            withConsentAt + (EventSigner.PROPERTY to EventSigner.sign(key.id, key.secret, at / 1000L, id, name, anonymousId.orEmpty()))
+        } else {
+            withConsentAt
+        }
         val payload = EventJson.encode(
             EventFields(
                 eventId = id,
@@ -776,6 +948,7 @@ internal class FeralinEngine(
         version = reportedSdkVersion,
         queued = queuedSnapshot,
         consent = consent,
+        advertisingConsentExpired = adConsentExpired,
         anonymousId = anonymousId,
         sessionId = sessionId,
         userId = userId,
@@ -787,11 +960,24 @@ internal class FeralinEngine(
         const val EVENT_FIRST_OPEN = "app_first_open"
         const val EVENT_DEEP_LINK = "deep_link_opened"
         const val PROP_SOURCE = "attribution_source"
+        const val PROP_META_REFERRER = "meta_install_referrer"
+        const val PROP_INSTALL_STORE = "install_store"
         const val PROP_FR_CLICK = "fr_click"
         const val PROP_INSTALL_CODE = "fr_install_code"
         // Sunucudaki kanonik biçimle aynı alfabe (Crockford Base32, I/L/O/U yok); tire, boşluk ve alt çizgi ayraçtır.
         val INSTALL_CODE_PATTERN = Regex("^[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z _-]{10,16}$")
         const val PROP_FOLLOW_UP = "consent_followup"
+        const val PROP_CONSENT_AT = "consent_at"
+        const val PROP_OS_VERSION = "os_version"
+        const val EVENT_PUSH_TOKEN = "fr_push_token"
+        const val PROP_PUSH_TOKEN = "push_token"
+        /** FCM kayıt belirteci biçimi (sunucu ve toplayıcıdaki denetimle aynı). */
+        val PUSH_TOKEN_PATTERN = Regex("^[A-Za-z0-9:_\\-.=]+$")
+        /** Sunucunun kaldırma ölçümü için gönderdiği içeriksiz bildirimin tek alanı. */
+        const val UNINSTALL_CHECK_KEY = "fr_uninstall_check"
+        val OS_VERSION_PATTERN = Regex("^[0-9][0-9A-Za-z._ -]{0,31}$")
+        const val KEY_AD_CONSENT_AT = "ad_consent_at"
+        const val MS_PER_DAY = 86_400_000L
         const val PROP_FIRST_OPEN_AT = "first_open_at"
         const val KEY_REFERRER_CHECKED = "referrer_checked"
         const val KEY_DEFERRED_DEEP_LINK = "deferred_deep_link"

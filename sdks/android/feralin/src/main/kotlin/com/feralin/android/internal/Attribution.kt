@@ -6,12 +6,20 @@ import java.net.URLDecoder
 /** Sözleşmedeki `properties.attribution_source` değerleri. */
 internal object AttributionSource {
     const val PLAY_INSTALL_REFERRER = "play_install_referrer"
+    const val HUAWEI_INSTALL_REFERRER = "huawei_install_referrer"
+    const val SAMSUNG_INSTALL_REFERRER = "samsung_install_referrer"
     const val APP_LINK = "app_link"
     const val NONE = "none"
 }
 
 /** Referrer veya URL'den alınmasına izin verilen tek veri: `fr_click` ve standart `utm_*`. */
-internal data class AttributionParams(val frClick: String?, val utm: Map<String, String>, val deepLinkPath: String? = null) {
+internal data class AttributionParams(
+    val frClick: String?,
+    val utm: Map<String, String>,
+    val deepLinkPath: String? = null,
+    /** Yönlendiricinin okunduğu mağaza; olayın `attribution_source` değeri olur. */
+    val source: String = AttributionSource.PLAY_INSTALL_REFERRER,
+) {
     val isEmpty: Boolean get() = frClick == null && utm.isEmpty()
 
     /** Play'in tıklama yokken döndürdüğü varsayılan (`organic` / `(not set)`) kanıt sayılmaz. */

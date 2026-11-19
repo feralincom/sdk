@@ -1,0 +1,3 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- İzinler (INTERNET, ACCESS_NETWORK_STATE, Play Install Referrer) Feralin Android çekirdeğinin manifestinden birleşir. -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" />

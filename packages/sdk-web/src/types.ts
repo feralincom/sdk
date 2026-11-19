@@ -23,11 +23,17 @@ export type UtpEvent = {
 export type FeralinOptions = {
   /** Proje public anahtarı (pk_live_… / pk_test_…). Gizli anahtar asla tarayıcıya konmaz. */
   projectKey: string;
-  /** Collector kökü, ör. https://collect.feralin.com veya https://host:8443/collect */
+  /** Collector kökü, ör. https://feralin.com/collect veya https://host:8443/collect */
   collectUrl: string;
   consent?: Consent;
   /** Sayfa görüntülemeyi otomatik gönder (varsayılan true) */
   autoTrack?: boolean;
+  /**
+   * Sayfada görünür geçen süreyi ölç (varsayılan true). Her `page_view` için sekmenin görünür olduğu süre biriktirilir ve sekme
+   * gizlenince, sayfa kapanırken ya da sonraki `page_view`'dan hemen önce `fr_page_engagement` {visible_ms} olarak gönderilir; arka
+   * plandaki sekmenin süresi sayılmaz. Olay ölçülen sayfanın adresini ve başlığını taşır. `false` olayı tümüyle kapatır.
+   */
+  pageEngagement?: boolean;
   /** Toplu gönderim aralığı ms (varsayılan 2000) */
   flushIntervalMs?: number;
   /** Toplu gönderim boyutu (varsayılan 50, en fazla 500) */

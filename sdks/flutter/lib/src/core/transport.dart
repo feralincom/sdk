@@ -87,3 +87,55 @@ class IoHttpTransport implements Transport {
     );
   }
 }
+
+/// Kısa link çözümlemesi için GET isteği. Ağ hatasında `null` döner; asla fırlatmaz.
+typedef ShortLinkFetcher =
+    Future<TransportResponse?> Function(
+      String url,
+      Map<String, String> headers,
+    );
+
+/// `dart:io` üzerinde kısa link çözümlemesi: yönlendirme izlenmez (yanıt JSON değilse çözümleme yapılmamış sayılır), 5 sn sınır, 16 KB.
+Future<TransportResponse?> ioShortLinkFetch(
+  String url,
+  Map<String, String> headers,
+) async {
+  const maxBytes = 16 * 1024;
+  final client = HttpClient()
+    ..connectionTimeout = const Duration(seconds: 5)
+    ..userAgent = null;
+  try {
+    return await () async {
+      final request = await client.getUrl(Uri.parse(url));
+      request.followRedirects = false;
+      headers.forEach(request.headers.set);
+      final response = await request.close();
+      final received = <int>[];
+      await for (final chunk in response) {
+        if (received.length < maxBytes) received.addAll(chunk);
+      }
+      final limited = received.length > maxBytes
+          ? received.sublist(0, maxBytes)
+          : received;
+      return TransportResponse(
+        response.statusCode,
+        utf8.decode(limited, allowMalformed: true),
+        null,
+      );
+    }().timeout(const Duration(seconds: 5));
+  } on SocketException {
+    return null;
+  } on HttpException {
+    return null;
+  } on TlsException {
+    return null;
+  } on TimeoutException {
+    return null;
+  } on FormatException {
+    return null;
+  } on ArgumentError {
+    return null;
+  } finally {
+    client.close(force: true);
+  }
+}

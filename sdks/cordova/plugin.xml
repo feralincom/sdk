@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Feralin Cordova eklentisi. JS yüzü www/feralin.js; Android köprüsü Feralin Android çekirdeğini (sdks/android) yerel AAR olarak,
+  iOS köprüsü Feralin Swift çekirdeğini (sdks/swift) Swift Package olarak kullanır. Çekirdek dosyaları paketleme öncesinde
+  scripts/vendor.mjs ile kopyalanır; depoda tutulmaz.
+-->
+<plugin xmlns="http://apache.org/cordova/ns/plugins/1.0"
+        xmlns:android="http://schemas.android.com/apk/res/android"
+        id="cordova-plugin-feralin"
+        version="0.1.0">
+    <name>Feralin</name>
+    <description>Feralin ölçüm SDK'sı: izin öncelikli olaylar, gelir, ilk açılış, derin bağlantı ve kaldırma ölçümü.</description>
+    <license>MIT</license>
+    <keywords>analytics,attribution,deeplink,feralin</keywords>
+
+    <engines>
+        <engine name="cordova" version=">=12.0.0" />
+        <engine name="cordova-android" version=">=13.0.0" />
+        <!-- Swift Package eklentisi desteği cordova-ios 8 ile geldi (platform package="swift"). -->
+        <engine name="cordova-ios" version=">=8.0.0" />
+    </engines>
+
+    <js-module src="www/feralin.js" name="Feralin">
+        <clobbers target="Feralin" />
+    </js-module>
+
+    <platform name="android">
+        <config-file target="res/xml/config.xml" parent="/*">
+            <feature name="Feralin">
+                <param name="android-package" value="com.feralin.cordova.FeralinPlugin" />
+                <!-- onNewIntent ile App Link açılışlarını almak için eklenti uygulama açılışında yüklenir. -->
+                <param name="onload" value="true" />
+            </feature>
+        </config-file>
+        <source-file src="src/android/FeralinPlugin.java" target-dir="src/com/feralin/cordova" />
+        <!-- Çekirdek AAR'ı scripts/vendor.mjs üretir (Maven Central yayını yok). -->
+        <lib-file src="src/android/libs/feralin-android-0.1.0.aar" />
+        <framework src="src/android/feralin.gradle" custom="true" type="gradleReference" />
+    </platform>
+
+    <platform name="ios" package="swift">
+        <config-file target="config.xml" parent="/*">
+            <feature name="Feralin">
+                <param name="ios-package" value="FeralinCordovaPlugin" />
+                <param name="onload" value="true" />
+            </feature>
+        </config-file>
+    </platform>
+</plugin>

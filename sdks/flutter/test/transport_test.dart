@@ -54,6 +54,24 @@ void main() {
     expect(response.retryAfterSeconds, isNull);
   });
 
+  test('kısa link GET: başlık gider, gövde okunur, yönlendirme izlenmez', () async {
+    final ok = await ioShortLinkFetch('$base/ok', {
+      'Accept': 'application/vnd.feralin.link+json',
+      'User-Agent': 'FeralinSDK (Linux; Android 14)',
+    });
+    expect(ok!.status, 202);
+    expect(ok.body, '{"accepted":1}');
+    expect(
+      receivedHeaders!.value('accept'),
+      'application/vnd.feralin.link+json',
+    );
+    expect(receivedBody, isEmpty);
+    final redirect = await ioShortLinkFetch('$base/redirect', {});
+    expect(redirect!.status, 302);
+    expect(targetHits, 0);
+    expect(await ioShortLinkFetch('http://127.0.0.1:1/x', {}), isNull);
+  });
+
   test('Retry-After okunur', () async {
     final response = await IoHttpTransport().post('$base/limited', {}, '{}');
     expect(response!.status, 429);

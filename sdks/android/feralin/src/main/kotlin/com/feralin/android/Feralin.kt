@@ -23,10 +23,17 @@ import com.feralin.android.internal.GameEvents
 import com.feralin.android.internal.ExecutorWorker
 import com.feralin.android.internal.FeralinEngine
 import com.feralin.android.internal.HttpUrlTransport
+import com.feralin.android.internal.InstallStore
 import com.feralin.android.internal.IntentLinks
 import com.feralin.android.internal.KeystoreKey
 import com.feralin.android.internal.MemoryEventStore
+import com.feralin.android.internal.MetaInstallReferrerSource
+import com.feralin.android.internal.EmulatorCheck
+import com.feralin.android.internal.HuaweiInstallReferrerSource
 import com.feralin.android.internal.PlayInstallReferrerSource
+import com.feralin.android.internal.RootCheck
+import com.feralin.android.internal.SamsungInstallReferrerSource
+import com.feralin.android.internal.StoreReferrerChain
 import com.feralin.android.internal.RevenueEvent
 import com.feralin.android.internal.SqliteEventStore
 import java.util.Locale
@@ -62,12 +69,18 @@ public object Feralin {
             config = config,
             storeProvider = { openStore(app, log) },
             transport = HttpUrlTransport(),
-            referrer = PlayInstallReferrerSource(app, state, log),
+            referrer = StoreReferrerChain(PlayInstallReferrerSource(app, state, log), HuaweiInstallReferrerSource(app)::read, SamsungInstallReferrerSource(app, state, log)),
             appContext = { readAppContext(app) },
             state = state,
             net = net,
             log = log,
             sdkVersion = BuildConfig.FERALIN_VERSION,
+            metaReferrer = MetaInstallReferrerSource(app, config.metaAppId)::read,
+            installStore = { InstallStore.read(app) },
+            emulator = EmulatorCheck::read,
+            rooted = RootCheck::read,
+            osVersion = { android.os.Build.VERSION.RELEASE },
+            advertisingId = { com.feralin.android.internal.AdvertisingIdSource.read(app) },
         )
         engine = created
         created.start()
@@ -130,6 +143,13 @@ public object Feralin {
     /** İzin kararını bildirir. `analytics=false`: kuyruk ve depodaki anonim kimlik silinir. */
     @JvmStatic
     public fun setConsent(consent: Consent): Unit = guarded(Unit) { engine?.setConsent(consent) }
+
+    /**
+     * Kullanıcı reklam ölçümü iznini yeniden onayladı (izin süresi dolduktan sonra yeniden soruldu): izin zamanı yenilenir.
+     * `consentMaxAgeDays` verilmemişse etkisizdir.
+     */
+    @JvmStatic
+    public fun confirmAdvertisingConsent(): Unit = guarded(Unit) { engine?.confirmAdvertisingConsent() }
 
     /** `setConsent(Consent(analytics = false))` ile aynıdır. */
     @JvmStatic
@@ -328,6 +348,46 @@ public object Feralin {
     @JvmOverloads
     public fun group(groupId: String, traits: Map<String, Any?>? = null): String? = guarded(null) { engine?.group(groupId, traits) }
 
+    /**
+     * Firebase Cloud Messaging kayıt belirtecini bildirir (kaldırma ölçümü). `FirebaseMessagingService.onNewToken` içinden ve uygulama
+     * açılışında `FirebaseMessaging.getInstance().token` sonucuyla çağrılır. Belirteç olay deposuna yazılmaz. Panelde kaldırma ölçümü açık
+     * değilse sunucu belirteci saklamaz. Olay kimliği ya da `null` döner.
+     */
+    @JvmStatic
+    public fun setPushToken(token: String): String? = guarded(null) { engine?.setPushToken(token) }
+
+    /**
+     * Gelen FCM iletisi Feralin'in kaldırma ölçümü bildirimi mi? `onMessageReceived` içinde `remoteMessage.data` ile çağrılır; `true`
+     * ise uygulama iletiyi yok saymalıdır (kullanıcıya gösterilecek bir şey yoktur).
+     */
+    @JvmStatic
+    public fun isUninstallCheck(data: Map<String, String>): Boolean = data[com.feralin.android.internal.FeralinEngine.UNINSTALL_CHECK_KEY] == "1"
+
+    /**
+     * Push bildirimine dokunarak açılışı bildirir (`fr_push_open`). Bildirim verisindeki `utm_*` ve `fr_push_id` alanları taşınır, öteki
+     * veri gitmez; kampanya bilgisi yoksa `utm_medium=push` yazılır. Bildirimden gelen bir Feralin linki varsa ayrıca uygulama linki
+     * akışıyla işlenmelidir. Olay kimliği ya da `null` döner.
+     */
+    @JvmStatic
+    public fun trackPushOpen(data: Map<String, String>): String? = guarded(null) { engine?.trackPushOpen(data) }
+
+    /**
+     * E-posta servis sağlayıcısının tıklama izleme adresini (SendGrid, Iterable, Braze, Klaviyo…) Feralin kısa linkine çözer ve sonucu
+     * ana iş parçacığında [callback] ile verir. Uygulama App Link ile ESP alanından açıldığında çağrılır; dönen adres olağan uygulama linki
+     * akışına verilir. Yönlendirmeler izlenmeden en çok dört adım okunur; çözülemezse özgün adres döner. Ağ isteği arka planda yapılır.
+     */
+    @JvmStatic
+    public fun resolveTrackedLink(url: String, callback: (String) -> Unit) {
+        Thread {
+            val resolved = try {
+                com.feralin.android.internal.TrackedLinkResolver().resolve(url)
+            } catch (t: Throwable) {
+                url
+            }
+            android.os.Handler(android.os.Looper.getMainLooper()).post { callback(resolved) }
+        }.apply { name = "feralin-link-resolver"; isDaemon = true }.start()
+    }
+
     /** Kullanıcı özelliklerini bildirir: `fr_user_properties` olayı. Geçerli özellik yoksa olay üretilmez. E-posta, telefon gibi PII verilmemelidir. */
     @JvmStatic
     public fun setUserProperties(properties: Map<String, Any?>): String? = guarded(null) { engine?.setUserProperties(properties) }
@@ -369,6 +429,31 @@ public object Feralin {
     public fun handleIntent(intent: Intent?): Unit = guarded(Unit) {
         val current = engine
         if (intent != null && current != null) IntentLinks.consume(intent)?.let(current::handleLink)
+    }
+
+    /**
+     * Fera Fly kısa linkiyle (ör. `https://marka.fera.fly/kod`) açılışı işler ve uygulamanın açacağı yolu verir. App Link doğrudan açıldığında
+     * yönlendirici atlandığı için SDK linki çözümler: derin yol, UTM ve (reklam izni varsa) tıklama kimliği `deep_link_opened` olayına eklenir.
+     * Adres kısa link değilse, çözümlenemezse ya da analitik izni yoksa [callback] adresin kendi yolunu verir. Otomatik yakalama açıkken de
+     * çözümleme yapılır; bu yöntem yalnız uygulamanın gideceği yolu öğrenmek içindir. [callback] SDK iş parçacığında çağrılır.
+     */
+    @JvmStatic
+    public fun handleShortLink(url: String?, callback: (ShortLinkOpen) -> Unit): Unit = guarded(Unit) {
+        val fallback = ShortLinkOpen(destination = pathOf(url), linkCode = null, hasClickId = false)
+        val current = engine
+        if (current == null || url == null) {
+            callback(fallback)
+            return@guarded
+        }
+        current.handleLink(url) { resolved ->
+            callback(resolved?.let { ShortLinkOpen(it.deepLinkPath ?: "/", it.code, it.clickId != null) } ?: fallback)
+        }
+    }
+
+    private fun pathOf(url: String?): String = try {
+        java.net.URI(url ?: "").rawPath?.takeIf { it.isNotEmpty() } ?: "/"
+    } catch (_: Exception) {
+        "/"
     }
 
     /**

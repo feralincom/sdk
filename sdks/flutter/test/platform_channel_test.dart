@@ -76,6 +76,124 @@ void main() {
     },
   );
 
+  test(
+    'kurulum mağazası: Android kanaldan alır, eklenti yoksa null; iOS kanal kullanmaz',
+    () async {
+      messenger.setMockMethodCallHandler(channel, (call) async {
+        calls.add(call);
+        return call.method == 'getInstallStore' ? 'huawei_appgallery' : null;
+      });
+      expect(await AndroidPlatformBridge().installStore(), 'huawei_appgallery');
+      expect(calls.single.method, 'getInstallStore');
+      expect(calls.single.arguments, isNull);
+
+      calls.clear();
+      expect(await const IosPlatformBridge().installStore(), isNull);
+      expect(calls, isEmpty);
+
+      // Eski eklenti sürümü: kanal yöntemi kayıtlı değil.
+      messenger.setMockMethodCallHandler(channel, null);
+      expect(await AndroidPlatformBridge().installStore(), isNull);
+    },
+  );
+
+  group('mağaza yönlendiricisi zinciri', () {
+    void mock(Object? play, Object? huawei) {
+      messenger.setMockMethodCallHandler(channel, (call) async {
+        calls.add(call);
+        return switch (call.method) {
+          'readInstallReferrer' => play,
+          'readHuaweiInstallReferrer' => huawei,
+          _ => null,
+        };
+      });
+    }
+
+    const huawei = {
+      'fr_click': 'clk_hw_1',
+      'utm_source': 'petal',
+      'fr_dl': '/urun/42',
+      'email': 'a@b.c',
+    };
+
+    test('Play kanıt verirse AppGallery sorulmaz', () async {
+      mock({'fr_click': 'clk_play', 'utm_source': 'ads'}, huawei);
+      final params = await AndroidPlatformBridge().readInstallReferrer();
+      expect(params!.frClick, 'clk_play');
+      expect(params.source, 'play_install_referrer');
+      expect(calls.map((c) => c.method), ['readInstallReferrer']);
+    });
+
+    test(
+      'Play kanıt vermezse (null, boş, organik) AppGallery okunur ve izin listesinden geçer',
+      () async {
+        for (final play in <Object?>[
+          null,
+          <String, String>{},
+          {'utm_source': 'google-play', 'utm_medium': 'organic'},
+        ]) {
+          calls.clear();
+          mock(play, huawei);
+          final params = await AndroidPlatformBridge().readInstallReferrer();
+          expect(params!.frClick, 'clk_hw_1');
+          expect(params.utm, {'utm_source': 'petal'});
+          expect(params.deepLinkPath, '/urun/42');
+          expect(params.source, 'huawei_install_referrer');
+          expect(calls.map((c) => c.method), [
+            'readInstallReferrer',
+            'readHuaweiInstallReferrer',
+          ]);
+          expect(calls.last.arguments, isNull);
+        }
+      },
+    );
+
+    test('ikisi de kanıt vermezse Play sonucu korunur', () async {
+      mock({'utm_medium': 'organic'}, null);
+      final organic = await AndroidPlatformBridge().readInstallReferrer();
+      expect(organic!.utm, {'utm_medium': 'organic'});
+      expect(organic.source, 'play_install_referrer');
+
+      // İzin listesinde hiçbir alan yok: AppGallery kanıt sayılmaz.
+      mock({'utm_medium': 'organic'}, {'channel': 'abc', 'taskid': '7'});
+      final still = await AndroidPlatformBridge().readInstallReferrer();
+      expect(still!.source, 'play_install_referrer');
+
+      mock(null, null);
+      expect(await AndroidPlatformBridge().readInstallReferrer(), isNull);
+    });
+
+    test('AppGallery okuma hatası kanıt yok sayılır', () async {
+      messenger.setMockMethodCallHandler(channel, (call) async {
+        if (call.method == 'readHuaweiInstallReferrer') {
+          throw PlatformException(code: 'saglayici_yok');
+        }
+        return null;
+      });
+      expect(await AndroidPlatformBridge().readInstallReferrer(), isNull);
+    });
+  });
+
+  test(
+    'emülatör işareti: Android kanaldan alır, eklenti yoksa null; iOS kanal kullanmaz',
+    () async {
+      messenger.setMockMethodCallHandler(channel, (call) async {
+        calls.add(call);
+        return call.method == 'isEmulator' ? true : null;
+      });
+      expect(await AndroidPlatformBridge().isEmulator(), isTrue);
+      expect(calls.single.method, 'isEmulator');
+
+      calls.clear();
+      expect(await const IosPlatformBridge().isEmulator(), isNull);
+      expect(calls, isEmpty);
+
+      // Eski eklenti sürümü: kanal yöntemi kayıtlı değil.
+      messenger.setMockMethodCallHandler(channel, null);
+      expect(await AndroidPlatformBridge().isEmulator(), isNull);
+    },
+  );
+
   test('referrer servisi yoksa null', () async {
     messenger.setMockMethodCallHandler(channel, (call) async => null);
     expect(await AndroidPlatformBridge().readInstallReferrer(), isNull);

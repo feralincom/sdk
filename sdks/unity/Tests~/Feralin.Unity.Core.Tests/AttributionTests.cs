@@ -215,6 +215,129 @@ public class AttributionClientTests : IDisposable
         Assert.Equal(0, restarted.GetStatus().Queued);
     }
 
+    private sealed class FakeMeta : IMetaReferrerSource
+    {
+        public int Reads { get; private set; }
+        public string AppId { get; private set; }
+        public string Value { get; set; }
+        public string Read(string appId)
+        {
+            Reads++;
+            AppId = appId;
+            return Value;
+        }
+    }
+
+    [Fact]
+    public void FirstOpenCarriesMetaReferrerOnlyWithAdvertisingConsentAndAppId()
+    {
+        var meta = new FakeMeta { Value = "{\"r\":\"x\",\"p\":\"instagram\"}" };
+        var transport = new FakeTransport();
+        var client = Make(transport, new Consent(true, true), o => { o.MetaAppId = " 1234567890 "; o.MetaReferrerSource = meta; });
+        client.StartAttribution(new FakeReferrer());
+        var props = Assert.Single(SentEvents(client, transport)).GetProperty("properties");
+        Assert.Equal(meta.Value, props.GetProperty("meta_install_referrer").GetString());
+        Assert.Equal("1234567890", meta.AppId);
+
+        // Reklam izni yoksa okunmaz.
+        Dispose();
+        var denied = new FakeMeta { Value = "x" };
+        var deniedTransport = new FakeTransport();
+        var deniedClient = Make(deniedTransport, new Consent(true, false), o => { o.MetaAppId = "1234567890"; o.MetaReferrerSource = denied; });
+        deniedClient.StartAttribution(new FakeReferrer());
+        Assert.False(Assert.Single(SentEvents(deniedClient, deniedTransport)).GetProperty("properties").TryGetProperty("meta_install_referrer", out _));
+        Assert.Equal(0, denied.Reads);
+
+        // Geçersiz App ID ile okunmaz.
+        Dispose();
+        var bad = new FakeMeta { Value = "x" };
+        var badTransport = new FakeTransport();
+        var badClient = Make(badTransport, new Consent(true, true), o => { o.MetaAppId = "abc"; o.MetaReferrerSource = bad; });
+        badClient.StartAttribution(new FakeReferrer());
+        SentEvents(badClient, badTransport);
+        Assert.Equal(0, bad.Reads);
+    }
+
+    private sealed class FakeInstallStore : IInstallStoreSource
+    {
+        public int Reads { get; private set; }
+        public string Value { get; set; }
+        public bool Throw { get; set; }
+        public string Read()
+        {
+            Reads++;
+            if (Throw)
+            {
+                throw new InvalidOperationException("paket bilgisi yok");
+            }
+            return Value;
+        }
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void FirstOpenCarriesInstallStoreRegardlessOfAdvertisingConsent(bool advertising)
+    {
+        var source = new FakeInstallStore { Value = InstallStore.SamsungGalaxyStore };
+        var transport = new FakeTransport();
+        var client = Make(transport, new Consent(true, advertising), o => o.InstallStoreSource = source);
+        client.StartAttribution(new FakeReferrer());
+        var open = Assert.Single(SentEvents(client, transport));
+        Assert.Equal("app_first_open", open.GetProperty("event_name").GetString());
+        Assert.Equal("samsung_galaxy_store", open.GetProperty("properties").GetProperty("install_store").GetString());
+        Assert.Equal(1, source.Reads);
+    }
+
+    [Theory]
+    [InlineData("com.ornek.ozelmagaza")]
+    [InlineData("com.android.vending")]
+    [InlineData("")]
+    [InlineData(null)]
+    public void InstallStoreOutsideClosedListIsNeverSent(string value)
+    {
+        var transport = new FakeTransport();
+        var client = Make(transport, new Consent(true, true), o => o.InstallStoreSource = new FakeInstallStore { Value = value });
+        client.StartAttribution(new FakeReferrer());
+        var open = Assert.Single(SentEvents(client, transport));
+        Assert.False(open.GetProperty("properties").TryGetProperty("install_store", out _));
+        if (!string.IsNullOrEmpty(value))
+        {
+            Assert.DoesNotContain(value, open.GetRawText());
+        }
+    }
+
+    [Fact]
+    public void InstallStoreReadFailureDoesNotBlockFirstOpen()
+    {
+        var source = new FakeInstallStore { Throw = true };
+        var transport = new FakeTransport();
+        var client = Make(transport, new Consent(true, true), o => o.InstallStoreSource = source);
+        client.StartAttribution(new FakeReferrer { Referrer = "fr_click=clk_1" });
+        var props = Assert.Single(SentEvents(client, transport)).GetProperty("properties");
+        Assert.False(props.TryGetProperty("install_store", out _));
+        Assert.Equal("play_install_referrer", props.GetProperty("attribution_source").GetString());
+        Assert.Equal(1, source.Reads);
+
+        // Kaynak verilmemiş (iOS, Editor): alan yok.
+        Dispose();
+        var bareTransport = new FakeTransport();
+        var bare = Make(bareTransport, new Consent(true, true));
+        bare.StartAttribution(new FakeReferrer());
+        Assert.False(Assert.Single(SentEvents(bare, bareTransport)).GetProperty("properties").TryGetProperty("install_store", out _));
+    }
+
+    [Fact]
+    public void InstallStoreIsNotReadWithoutAnalyticsConsent()
+    {
+        var source = new FakeInstallStore { Value = InstallStore.GooglePlay };
+        var transport = new FakeTransport();
+        var client = Make(transport, new Consent(false, false), o => o.InstallStoreSource = source);
+        client.StartAttribution(new FakeReferrer());
+        Assert.Empty(SentEvents(client, transport));
+        Assert.Equal(0, source.Reads);
+    }
+
     [Fact]
     public void FirstOpenWithoutAdvertisingConsentNeverReadsReferrerAndCarriesNoEvidence()
     {

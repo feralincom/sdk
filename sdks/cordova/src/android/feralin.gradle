@@ -1,0 +1,7 @@
+// Feralin Android çekirdeği: Maven Central yayını olmadığından AAR eklentiyle gelir (app/libs). Yerel AAR geçişli bağımlılık taşımadığı
+// için çekirdeğin bağımlılıkları burada açıkça verilir; sürümler sdks/android/feralin/build.gradle.kts ve Kotlin 2.2.20 ile aynıdır.
+dependencies {
+    implementation files("libs/feralin-android-0.1.0.aar")
+    implementation "com.android.installreferrer:installreferrer:2.2"
+    implementation "org.jetbrains.kotlin:kotlin-stdlib:2.2.20"
+}

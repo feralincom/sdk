@@ -1,0 +1,7 @@
+# Paketleme öncesi scripts/vendor.mjs ile üretilen çekirdek kopyaları; depoda tutulmaz.
+src/ios/Feralin/
+src/android/libs/
+.build/
+.swiftpm/
+node_modules/
+*.tgz

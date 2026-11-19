@@ -2,7 +2,7 @@
 // uygulamaya hata fırlatmaz ve reddedilen Promise döndürmez. Yerel modül yoksa (iOS, bağlanmamış paket) SDK kapalı kalır.
 
 export const SDK_NAME = "@feralin/react-native";
-export const SDK_VERSION = "0.2.0";
+export const SDK_VERSION = "0.3.0";
 
 import {
   AD_REVENUE_EVENT_NAME,
@@ -57,6 +57,11 @@ export interface FeralinConfig {
   queueLimit?: number;
   sessionTimeoutMs?: number;
   autoCaptureDeepLinks?: boolean;
+  /**
+   * Fera Fly kısa link hostları (varsayılan `["fera.fly"]`). Bu hostlardan birine ya da alt alanına (`marka.fera.fly`) ait adresle açılışta
+   * Android çekirdeği linki yönlendiriciden çözümler. Markalı alanınız varsa listeye ekleyin. En çok 20 host.
+   */
+  shortLinkHosts?: string[];
   /** true ise Logcat'e olay adı ve durum kodu yazılır; anahtar ve özellik değeri yazılmaz. */
   debug?: boolean;
   /** Uygulama sürümü (≤ 32); yalnız `fr_error` olaylarının `app_version` alanı için JS tarafında kullanılır, yerel katmana gitmez. */
@@ -66,6 +71,33 @@ export interface FeralinConfig {
    * sonra kuyruğa giren ilk olaya `fr_install_code` olarak eklenir ve sunucu kurulumu projeye bağlar. Biçimi geçersizse yok sayılır.
    */
   installCode?: string;
+  /**
+   * Facebook uygulama kimliği (Meta App ID, 5-20 rakam). Android'de Meta reklamından gelen kurulumun kampanya verisi Facebook/Instagram
+   * uygulamasından okunur (Meta Install Referrer; Facebook SDK gerekmez). iOS'ta etkisizdir. Çözme anahtarı panelde projeye girilir.
+   */
+  metaAppId?: string;
+  /**
+   * SDK imza anahtarı (panelde Atıf > Dolandırıcılık koruması). Verilirse Android çekirdeği ilk açılış ve link açılışı olaylarını imzalar
+   * (`fr_sig`); sunucu imzasız ya da bozuk imzalı kurulumu projenin kuralına göre işaretler ya da reddeder. Biçimi geçersiz anahtar
+   * yapılandırma hatasıdır: `initialize` false döner. Anahtar uygulamaya gömülüdür; sürüm başına ayrı anahtar üretip eskisini panelden
+   * iptal edebilirsiniz. Değer loglanmaz.
+   */
+  signingKey?: SigningKey;
+}
+
+/** SDK imza anahtarı: `id` panelde görünen kimlik (`sgn_…`), `secret` üretildiği anda bir kez gösterilen değer (`fsk_…`, 16-200 karakter). */
+export interface SigningKey {
+  id: string;
+  secret: string;
+}
+
+/** İmza anahtarı kimliğinin biçimi (Android çekirdeği ve sunucuyla aynı). */
+export const SIGNING_KEY_ID_PATTERN = /^sgn_[a-z0-9]{12,40}$/;
+
+function validSigningKey(key: unknown): key is SigningKey {
+  if (typeof key !== "object" || key === null) return false;
+  const { id, secret } = key as { id?: unknown; secret?: unknown };
+  return typeof id === "string" && SIGNING_KEY_ID_PATTERN.test(id) && typeof secret === "string" && secret.length >= 16 && secret.length <= 200;
 }
 
 /** `captureUncaughtErrors` seçenekleri. */
@@ -110,6 +142,19 @@ export interface FlushResult {
 export interface DeferredDeepLink {
   status: "delivered" | "none" | "consent_required" | "not_supported" | "not_initialized";
   path: string | null;
+}
+
+/**
+ * Kısa linkle açılışın sonucu (`handleShortLink`). `destination` dışarıdan gelen veridir: uygulama yolu kendi yönlendirme tablosuyla
+ * eşleştirmeli, doğrudan yetkili bir eylem çalıştırmamalıdır.
+ */
+export interface ShortLinkOpen {
+  /** Uygulamanın açacağı yol: çözümlenen linkin derin yolu (yoksa `/`), çözümlenemediyse adresin kendi yolu. */
+  destination: string;
+  /** Kısa kod; çözümleme yapılmadıysa `null`. */
+  linkCode: string | null;
+  /** Tıklama kimliği alındı mı (reklam ölçümü izni yoksa olaya eklenmez). */
+  hasClickId: boolean;
 }
 
 export interface FeralinStatus {
@@ -178,6 +223,7 @@ export interface NativeBridge {
   flush(): Promise<Record<string, unknown>>;
   getStatus(): Promise<Record<string, unknown>>;
   consumeDeferredDeepLink?(): Promise<Record<string, unknown> | null>;
+  handleShortLink?(url: string): Promise<Record<string, unknown> | null>;
   /** Yalnız iOS yerel modülünde olur (henüz yok): AdServices token'ını alır, gönderir ve kurulum kimliğini döndürür. */
   bindInstall?(): Promise<Record<string, unknown> | null>;
 }
@@ -274,6 +320,16 @@ function cleanConsent(consent: Consent): Record<string, unknown> {
   return out;
 }
 
+const SHORT_LINK_HOST = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)+$/;
+
+/** Adresin yolu (sorgu ve parça olmadan); ayrıştırılamazsa `/`. */
+export function pathOf(url: unknown): string {
+  if (typeof url !== "string") return "/";
+  const rest = url.replace(/^[a-z][a-z0-9+.-]*:\/\/[^/?#]*/i, "");
+  const path = rest.split(/[?#]/, 1)[0] ?? "";
+  return path.startsWith("/") ? path : "/";
+}
+
 export function createFeralin(native: NativeBridge | null | undefined, os: string) {
   let unavailable: string | null = native ? null : `yerel köprü yok (${os})`;
   let initialized = false;
@@ -348,9 +404,26 @@ export function createFeralin(native: NativeBridge | null | undefined, os: strin
         if (typeof config[field] === "number" && Number.isFinite(config[field])) payload[field] = config[field];
       }
       if (typeof config.autoCaptureDeepLinks === "boolean") payload.autoCaptureDeepLinks = config.autoCaptureDeepLinks;
+      if (Array.isArray(config.shortLinkHosts)) {
+        const hosts = config.shortLinkHosts
+          .filter((h): h is string => typeof h === "string")
+          .map((h) => h.trim().toLowerCase())
+          .filter((h) => SHORT_LINK_HOST.test(h))
+          .slice(0, 20);
+        if (hosts.length > 0) payload.shortLinkHosts = hosts;
+      }
       if (typeof config.debug === "boolean") payload.debug = config.debug;
       // Eşleştirme kodu yalnız biçimi doğruysa yerel katmana gider (çekirdek de aynı kuralla süzer).
       if (typeof config.installCode === "string" && INSTALL_CODE_PATTERN.test(config.installCode.trim())) payload.installCode = config.installCode.trim();
+      if (typeof config.metaAppId === "string" && /^[0-9]{5,20}$/.test(config.metaAppId.trim())) payload.metaAppId = config.metaAppId.trim();
+      if (config.signingKey !== undefined && config.signingKey !== null) {
+        // Geçersiz anahtar sessizce düşürülmez: imzasız kurulum sunucuda reddedilebilir, hata başlatmada görünmelidir. Mesajda değer yoktur.
+        if (!validSigningKey(config.signingKey)) {
+          unavailable = "signingKey biçimi geçersiz";
+          return false;
+        }
+        payload.signingKey = { id: config.signingKey.id, secret: config.signingKey.secret };
+      }
       if (typeof config.appVersion === "string" && config.appVersion.length > 0 && config.appVersion.length <= 32) appVersion = config.appVersion;
       initialized = await guard(false, () => native.initialize(payload));
       unavailable = initialized ? null : "yerel başlatma başarısız";
@@ -546,6 +619,26 @@ export function createFeralin(native: NativeBridge | null | undefined, os: strin
         rejected: typeof raw.rejected === "number" ? raw.rejected : 0,
         status: typeof raw.status === "number" ? raw.status : 0,
         batchId: typeof raw.batchId === "string" ? raw.batchId : null,
+      };
+    },
+
+    /**
+     * Fera Fly kısa linkiyle (ör. `https://marka.fera.fly/kod`) açılışı işler ve uygulamanın açacağı yolu verir. App Link doğrudan açıldığında
+     * yönlendirici atlandığı için Android çekirdeği linki çözümler: derin yol, UTM ve (reklam izni varsa) tıklama kimliği `deep_link_opened`
+     * olayına eklenir. Adres kısa link değilse, çözümlenemezse, analitik izni yoksa ya da yerel modül yoksa (iOS) adresin kendi yolu döner.
+     * `autoCaptureDeepLinks` açıkken açılış zaten sayılır; bu yöntem o durumda da aynı açılışı ikinci kez saymaz, yalnız yolu verir.
+     */
+    async handleShortLink(url: string): Promise<ShortLinkOpen> {
+      const fallback: ShortLinkOpen = { destination: pathOf(url), linkCode: null, hasClickId: false };
+      if (typeof url !== "string" || url.length === 0 || url.length > 2048) return fallback;
+      const bridge = ready();
+      if (!bridge?.handleShortLink) return fallback;
+      const raw = await guard<Record<string, unknown> | null>(null, () => bridge.handleShortLink!(url));
+      if (!raw || typeof raw.destination !== "string") return fallback;
+      return {
+        destination: raw.destination,
+        linkCode: typeof raw.linkCode === "string" ? raw.linkCode : null,
+        hasClickId: raw.hasClickId === true,
       };
     },
 

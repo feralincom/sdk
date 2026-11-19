@@ -10,6 +10,8 @@ namespace Feralin.Unity
     {
         /// <summary>Google Play Install Referrer.</summary>
         public const string PlayInstallReferrer = "play_install_referrer";
+        /// <summary>Huawei AppGallery kurulum yönlendiricisi.</summary>
+        public const string HuaweiInstallReferrer = "huawei_install_referrer";
         /// <summary>Uygulama bağlantısı (Android App Link, iOS Universal Link).</summary>
         public const string AppLink = "app_link";
         /// <summary>Kanıt yok ya da reklam izni yok.</summary>
@@ -38,11 +40,12 @@ namespace Feralin.Unity
         private static readonly Regex FrClickPattern = new Regex("^[A-Za-z0-9._~-]{1,256}$", RegexOptions.CultureInvariant);
         private static readonly HashSet<string> UtmKeys = new HashSet<string>(StringComparer.Ordinal) { "utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content" };
 
-        internal AttributionParams(string frClick, IReadOnlyDictionary<string, string> utm, string deepLinkPath)
+        internal AttributionParams(string frClick, IReadOnlyDictionary<string, string> utm, string deepLinkPath, string source = AttributionSource.PlayInstallReferrer)
         {
             FrClick = frClick;
             Utm = utm;
             DeepLinkPath = deepLinkPath;
+            Source = source;
         }
 
         /// <summary>Feralin link tıklama kimliği.</summary>
@@ -51,6 +54,11 @@ namespace Feralin.Unity
         public IReadOnlyDictionary<string, string> Utm { get; }
         /// <summary>Ertelenmiş derin bağlantı yolu (yalnız <c>fr_click</c> ile birlikte).</summary>
         public string DeepLinkPath { get; }
+        /// <summary>Yönlendiricinin okunduğu mağaza; olayın <c>attribution_source</c> değeri olur.</summary>
+        public string Source { get; }
+
+        /// <summary>Aynı kanıt, başka kaynak adıyla (ör. AppGallery'den okunan yönlendirici).</summary>
+        internal AttributionParams WithSource(string source) => new AttributionParams(FrClick, Utm, DeepLinkPath, source);
 
         /// <summary>Kanıt yok.</summary>
         public bool IsEmpty => FrClick == null && Utm.Count == 0;
@@ -242,6 +250,15 @@ namespace Feralin.Unity
     {
         /// <summary>Geri çağrı bir kez çağrılır; referrer yoksa ya da servis erişilemezse <c>null</c> ile. Herhangi bir iş parçacığından olabilir.</summary>
         void Read(Action<string> onResult);
+    }
+
+    /// <summary>
+    /// Meta Install Referrer okuyucusu: Facebook/Instagram uygulamasının şifreli kampanya zarfını (<c>{"r","ct","ts","p"}</c>) döndürür,
+    /// yoksa <c>null</c>. İçerik çekirdekte açılmaz; sunucu projenin anahtarıyla çözer.
+    /// </summary>
+    public interface IMetaReferrerSource
+    {
+        string Read(string appId);
     }
 
     /// <summary>AdServices token'ı okuma sonucu.</summary>

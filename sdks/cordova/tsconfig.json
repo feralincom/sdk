@@ -1,0 +1,15 @@
+{
+  "compilerOptions": {
+    "target": "ES2019",
+    "module": "CommonJS",
+    "moduleResolution": "Node10",
+    "ignoreDeprecations": "5.0",
+    "lib": ["ES2019", "DOM"],
+    "types": [],
+    "strict": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "skipLibCheck": false
+  },
+  "include": ["types/index.d.ts", "test/types-usage.ts"]
+}

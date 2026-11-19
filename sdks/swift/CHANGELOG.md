@@ -4,6 +4,8 @@ Yayınlanmadı: herkese açık depo var (github.com/feralincom/sdk), sürüm eti
 
 ## Yayınlanmamış
 
+## 0.3.0 (19 Kasım 2026)
+
 - SPM ile Git'ten kurulum: herkese açık depo kökündeki `Package.swift` bu paketi gösterir; `.package(url: "https://github.com/feralincom/sdk.git", exact: "0.2.0")`, ürün `Feralin`, paket kimliği `sdk`. Sürüm etiketi kökte düz semver (`0.2.0`); etiket henüz gönderilmedi (17 Kasım 2026).
 - Kurulum eşleştirme kodu: `Configuration.installCode` (yeni, varsayılanı `nil`, kaynak uyumlu). Kod kuyruğa giren ilk olaya `fr_install_code` olarak eklenir; biçimi bozuk kod yok sayılır, izinsiz ya da doğrulamada düşen olay kodu harcamaz. Android, Flutter ve Web SDK'larıyla aynı sözleşme. Linux'ta 2 XCTest ile sınandı (17 Kasım 2026).
 - İlk gerçek derleme ve koşu (17 Kasım 2026, Linux x86_64, Swift 6.4.2): `swift build` uyarısız, `swift test` 87 XCTest, gerçek toplayıcıyla uçtan uca test geçti. Bulunan ve düzeltilen hatalar: sonlu olmayan sayı (`NaN`, sonsuz) kullanıcı ve global özelliğinde düşmek yerine `null` olarak gidiyordu (`koşul ? değer : nil`, `FeralinValue` nil literal'i yüzünden `.null` oluyordu); `captureUncaughtExceptions` Objective-C çalışma zamanı olmayan platformda derlenmiyordu (artık `#if canImport(ObjectiveC)`, Linux'ta etkisiz); testlerde actor çağrıları `XCTAssert*` autoclosure'ı içinde bekleniyordu; dSYM çerçeve sözleşmesi testindeki beklenen sütun yanlış hesaplanmıştı (0x2a3b4c5 = 44283077). Apple'a özgü bloklar ve iOS hedefi hâlâ derlenmedi.

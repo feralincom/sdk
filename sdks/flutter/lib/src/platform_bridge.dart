@@ -70,7 +70,7 @@ abstract class PlatformBridge {
   /// Kuyruk gövdelerini şifreleyen yerel sınır (Android Keystore, iOS Keychain). Anahtar yerel tarafta kalır.
   QueueCipher get queueCipher;
 
-  /// Play Install Referrer; olmayan platformda `null`.
+  /// Mağaza kurulum yönlendiricisi (Play, kanıt vermezse Huawei AppGallery); olmayan platformda `null`.
   Future<AttributionParams?> readInstallReferrer();
 
   Future<NativeAppInfo> appInfo();
@@ -89,6 +89,15 @@ abstract class PlatformBridge {
 
   /// iOS AdServices token'ı; yerel köprü ya da platform desteği yoksa `null`. Apple hatasında fırlatır.
   Future<String?> adServicesToken();
+
+  /// Meta Install Referrer zarfı (yalnız Android); yoksa `null`.
+  Future<String?> metaInstallReferrer(String appId);
+
+  /// Kurulum mağazası sınıfı (yalnız Android; kapalı liste, paket adı değil); yoksa `null`.
+  Future<String?> installStore();
+
+  /// Uygulama emülatörde mi (yalnız Android, sezgisel); bilinmiyorsa `null`.
+  Future<bool?> isEmulator();
 }
 
 /// Android: yerel eklenti (`FeralinFlutterPlugin`) üzerinden Play Install Referrer ve App Links.
@@ -115,12 +124,38 @@ class AndroidPlatformBridge implements PlatformBridge {
     return getApplicationSupportDirectory();
   }
 
+  /// Mağaza yönlendiricisi zinciri (Android SDK `StoreReferrerChain` ile aynı): önce Google Play okunur; Play kanıt vermezse
+  /// (hizmet yok, organik varsayılan ya da boş) AppGallery'ye sorulur. İkisi de kanıt vermezse Play sonucu korunur.
   @override
   Future<AttributionParams?> readInstallReferrer() async {
     final result = await _channel.invokeMethod<Map<Object?, Object?>>(
       'readInstallReferrer',
     );
-    return result == null ? null : AttributionParams.fromMap(result);
+    final play = result == null ? null : AttributionParams.fromMap(result);
+    if (play != null && !play.isEmpty && !play.isPlayOrganicDefault) {
+      return play;
+    }
+    return await _readHuaweiInstallReferrer() ?? play;
+  }
+
+  /// Yerel eklenti AppGallery içerik sağlayıcısının yalnız `referrer` sütununu okur ve izin listesinden geçirir. Okuma hatası ya da
+  /// eski eklenti kanıt yok sayılır.
+  Future<AttributionParams?> _readHuaweiInstallReferrer() async {
+    final Map<Object?, Object?>? result;
+    try {
+      result = await _channel.invokeMethod<Map<Object?, Object?>>(
+        'readHuaweiInstallReferrer',
+      );
+    } on MissingPluginException {
+      return null;
+    } on PlatformException {
+      return null;
+    }
+    if (result == null) return null;
+    final params = AttributionParams.fromMap(result);
+    return params.isEmpty
+        ? null
+        : params.withSource(AttributionSource.huaweiInstallReferrer);
   }
 
   @override
@@ -162,6 +197,36 @@ class AndroidPlatformBridge implements PlatformBridge {
   // Android kuruluma Play Install Referrer ile bağlanır; AdServices yoktur.
   @override
   Future<String?> adServicesToken() async => null;
+
+  /// Yerel eklenti Facebook, Instagram ve Facebook Lite sağlayıcılarını sorgular; eski eklentide kanal yoksa `null`.
+  @override
+  Future<String?> metaInstallReferrer(String appId) async {
+    try {
+      return await _channel.invokeMethod<String>('readMetaInstallReferrer', {'appId': appId});
+    } on MissingPluginException {
+      return null;
+    }
+  }
+
+  /// Yerel eklenti kurucu paketi okur ve sınıflar; eski eklentide kanal yoksa `null` (alan eklenmez).
+  @override
+  Future<String?> installStore() async {
+    try {
+      return await _channel.invokeMethod<String>('getInstallStore');
+    } on MissingPluginException {
+      return null;
+    }
+  }
+
+  /// Yerel eklenti `Build` alanlarını sınıflar ve yalnız evet/hayır döner; eski eklentide kanal yoksa `null` (alan eklenmez).
+  @override
+  Future<bool?> isEmulator() async {
+    try {
+      return await _channel.invokeMethod<bool>('isEmulator');
+    } on MissingPluginException {
+      return null;
+    }
+  }
 }
 
 /// iOS: yerel kod yoktur. Referrer yoktur (`none`); evrensel bağlantıyı uygulama `handleDeepLink` ile verir.
@@ -202,8 +267,8 @@ class IosPlatformBridge implements PlatformBridge {
   @override
   Future<void> setNetworkListening(bool enabled) async {}
 
-  /// AdServices token'ını iOS yerel eklentisinden ister (`getAdServicesToken`). Eklenti bu pakette henüz yoktur
-  /// (BLOCKED_EXTERNAL: macOS ve Xcode gerekir); kanal kayıtlı değilse `null` döner ve SDK dürüstçe `unsupported` der.
+  /// AdServices token'ını iOS yerel eklentisinden ister (`getAdServicesToken`, ios/Classes/FeralinFlutterPlugin.swift). Eski eklenti
+  /// sürümünde kanal kayıtlı değilse `null` döner ve SDK dürüstçe `unsupported` der. Mac'te derleme ve cihaz testi docs/MAC_GOREVLERI.md.
   @override
   Future<String?> adServicesToken() async {
     try {
@@ -212,4 +277,16 @@ class IosPlatformBridge implements PlatformBridge {
       return null;
     }
   }
+
+  /// iOS'ta Meta Install Referrer yoktur (Meta yalnız Android sağlayıcısı sunar).
+  @override
+  Future<String?> metaInstallReferrer(String appId) async => null;
+
+  /// iOS'ta kurulum mağazası okunmaz.
+  @override
+  Future<String?> installStore() async => null;
+
+  /// iOS'ta emülatör işareti üretilmez.
+  @override
+  Future<bool?> isEmulator() async => null;
 }

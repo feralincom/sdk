@@ -2,22 +2,22 @@
 
 `com.feralin.unity`: Unity oyunları için UTP v1 olay SDK'sı. İzin yoksa olay üretmez, parmak izi veya cihaz kimliği toplamaz. Çalışma zamanı bağımlılığı yalnız Unity'nin kendi `UnityWebRequest` modülüdür (Android atfı için ayrıca Play Install Referrer kitaplığı, aşağıya bakın).
 
-> **Durum:** Registry'de yayınlanmadı. Paket kanalı herkese açık Git deposudur (aşağıda); sürüm etiketi `sdks/unity/v0.2.0` henüz gönderilmedi, gönderim ve etiket site sahibinin onayını bekler. O zamana kadar aşağıdaki gibi yerel kurulur. Android ve iOS yerel köprüleri (Keystore, Keychain, Install Referrer, AdServices) yazıldı ama oyuncu derlemesi ve cihaz olmadığı için **derlenmedi ve cihazda sınanmadı**. Ayrıntı için "Doğrulama" bölümüne bakın. Kurulum belgesi: [`docs/sdk/unity.md`](../../docs/sdk/unity.md) (TR ve EN).
+> **Durum:** Registry'de yayınlanmadı. Paket kanalı herkese açık Git deposudur (aşağıda); sürüm etiketi `sdks/unity/v0.3.0` henüz gönderilmedi, gönderim ve etiket site sahibinin onayını bekler. O zamana kadar aşağıdaki gibi yerel kurulur. Android ve iOS yerel köprüleri (Keystore, Keychain, Install Referrer, AdServices) yazıldı ama oyuncu derlemesi ve cihaz olmadığı için **derlenmedi ve cihazda sınanmadı**. Ayrıntı için "Doğrulama" bölümüne bakın. Kurulum belgesi: [`docs/sdk/unity.md`](../../docs/sdk/unity.md) (TR ve EN).
 
 ## Kurulum
 
 ### Git deposundan (UPM)
 
-Paket herkese açık depoda `sdks/unity` altındadır (<https://github.com/feralincom/sdk>); sürüm etiketi `sdks/unity/v0.2.0`. Unity Package Manager → **+** → **Add package from git URL** alanına:
+Paket herkese açık depoda `sdks/unity` altındadır (<https://github.com/feralincom/sdk>); sürüm etiketi `sdks/unity/v0.3.0`. Unity Package Manager → **+** → **Add package from git URL** alanına:
 
 ```text
-https://github.com/feralincom/sdk.git?path=sdks/unity#sdks/unity/v0.2.0
+https://github.com/feralincom/sdk.git?path=sdks/unity#sdks/unity/v0.3.0
 ```
 
 ya da `Packages/manifest.json`:
 
 ```json
-{ "dependencies": { "com.feralin.unity": "https://github.com/feralincom/sdk.git?path=sdks/unity#sdks/unity/v0.2.0" } }
+{ "dependencies": { "com.feralin.unity": "https://github.com/feralincom/sdk.git?path=sdks/unity#sdks/unity/v0.3.0" } }
 ```
 
 Bilgisayarda Git kurulu olmalıdır (Unity Git adresini kendisi değil, `git` komutuyla çeker). `#` sonrası etiket sürümü sabitler; etiketsiz adres `main` dalının o anki hâlini kurar ve önerilmez. Etiket depoya gönderilmeden adres "revision not found" hatası verir; yayımlanmış etiketler <https://github.com/feralincom/sdk/tags> sayfasındadır.
@@ -27,7 +27,7 @@ Bilgisayarda Git kurulu olmalıdır (Unity Git adresini kendisi değil, `git` ko
 Unity Package Manager → **Add package from tarball**, veya `Packages/manifest.json`:
 
 ```json
-{ "dependencies": { "com.feralin.unity": "file:/mutlak/yol/com.feralin.unity-0.2.0.tgz" } }
+{ "dependencies": { "com.feralin.unity": "file:/mutlak/yol/com.feralin.unity-0.3.0.tgz" } }
 ```
 
 Paket üretmek: `sdks/unity` içinde `npm pack`.
@@ -130,8 +130,22 @@ Anahtar alınamazsa (Keystore bozuk, Keychain okunamıyor) düz metne **düşül
 ## Atıf ve bağlantılar
 
 - **Android Play Install Referrer:** kurulumda bir kez okunur, `app_first_open` olayına `attribution_source=play_install_referrer`, `fr_click` ve izin listesindeki `utm_*` yazılır. Play'in tıklama yokken döndürdüğü `organic` varsayılanı kanıt sayılmaz. Reklam izni yoksa referrer **okunmaz**; izin sonradan gelirse bir kez okunur ve kanıt `consent_followup` işaretli `deep_link_opened` ile taşınır. `fr_dl` ile gelen ertelenmiş derin bağlantı yolu `Client.ConsumeDeferredDeepLink()` ile bir kez teslim edilir.
+- **Kurulum mağazası (Android):** `app_first_open` olayı `install_store` özelliğini taşır: uygulamayı kuran paketten türetilen kapalı listeden bir değer (`google_play`, `samsung_galaxy_store`, `huawei_appgallery`, `amazon_appstore`, `xiaomi_getapps`, `oppo_app_market`, `vivo_app_store`, `honor_app_market`, `sideload`, `unknown`, `other`). Yapılandırma ve ek Java eklentisi gerekmez (`FeralinBehaviour` kaynağı kendisi verir; `FeralinOptions.InstallStoreSource`). Kişisel veri ya da atıf kanıtı olmadığından reklam izninden bağımsız eklenir (analitik izni yine şarttır). Listede olmayan kurucunun paket adı gönderilmez (`other`); değer işletim sisteminin bildirdiğidir, mağaza tarafından doğrulanmaz. Okunamazsa alan eklenmez, ilk açılış yine üretilir. iOS, Editor ve masaüstünde alan yoktur. Sınıflayıcı ve çekirdek davranışı birim testlidir; `PackageManager` okuması (JNI) cihazda sınanmadı.
+- **Huawei AppGallery kurulum yönlendiricisi (Android):** Play kanıt vermezse (hizmet yok, boş ya da organik varsayılan) AppGallery'nin içerik sağlayıcısındaki `referrer` değeri okunur (`FeralinHuaweiReferrer.java`, `FeralinOptions.HuaweiReferrerSource`); kanıt `attribution_source=huawei_install_referrer` ile gider. Yalnız reklam ölçümü izni açıkken okunur ve aynı izin listesinden (`fr_click`, `fr_dl`, `utm_*`) geçer. Android 11 ve üzerinde `Assets/Plugins/Android/AndroidManifest.xml` içine `<queries><package android:name="com.huawei.appmarket" /></queries>` elle eklenmelidir. Zincir ve ayrıştırma birim testlidir; Java köprüsü ve gerçek Huawei cihazı denenmedi, sütun sırası Huawei belgesinden alınmıştır.
+- **Emülatör işareti (Android):** `android.os.Build` alanları saf C# sınıflayıcıdan (`EmulatorCheck.IsEmulator`) geçer; emülatörse `app_first_open` olayına `device_emulator: true` eklenir, değilse alan yoktur (`FeralinOptions.EmulatorSource`). `Build` alanlarının kendisi gönderilmez. Sezgiseldir: sunucuda kesin kanıt değil, işarettir. Sınıflayıcı birim testlidir; cihazda denenmedi.
+- **SDK imzası:** `FeralinOptions.SigningKey = new SigningKey("sgn_...", "fsk_...")` (ya da `FeralinBehaviour` üzerindeki iki alan) verilirse yalnız `app_first_open` ve `deep_link_opened` olaylarına `fr_sig` eklenir (`v1.<kimlik>.<unix saniye>.<hex hmac-sha256>`; olay kimliğine ve `anonymous_id` değerine bağlıdır). Kimlik `sgn_` + 12-40 küçük harf/rakam, değer 16-200 karakter olmalıdır; geçersiz anahtar kurucuda `ArgumentException` verir ve mesajda anahtar değeri bulunmaz. Anahtar değeri loglanmaz, `ToString` yalnız kimliği yazar. Anahtar oyuna gömülüdür: imza sahte kurulumu zorlaştırır, imkânsız kılmaz. Sunucuyla aynı sınama vektörüyle birim testlidir; cihazda denenmedi.
 - **Uygulama bağlantıları:** `Application.deepLinkActivated` (ve soğuk açılıştaki `absoluteURL`) otomatik bağlanır. Yalnız `http(s)` bağlantılar kanıt sayılır; sorgudan yalnız `fr_click`, `fr_dl`, `utm_*` okunur, ham URL saklanmaz (`page_url` yalnız şema, host ve yoldur).
 - **iOS:** `FeralinBehaviour.BindInstall(cb)` AdServices token'ını (`AAAttribution.attributionToken()`) rastgele kurulum kimliğiyle `POST /v1/projects/{id}/attribution/apple-adservices/tokens` ucuna iletir ve `installId` döndürür; `apiUrl` ve `projectId` gerekir. `installId`'yi kendi sunucunuza iletin ve hesap bağını yalnız oradan, gizli API anahtarıyla `account-links` ucuyla kurun. **Apple tarafında kesin tekil atıf iddia edilmez:** sunucu bugün Apple'a sormaz, token yalnız saklanır; parmak izi yoktur. Durumlar: `received`, `skipped_no_consent`, `not_configured`, `unsupported`, `token_unavailable`, `rejected`, `temporary_failure`.
+
+### Fera Fly kısa linkleri
+
+Oyun `https://fera.fly/kod` ya da `https://marka.fera.fly/kod` gibi bir kısa linkle doğrudan açıldığında `HandleDeepLink` (FeralinBehaviour `Application.deepLinkActivated` ile çağırır) linki yönlendiriciden gövdesiz `GET` ve `Accept: application/vnd.feralin.link+json` ile çözümler. Derin yol, UTM ve reklam izni varsa tıklama kimliği `deep_link_opened` olayına eklenir; gidilecek yolu `Client.LastShortLink?.DeepLinkPath` verir. Kendi bağlantı akışınız varsa:
+
+```csharp
+client.HandleShortLink(url, open => SceneRouter.Open(open.Destination)); // ör. /urun/42
+```
+
+Markalı alan: `FeralinOptions.ShortLinkHosts`. Cihaz sınıfı (`ios`, `android`, `desktop`) `Application.platform` değerinden verilir; model gönderilmez. Kendi `IFeralinTransport` sınıfınızı yazdıysanız `TransportRequest.Method` değerine uyun. Analitik izni yoksa istek yapılmaz.
 
 ## Gönderim
 
@@ -165,3 +179,23 @@ Uçtan uca koşu gerçek `services/collect` ile `feralin_purchase`, oyun olaylar
 `Tests/Runtime` altındaki PlayMode testleri Unity Editor içinde `UnityWebRequest`, `FeralinBehaviour`, şifreli kalıcı kuyruk ve hata kancasını sınar; projenin `manifest.json` dosyasında `"testables": ["com.feralin.unity"]` gerekir. Uçtan uca koşuya eklemek için `FERALIN_UNITY_EDITOR=<Unity.exe yolu>` verin. Verilmezse bu adım atlanır.
 
 `package.json` içindeki `2021.3` alt sınırı API kullanımına göre yazıldı, o sürümde koşulmadı.
+
+## Meta Install Referrer (Android)
+
+Facebook ya da Instagram reklamından gelen kurulumun kampanya, reklam seti ve reklam bilgisi Meta'nın kendi verisinden okunur; Facebook SDK
+gerekmez. Yapılacaklar:
+
+1. Feralin panelinde Atıf ekranındaki Meta kartına Facebook App ID'yi ve Meta uygulama panelindeki Install Referrer çözme anahtarını girin.
+2. SDK yapılandırmasına Facebook App ID'yi verin (`metaAppId`; Unity'de `FeralinBehaviour` alanı ya da `FeralinOptions.MetaAppId`).
+3. Android 11 ve üzerinde uygulama manifestine paket görünürlüğü ekleyin (Android SDK ve Flutter eklentisi bunu kendi manifestinden
+   birleştirir; Unity'de `Assets/Plugins/Android/AndroidManifest.xml` içine elle eklenir):
+
+```xml
+<queries>
+    <package android:name="com.facebook.katana" />
+    <package android:name="com.instagram.android" />
+    <package android:name="com.facebook.lite" />
+</queries>
+```
+
+Veri yalnız reklam ölçümü izni (`consent.advertising`) açıkken okunur; içerik şifrelidir ve uygulamada açılmaz.

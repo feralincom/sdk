@@ -109,6 +109,17 @@ Anahtar `^[a-zA-Z][a-zA-Z0-9_]{0,63}$`, çağrı başına en çok 50 özellik; d
 
 Etkinliğin `ACTION_VIEW` http(s) niyetleri kanaldan otomatik gelir; `handleDeepLink` çağırmayın, aynı açılış iki kez sayılır. Başka bir bağlantı paketi kullanıyorsanız `autoCaptureDeepLinks: false` verip URL'i `handleDeepLink` ile iletin. Alan doğrulaması (`autoVerify`, `assetlinks.json`) uygulamanındır.
 
+### Fera Fly kısa linkleri
+
+Uygulama `https://fera.fly/kod` ya da `https://marka.fera.fly/kod` gibi bir kısa linkle doğrudan açıldığında (App Link / Universal Link) işletim sistemi yönlendiriciye uğramaz. SDK aynı adresi `Accept: application/vnd.feralin.link+json` ile ister ve linkin derin yolunu, UTM'sini ve reklam izni varsa tıklama kimliğini alır; bunlar `deep_link_opened` olayına eklenir. Analitik izni yoksa ya da izin henüz verilmediyse istek yapılmaz; reklam izni yoksa istek `Feralin-Attribution: off` ile gider ve yönlendirici kanıt yazmaz.
+
+```dart
+final open = await Feralin.handleShortLink(uri); // iOS'ta ya da autoCaptureDeepLinks: false iken
+navigator.pushNamed(open.destination);           // ör. /urun/42
+```
+
+Android'de otomatik yakalama açıkken kısa link zaten çözümlenir; gidilecek yolu `Feralin.lastShortLink?.destination` verir. `handleShortLink` ile `handleDeepLink` aynı açılışı sayar, ikisinden yalnız birini çağırın. Markalı alanınız varsa `FeralinConfig(shortLinkHosts: ['fera.fly', 'go.marka.com'])`. `destination` dışarıdan gelen veridir; kendi yönlendirme tablonuzla eşleştirin.
+
 ### Ertelenmiş derin bağlantı (yalnız Android)
 
 Uygulama kurulu değilken tıklanan linkin uygulama içi yolu (`deep_link_path`) Play kurulumundan sonra bir kez teslim edilir:
@@ -141,6 +152,18 @@ Bu pakette yerel iOS kodu yalnız kuyruk şifreleme anahtarı içindir (Keychain
 - **Oyun:** `trackLevelStart/Complete/Fail`, `trackEconomySource/Sink` (sanal para birimi; gerçek gelir değildir), `trackRewardedAdShown/Complete`, `trackIapOfferShown/Initiated`. Sözleşme `packages/schemas/utp/v1/game-events.md`; sözleşme dışı girdide `null` döner ve olay üretilmez.
 - **Reklam geliri:** `Feralin.trackAdRevenue(AdRevenueInput(network: 'admob', adFormat: AdFormat.rewarded, revenueMicros: 12500, currency: 'USD'))`. `fr_ad_revenue` ayrı bir gelir sınıfıdır: satın alma gelirine (`trackRevenue`) ve reklam harcamasına karışmaz; istemci beyanıdır ve sunucuda `ESTIMATED` kalır (reklam ağı mutabakatı `BLOCKED_EXTERNAL`).
 - Birim testlidir (`signal_events_test.dart`); gerçek cihazda sınanmadı.
+
+### Kurulum mağazası (yalnız Android)
+
+İlk açılış olayı (`app_first_open`) Android'de `install_store` özelliğini taşır: uygulamayı cihaza kuran paketten türetilen kapalı listeden bir değer (`google_play`, `samsung_galaxy_store`, `huawei_appgallery`, `amazon_appstore`, `xiaomi_getapps`, `oppo_app_market`, `vivo_app_store`, `honor_app_market`, `sideload`, `unknown`, `other`). Yapılandırma gerekmez. Kişisel veri ya da atıf kanıtı olmadığından reklam ölçümü izninden bağımsız eklenir (analitik izni yine şarttır). Listede olmayan kurucunun paket adı gönderilmez (`other`); sınıflama yerel tarafta yapılır, Dart kapalı listeyi yeniden denetler. Değer işletim sisteminin bildirdiğidir, mağaza tarafından doğrulanmaz. Okunamazsa alan eklenmez, ilk açılış yine üretilir. iOS'ta alan yoktur. Birim testlidir (`InstallStoreTest.kt`, `install_store_test.dart`); gerçek cihazda sınanmadı.
+
+### SDK imzası, emülatör işareti ve Huawei AppGallery (18 Kasım 2026)
+
+- **SDK imzası:** `FeralinConfig(signingKey: SigningKey(id: 'sgn_...', secret: 'fsk_...'))` verilirse yalnız `app_first_open` ve `deep_link_opened` olaylarına `fr_sig` eklenir (`v1.<kimlik>.<unix saniye>.<hex hmac-sha256>`; olay kimliğine ve `anonymous_id` değerine bağlıdır). Sunucu imzasız ya da bozuk imzalı kurulumu projenin kuralına göre işaretler ya da reddeder. Kimlik `sgn_` + 12-40 küçük harf/rakam, değer 16-200 karakter olmalıdır; geçersiz anahtarda SDK kapalı kalır (`initialize` `false`). Anahtar değeri loglara ve `toString` çıktısına düşmez. Anahtar uygulamaya gömülüdür: imza sahte kurulumu zorlaştırır, imkânsız kılmaz. Paket bağımlılık eklemez; HMAC-SHA256 saf Dart'tır ve sunucuyla aynı sınama vektörüyle doğrulanır (`fraud_signals_test.dart`).
+- **Emülatör işareti (yalnız Android):** yerel eklenti `android.os.Build` alanlarını sınıflar; emülatörse `app_first_open` olayına `device_emulator: true` eklenir, değilse alan yoktur. `Build` alanlarının kendisi Dart'a geçmez. Sezgiseldir: sunucuda kesin kanıt değil, işarettir. iOS'ta alan yoktur.
+- **Huawei AppGallery kurulum yönlendiricisi (yalnız Android):** Play Install Referrer kanıt vermezse (hizmet yok, boş ya da organik varsayılan) AppGallery'nin içerik sağlayıcısındaki `referrer` değeri okunur; kanıt `attribution_source=huawei_install_referrer` ile gider. Yalnız reklam ölçümü izni açıkken okunur ve aynı izin listesinden (`fr_click`, `fr_dl`, `utm_*`) geçer. Eklenti `<queries>` içinde `com.huawei.appmarket` paketini kendi manifestinden birleştirir.
+
+Üçü de birim testlidir (`fraud_signals_test.dart`, `platform_channel_test.dart`, `EmulatorCheckTest.kt`, `HuaweiInstallReferrerTest.kt`); gerçek cihazda (özellikle Huawei cihazında) denenmedi. AppGallery sütun sırası Huawei belgesinden alınmıştır.
 
 ## Gizlilik sınırları
 
@@ -178,3 +201,23 @@ DATABASE_URL='postgres://kullanici:parola@127.0.0.1:5432/test_db?sslmode=disable
 ```
 
 `test/collector_e2e_test.dart` ortam değişkenleri yoksa atlanır; atlanma doğrulama sayılmaz. Yalnız test veritabanı kullanın. Örnek uygulama için `example/README.md`.
+
+## Meta Install Referrer (Android)
+
+Facebook ya da Instagram reklamından gelen kurulumun kampanya, reklam seti ve reklam bilgisi Meta'nın kendi verisinden okunur; Facebook SDK
+gerekmez. Yapılacaklar:
+
+1. Feralin panelinde Atıf ekranındaki Meta kartına Facebook App ID'yi ve Meta uygulama panelindeki Install Referrer çözme anahtarını girin.
+2. SDK yapılandırmasına Facebook App ID'yi verin (`metaAppId`; Unity'de `FeralinBehaviour` alanı ya da `FeralinOptions.MetaAppId`).
+3. Android 11 ve üzerinde uygulama manifestine paket görünürlüğü ekleyin (Android SDK ve Flutter eklentisi bunu kendi manifestinden
+   birleştirir; Unity'de `Assets/Plugins/Android/AndroidManifest.xml` içine elle eklenir):
+
+```xml
+<queries>
+    <package android:name="com.facebook.katana" />
+    <package android:name="com.instagram.android" />
+    <package android:name="com.facebook.lite" />
+</queries>
+```
+
+Veri yalnız reklam ölçümü izni (`consent.advertising`) açıkken okunur; içerik şifrelidir ve uygulamada açılmaz.

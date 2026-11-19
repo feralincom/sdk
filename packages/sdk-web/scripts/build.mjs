@@ -33,6 +33,8 @@ for (const [name, globalName, footer, budget] of [
   ["auto", "feralinAuto", "window.feralinAuto=feralinAuto;", 3 * 1024],
   ["errors", "feralinErrors", "window.feralinErrors=feralinErrors;", 3 * 1024],
   ["vitals", "feralinVitals", "window.feralinVitals=feralinVitals;", 2 * 1024],
+  // Smart Script (madde 15): açılış sayfasındaki mağaza bağlantılarını kısa linke çevirir; ölçüm SDK'sı olmadan çalışır.
+  ["smart", "feralinSmart", "window.feralinSmart={apply:feralinSmart.applySmartScript};", 2 * 1024],
 ]) {
   const mod = { entryPoints: [join(root, `src/${name}.ts`)], bundle: true, sourcemap: true, target: ["es2020"], legalComments: "none" };
   await build({ ...mod, format: "esm", outfile: join(root, `dist/feralin-${name}.mjs`) });

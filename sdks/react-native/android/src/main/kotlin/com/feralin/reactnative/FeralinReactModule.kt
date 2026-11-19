@@ -84,6 +84,16 @@ internal class FeralinReactModule(private val context: ReactApplicationContext) 
     }
 
     @ReactMethod
+    fun handleShortLink(url: String, promise: Promise) {
+        try {
+            Feralin.handleShortLink(url) { open -> promise.resolve(Arguments.makeNativeMap(BridgeMapping.shortLinkOpenToMap(open))) }
+        } catch (t: Throwable) {
+            Log.w(NAME, "kısa link hatası: ${t.javaClass.simpleName}")
+            promise.resolve(null)
+        }
+    }
+
+    @ReactMethod
     fun getStatus(promise: Promise) = guarded(promise, null) {
         Arguments.makeNativeMap(BridgeMapping.statusToMap(Feralin.getStatus()))
     }

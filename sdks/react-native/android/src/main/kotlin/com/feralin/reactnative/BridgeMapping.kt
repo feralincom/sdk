@@ -7,6 +7,8 @@ import com.feralin.android.FeralinConfig
 import com.feralin.android.FeralinStatus
 import com.feralin.android.FlushResult
 import com.feralin.android.SdkWrapper
+import com.feralin.android.ShortLinkOpen
+import com.feralin.android.SigningKey
 
 /**
  * JS ile çekirdek arasındaki dönüşüm. React Native türlerini kullanmaz, saf JVM'de sınanır. Köprüden gelen sayılar
@@ -20,6 +22,8 @@ internal object BridgeMapping {
         val projectKey = map["projectKey"] as? String ?: return null
         val collectUrl = map["collectUrl"] as? String ?: return null
         val defaults = FeralinConfig(projectKey, collectUrl)
+        // İmza anahtarı verildiyse iki alan da dizgi olmalı; biçimi (kimlik deseni, değer uzunluğu) çekirdek denetler ve reddeder.
+        val signingKey = map["signingKey"]?.let { signingKeyFrom(it) ?: return null }
         return defaults.copy(
             consent = consentFrom(map["consent"]),
             flushIntervalMs = longOf(map["flushIntervalMs"]) ?: defaults.flushIntervalMs,
@@ -27,15 +31,29 @@ internal object BridgeMapping {
             queueLimit = longOf(map["queueLimit"])?.toInt() ?: defaults.queueLimit,
             sessionTimeoutMs = longOf(map["sessionTimeoutMs"]) ?: defaults.sessionTimeoutMs,
             autoCaptureDeepLinks = map["autoCaptureDeepLinks"] as? Boolean ?: defaults.autoCaptureDeepLinks,
+            // Fera Fly kısa link hostları; JS katmanı biçimi süzer, burada yalnız dizgiler alınır.
+            shortLinkHosts = (map["shortLinkHosts"] as? List<*>)?.filterIsInstance<String>()?.take(20)?.takeIf { it.isNotEmpty() }
+                ?: defaults.shortLinkHosts,
             debug = map["debug"] as? Boolean ?: defaults.debug,
             // Kurulum eşleştirme kodu: çekirdek biçimi denetler ve ilk olaya `fr_install_code` olarak ekler.
             installCode = (map["installCode"] as? String)?.trim()?.takeIf { it.isNotEmpty() },
+            // Meta Install Referrer: Facebook App ID; biçimi çekirdek denetler (5-20 rakam), boşsa okuma yapılmaz.
+            metaAppId = (map["metaAppId"] as? String)?.trim()?.takeIf { it.isNotEmpty() },
+            signingKey = signingKey,
             wrapper = SdkWrapper(
                 name = map["wrapperName"] as? String ?: "@feralin/react-native",
                 version = map["wrapperVersion"] as? String ?: "0.0.0-dev",
                 platform = WRAPPER_PLATFORM,
             ),
         )
+    }
+
+    /** `{ id, secret }` haritasından imza anahtarı; alan eksik ya da dizgi değilse `null` (yapılandırma hatası). Değer loglanmaz. */
+    fun signingKeyFrom(value: Any?): SigningKey? {
+        val map = value as? Map<*, *> ?: return null
+        val id = map["id"] as? String ?: return null
+        val secret = map["secret"] as? String ?: return null
+        return SigningKey(id, secret)
     }
 
     /** `analytics` yoksa izin bilinmiyor sayılır; varsayılan olarak verilmiş kabul edilmez. */
@@ -63,6 +81,12 @@ internal object BridgeMapping {
         "rejected" to result.rejected,
         "status" to result.status,
         "batchId" to result.batchId,
+    )
+
+    fun shortLinkOpenToMap(open: ShortLinkOpen): Map<String, Any?> = mapOf(
+        "destination" to open.destination,
+        "linkCode" to open.linkCode,
+        "hasClickId" to open.hasClickId,
     )
 
     fun deferredDeepLinkToMap(link: DeferredDeepLink): Map<String, Any?> = mapOf(

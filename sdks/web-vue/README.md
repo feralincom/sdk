@@ -63,7 +63,7 @@ import { createApp } from "vue";
 import { FeralinErrorHandler, FeralinPlugin } from "@feralin/vue";
 
 const app = createApp(App);
-app.use(FeralinPlugin, { projectKey: "pk_live_...", collectUrl: "https://collect.feralin.com" });
+app.use(FeralinPlugin, { projectKey: "pk_live_...", collectUrl: "https://feralin.com/collect" });
 app.use(FeralinErrorHandler, { appVersion: "1.4.2", sampleRate: 1 });
 app.mount("#app");
 ```

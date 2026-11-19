@@ -1,0 +1,34 @@
+{
+  "name": "cordova-plugin-feralin",
+  "version": "0.1.0",
+  "description": "Feralin Cordova eklentisi: Android (sdks/android) ve iOS (sdks/swift) çekirdekleri üzerinde JS yüzü.",
+  "license": "MIT",
+  "main": "www/feralin.js",
+  "types": "types/index.d.ts",
+  "cordova": {
+    "id": "cordova-plugin-feralin",
+    "platforms": ["android", "ios"]
+  },
+  "engines": {
+    "cordovaDependencies": {
+      "0.1.0": { "cordova": ">=12.0.0", "cordova-android": ">=13.0.0", "cordova-ios": ">=8.0.0" }
+    }
+  },
+  "keywords": ["ecosystem:cordova", "cordova-android", "cordova-ios", "analytics", "attribution"],
+  "files": [
+    "plugin.xml",
+    "Package.swift",
+    "www",
+    "types",
+    "src",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "test": "node --test test/*.test.mjs",
+    "typecheck": "node ../../node_modules/typescript/bin/tsc -p tsconfig.json",
+    "vendor": "node scripts/vendor.mjs",
+    "prepack": "node scripts/vendor.mjs"
+  }
+}

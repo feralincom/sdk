@@ -318,6 +318,33 @@ test("page_url ve referrer temizlenir, utm_* properties'e taşınır, şemaya uy
   assert.equal(validateBatch(JSON.parse(body)), true, JSON.stringify(validateBatch.errors));
 });
 
+test("kısa link kodu (fr_link) properties'e taşınır; biçimsiz kod atılır", async (t) => {
+  withBrowser(t, "https://site.example/kampanya?fr_link=bahar-25&utm_source=ig&token=GIZLI");
+  const { f, calls } = fakeFetch(202);
+  const c = new sdk.Feralin({ ...OPTS, consent: { analytics: true }, autoTrack: false, fetch: f, storage: spyStorage() });
+  const e = c.track("page_view");
+  assert.deepEqual(e.properties, { utm_source: "ig", fr_link: "bahar-25" });
+  assert.equal(e.context.page_url, "https://site.example/kampanya");
+  await c.flush();
+  assert.equal(validateBatch(JSON.parse(calls[0].init.body)), true, JSON.stringify(validateBatch.errors));
+  for (const bad of ["A%20B", "x", "<script>", "kod_alt"]) {
+    withBrowser(t, "https://site.example/?fr_link=" + bad);
+    const d = new sdk.Feralin({ ...OPTS, consent: { analytics: true }, autoTrack: false, fetch: fakeFetch(202).f, storage: spyStorage() });
+    assert.equal(d.track("page_view").properties, undefined, bad);
+  }
+});
+
+test("reklam tıklama kimliğinin yalnız türü gider (fr_click_type), değeri gönderilmez", async (t) => {
+  withBrowser(t, "https://site.example/?gclid=GIZLIKIMLIK&utm_source=google");
+  const { f, calls } = fakeFetch(202);
+  const c = new sdk.Feralin({ ...OPTS, consent: { analytics: true }, autoTrack: false, fetch: f, storage: spyStorage() });
+  const e = c.track("page_view");
+  assert.deepEqual(e.properties, { utm_source: "google", fr_click_type: "gclid" });
+  await c.flush();
+  assert.equal(calls[0].init.body.includes("GIZLIKIMLIK"), false);
+  assert.equal(validateBatch(JSON.parse(calls[0].init.body)), true, JSON.stringify(validateBatch.errors));
+});
+
 test("utm yoksa properties eklenmez; boş referrer boş kalır", (t) => {
   withBrowser(t, "https://site.example/?a=1");
   const c = new sdk.Feralin({ ...OPTS, consent: { analytics: true }, autoTrack: false, fetch: fakeFetch(202).f, storage: spyStorage() });

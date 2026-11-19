@@ -23,6 +23,17 @@ class FeralinEngineTest {
     private var referrerResult: AttributionParams? = null
     private var heldReferrer: ((AttributionParams?) -> Unit)? = null
     private var holdReferrer = false
+    private var installStoreResult: String? = null
+    private var installStoreFails = false
+    private var emulatorResult = false
+    private var rootedResult = false
+    private var childDirected = false
+    private var osVersionResult: String? = null
+    private var collectAdvertisingId = false
+    private var advertisingIdResult: String? = "38400000-8cf0-11bd-b23e-10b96e40000d"
+    private var advertisingIdReads = 0
+    private var consentMaxAgeDays: Int? = null
+    private var signingKey: com.feralin.android.SigningKey? = null
 
     private fun engine(consent: Consent?, batchSize: Int = 50, queueLimit: Int = 1000, installCode: String? = null): FeralinEngine {
         val created = FeralinEngine(
@@ -33,6 +44,10 @@ class FeralinEngineTest {
                 batchSize = batchSize,
                 queueLimit = queueLimit,
                 installCode = installCode,
+                signingKey = signingKey,
+                childDirected = childDirected,
+                consentMaxAgeDays = consentMaxAgeDays,
+                collectAdvertisingId = collectAdvertisingId,
             ),
             storeProvider = { store },
             transport = transport,
@@ -45,6 +60,14 @@ class FeralinEngineTest {
             net = worker,
             clock = { worker.now },
             random = Random(7),
+            installStore = { if (installStoreFails) throw SecurityException("paket bilgisi yok") else installStoreResult },
+            emulator = { emulatorResult },
+            rooted = { rootedResult },
+            osVersion = { osVersionResult },
+            advertisingId = {
+                advertisingIdReads++
+                advertisingIdResult
+            },
         )
         created.start()
         worker.drain()
@@ -58,7 +81,7 @@ class FeralinEngineTest {
 
     private fun engineWith(consent: Consent, target: EventStore): FeralinEngine {
         val created = FeralinEngine(
-            config = FeralinConfig("pk_test_unit", "https://collect.example.com", consent),
+            config = FeralinConfig("pk_test_unit", "https://collect.example.com", consent, childDirected = childDirected, consentMaxAgeDays = consentMaxAgeDays),
             storeProvider = { target },
             transport = transport,
             referrer = {
@@ -70,6 +93,14 @@ class FeralinEngineTest {
             net = worker,
             clock = { worker.now },
             random = Random(7),
+            installStore = { if (installStoreFails) throw SecurityException("paket bilgisi yok") else installStoreResult },
+            emulator = { emulatorResult },
+            rooted = { rootedResult },
+            osVersion = { osVersionResult },
+            advertisingId = {
+                advertisingIdReads++
+                advertisingIdResult
+            },
         )
         created.start()
         worker.drain()
@@ -236,6 +267,270 @@ class FeralinEngineTest {
     }
 
     @Test
+    fun kurulumMagazasiIlkAcilisaIzindenBagimsizEklenir() {
+        installStoreResult = InstallStore.SAMSUNG_GALAXY_STORE
+        // Reklam ölçümü izni yok: tıklama kanıtı gitmez, mağaza gider (kişisel veri değildir).
+        val sdk = engine(GRANTED)
+        sdk.flushNow()
+        val props = sentEvents().single().props()
+        assertEquals("samsung_galaxy_store", props.getString("install_store"))
+        assertEquals("none", props.getString("attribution_source"))
+    }
+
+    @Test
+    fun appGalleryYonlendiricisiKendiKaynagiylaGider() {
+        referrerResult = AttributionParams("clk_hw_1", mapOf("utm_source" to "petal"), source = AttributionSource.HUAWEI_INSTALL_REFERRER)
+        val sdk = engine(GRANTED_AD)
+        sdk.flushNow()
+        val props = sentEvents().single().props()
+        assertEquals("huawei_install_referrer", props.getString("attribution_source"))
+        assertEquals("clk_hw_1", props.getString("fr_click"))
+        assertEquals("petal", props.getString("utm_source"))
+    }
+
+    @Test
+    fun emulatorBildirimiYalnizEmulatordeEklenir() {
+        emulatorResult = true
+        val sdk = engine(GRANTED)
+        sdk.flushNow()
+        assertTrue(sentEvents().single().props().getBoolean("device_emulator"))
+    }
+
+    @Test
+    fun cocuklaraYonelikUygulamadaReklamIzniHerZamanKapalidir() {
+        childDirected = true
+        referrerResult = AttributionParams("clk_1", mapOf("utm_source" to "ads"))
+        val sdk = engine(GRANTED_AD)
+        sdk.flushNow()
+        val event = sentEvents().single()
+        // Yönlendirici okunmaz, tıklama kimliği gitmez, olay reklam izni kapalı gider.
+        assertEquals(0, referrerReads)
+        assertFalse(event.props().has("fr_click"))
+        assertEquals("none", event.props().getString("attribution_source"))
+        assertFalse(event.getJSONObject("consent").getBoolean("advertising"))
+        assertEquals(false, sdk.status().consent?.advertising)
+        // Uygulama sonradan izni yeniden verse de değişmez.
+        sdk.setConsent(GRANTED_AD)
+        worker.drain()
+        assertEquals(false, sdk.status().consent?.advertising)
+        assertEquals(0, referrerReads)
+    }
+
+    @Test
+    fun pushBelirteciOlayOlarakGiderVeTekrarlanmaz() {
+        val sdk = engine(GRANTED)
+        val token = "dGVzdC1mY20tYmVsaXJ0ZWNp:APA91bExampleTokenValue_1234567890"
+        assertTrue(sdk.setPushToken(token) != null)
+        assertEquals(null, sdk.setPushToken(token))
+        assertEquals(null, sdk.setPushToken("kisa"))
+        assertEquals(null, sdk.setPushToken("bosluk iceren belirtec 1234567890"))
+        sdk.flushNow()
+        val pushEvents = sentEvents().filter { it.getString("event_name") == "fr_push_token" }
+        assertEquals(1, pushEvents.size)
+        assertEquals(token, pushEvents.single().props().getString("push_token"))
+    }
+
+    @Test
+    fun kaldirmaOlcumuBildirimiTaninir() {
+        assertTrue(com.feralin.android.Feralin.isUninstallCheck(mapOf("fr_uninstall_check" to "1")))
+        assertFalse(com.feralin.android.Feralin.isUninstallCheck(mapOf("baslik" to "kampanya")))
+    }
+
+    @Test
+    fun pushAcilisiKampanyaAlanlariylaGider() {
+        val sdk = engine(GRANTED)
+        assertTrue(sdk.trackPushOpen(mapOf("utm_campaign" to "kis-indirimi", "utm_source" to "braze", "baslik" to "Gizli metin", "fr_push_id" to "p-1")) != null)
+        assertEquals(null, sdk.trackPushOpen(mapOf("fr_uninstall_check" to "1")))
+        assertTrue(sdk.trackPushOpen(emptyMap()) != null)
+        sdk.flushNow()
+        val opens = sentEvents().filter { it.getString("event_name") == "fr_push_open" }
+        assertEquals(2, opens.size)
+        val first = opens[0].props()
+        assertEquals("kis-indirimi", first.getString("utm_campaign"))
+        assertEquals("push", first.getString("utm_medium"))
+        assertEquals("p-1", first.getString("push_id"))
+        assertFalse(first.has("baslik"))
+        assertEquals("push", opens[1].props().getString("utm_medium"))
+    }
+
+    @Test
+    fun espTiklamaAdresiYonlendirmeIzlenmedenCozulur() {
+        val hops = mapOf(
+            "https://click.esp.example/ls/click?upn=abc" to TrackedLinkResolver.Hop(302, "https://feralin.com/l/abc123"),
+            "https://feralin.com/l/abc123" to TrackedLinkResolver.Hop(200, null),
+            "https://click.esp.example/goreli" to TrackedLinkResolver.Hop(301, "/l/xyz"),
+            "https://click.esp.example/l/xyz" to TrackedLinkResolver.Hop(200, null),
+            "https://dongu.example/a" to TrackedLinkResolver.Hop(302, "https://dongu.example/a"),
+            "https://guvensiz.example/a" to TrackedLinkResolver.Hop(302, "http://feralin.com/l/abc"),
+        )
+        val resolver = TrackedLinkResolver { url -> hops[url] ?: throw java.io.IOException("yok") }
+        assertEquals("https://feralin.com/l/abc123", resolver.resolve("https://click.esp.example/ls/click?upn=abc"))
+        assertEquals("https://click.esp.example/l/xyz", resolver.resolve("https://click.esp.example/goreli"))
+        // Döngü en çok dört adımda durur; http adresine geçilmez; ağ hatasında özgün adres döner.
+        assertEquals("https://dongu.example/a", resolver.resolve("https://dongu.example/a"))
+        assertEquals("http://feralin.com/l/abc", resolver.resolve("https://guvensiz.example/a"))
+        assertEquals("https://bilinmeyen.example/x", resolver.resolve("https://bilinmeyen.example/x"))
+    }
+
+    @Test
+    fun reklamKimligiVarsayilanOlarakOkunmaz() {
+        val sdk = engine(GRANTED)
+        sdk.flushNow()
+        assertFalse(sentEvents().single().props().has("advertising_id"))
+        assertEquals(0, advertisingIdReads)
+    }
+
+    @Test
+    fun reklamKimligiSecenekAcikVeIzinVarkenIlkAcilisaEklenir() {
+        collectAdvertisingId = true
+        val sdk = engine(GRANTED_AD)
+        sdk.flushNow()
+        assertEquals("38400000-8cf0-11bd-b23e-10b96e40000d", sentEvents().single().props().getString("advertising_id"))
+        assertEquals(1, advertisingIdReads)
+    }
+
+    @Test
+    fun reklamKimligiReklamIzniYokkenOkunmaz() {
+        collectAdvertisingId = true
+        val sdk = engine(GRANTED)
+        sdk.flushNow()
+        assertFalse(sentEvents().single().props().has("advertising_id"))
+        assertEquals(0, advertisingIdReads)
+    }
+
+    @Test
+    fun reklamKimligiCocukKipindeOkunmaz() {
+        collectAdvertisingId = true
+        childDirected = true
+        val sdk = engine(GRANTED_AD)
+        sdk.flushNow()
+        assertFalse(sentEvents().single().props().has("advertising_id"))
+        assertEquals(0, advertisingIdReads)
+    }
+
+    @Test
+    fun reklamKimligiNormalizasyonu() {
+        assertEquals("38400000-8cf0-11bd-b23e-10b96e40000d", AdvertisingIdSource.normalize(" 38400000-8CF0-11BD-B23E-10B96E40000D ", false))
+        // Kullanıcı kişiselleştirmeyi kapattıysa ya da durum bilinmiyorsa kimlik gönderilmez.
+        assertEquals(null, AdvertisingIdSource.normalize("38400000-8cf0-11bd-b23e-10b96e40000d", true))
+        assertEquals(null, AdvertisingIdSource.normalize("38400000-8cf0-11bd-b23e-10b96e40000d", null))
+        assertEquals(null, AdvertisingIdSource.normalize("00000000-0000-0000-0000-000000000000", false))
+        assertEquals(null, AdvertisingIdSource.normalize("kimlik", false))
+        assertEquals(null, AdvertisingIdSource.normalize(null, false))
+    }
+
+    @Test
+    fun ilkAcilisIsletimSistemiSurumunuTasir() {
+        osVersionResult = "14"
+        val sdk = engine(GRANTED)
+        sdk.flushNow()
+        assertEquals("14", sentEvents().single().props().getString("os_version"))
+    }
+
+    @Test
+    fun gecersizIsletimSistemiSurumuGonderilmez() {
+        osVersionResult = "<script>"
+        val sdk = engine(GRANTED)
+        sdk.flushNow()
+        assertFalse(sentEvents().single().props().has("os_version"))
+    }
+
+    @Test
+    fun atifOlayiIzinZamaniniTasir() {
+        val startedAt = worker.now
+        val sdk = engine(GRANTED_AD)
+        sdk.flushNow()
+        assertEquals(EventJson.formatTime(startedAt), sentEvents().single().props().getString("consent_at"))
+    }
+
+    @Test
+    fun reklamIzniYokkenIzinZamaniGitmez() {
+        val sdk = engine(GRANTED)
+        sdk.flushNow()
+        assertFalse(sentEvents().single().props().has("consent_at"))
+    }
+
+    @Test
+    fun izinSuresiDolar_yenidenOnaylaninca_acilir() {
+        consentMaxAgeDays = 30
+        val first = engine(GRANTED_AD)
+        assertFalse(first.status().advertisingConsentExpired)
+        assertEquals(true, first.status().consent?.advertising)
+        // 30 gün dolmadan uygulama aynı izni yeniden verirse zaman sıfırlanmaz.
+        worker.advance(29L * 86_400_000L)
+        first.setConsent(GRANTED_AD)
+        worker.drain()
+        assertFalse(first.status().advertisingConsentExpired)
+        worker.advance(2L * 86_400_000L)
+        first.setConsent(GRANTED_AD)
+        worker.drain()
+        // 31. gün: izin verilmemiş sayılır.
+        assertTrue(first.status().advertisingConsentExpired)
+        assertNull(first.status().consent?.advertising)
+        first.confirmAdvertisingConsent()
+        worker.drain()
+        assertFalse(first.status().advertisingConsentExpired)
+        assertEquals(true, first.status().consent?.advertising)
+    }
+
+    @Test
+    fun rootBildirimiYalnizRootluCihazdaEklenir() {
+        rootedResult = true
+        val sdk = engine(GRANTED)
+        sdk.flushNow()
+        val props = sentEvents().single().props()
+        assertTrue(props.getBoolean("device_rooted"))
+        assertFalse(props.has("device_emulator"))
+    }
+
+    @Test
+    fun gercekCihazdaEmulatorAlaniYok() {
+        val sdk = engine(GRANTED)
+        sdk.flushNow()
+        val props = sentEvents().single().props()
+        assertFalse(props.has("device_emulator"))
+        assertFalse(props.has("device_rooted"))
+    }
+
+    @Test
+    fun imzaAnahtariVarsaIlkAcilisImzalanirVeSunucununBekledigiDizgiyleUyusur() {
+        signingKey = com.feralin.android.SigningKey("sgn_0123456789abcdef", "fsk_gizli_anahtar_degeri")
+        val sdk = engine(GRANTED)
+        sdk.track("level_up", mapOf("level" to 2))
+        sdk.flushNow()
+        val events = sentEvents()
+        val first = events.first { it.getString("event_name") == "app_first_open" }
+        val signature = first.props().getString("fr_sig")
+        val parts = signature.split(".")
+        assertEquals(4, parts.size)
+        assertEquals("v1", parts[0])
+        assertEquals("sgn_0123456789abcdef", parts[1])
+        // Sunucu aynı dizgiyi olayın kendi alanlarından kurar: kimlik, ad ve kurulum kimliği.
+        val expected = EventSigner.sign("sgn_0123456789abcdef", "fsk_gizli_anahtar_degeri", parts[2].toLong(), first.getString("event_id"), "app_first_open", first.getString("anonymous_id"))
+        assertEquals(expected, signature)
+        // Atıf olayı olmayan olay imzalanmaz; anahtar değeri gövdede geçmez.
+        assertFalse(events.first { it.getString("event_name") == "level_up" }.props().has("fr_sig"))
+        assertFalse(transport.requests.joinToString { it.body }.contains("fsk_gizli"))
+    }
+
+    @Test
+    fun imzaAnahtariYoksaImzaEklenmez() {
+        val sdk = engine(GRANTED)
+        sdk.flushNow()
+        assertFalse(sentEvents().single().props().has("fr_sig"))
+    }
+
+    @Test
+    fun kurulumMagazasiOkunamazsaIlkAcilisYineGider() {
+        installStoreFails = true
+        val sdk = engine(GRANTED_AD)
+        sdk.flushNow()
+        val event = sentEvents().single()
+        assertEquals("app_first_open", event.getString("event_name"))
+        assertFalse(event.props().has("install_store"))
+    }
+
+    @Test
     fun organikReferrerKanitSayilmaz() {
         referrerResult = AttributionParams.parseQuery("utm_source=google-play&utm_medium=organic")
         val sdk = engine(GRANTED_AD)
@@ -295,6 +590,65 @@ class FeralinEngineTest {
         assertFalse(body.contains("SIR"))
         assertFalse(body.contains("frag"))
         assertFalse(body.contains("a@b.c"))
+    }
+
+    @Test
+    fun feraFlyKisaLinkiCozumlenirDerinYolVeTiklamaKimligiOlayaGirer() {
+        val sdk = engine(GRANTED_AD)
+        osVersionResult = "14"
+        sdk.flushNow()
+        transport.requests.clear()
+        transport.getResponse = TransportResponse(
+            200,
+            """{"code":"a7kd2xq","destination":"https://play.google.com/store/apps/details?id=x","deep_link_path":"/urun/42","utm":{"campaign":"bahar","evil":"x"},"click_id":"clk0123456789abcdefABCDEF","rule":"android_url"}""",
+            null,
+        )
+        var result: ResolvedShortLink? = null
+        sdk.handleLink("https://marka.fera.fly/a7kd2xq") { result = it }
+        worker.drain()
+        sdk.flushNow()
+        val (url, headers) = transport.gets.single()
+        assertEquals("https://marka.fera.fly/a7kd2xq", url)
+        assertEquals(ShortLinks.ACCEPT, headers["Accept"])
+        assertTrue(headers["User-Agent"]!!.contains("Android"))
+        assertNull("reklam izni varken kanıt kapatılmaz", headers["Feralin-Attribution"])
+        assertNull("proje anahtarı kısa link hostuna gitmez", headers["x-feralin-project-key"])
+        assertEquals("/urun/42", result?.deepLinkPath)
+        val event = sentEvents().single { it.getString("event_name") == "deep_link_opened" }
+        assertEquals("clk0123456789abcdefABCDEF", event.props().getString("fr_click"))
+        assertEquals("bahar", event.props().getString("utm_campaign"))
+        assertFalse("izin listesi dışındaki UTM anahtarı alınmaz", event.props().has("utm_evil"))
+        assertEquals("https://marka.fera.fly/urun/42", event.getJSONObject("context").getString("page_url"))
+    }
+
+    @Test
+    fun kisaLinkReklamIzniYoksaKanitKapaliIstenirHataDaSayilir() {
+        val sdk = engine(GRANTED_NO_AD)
+        sdk.flushNow()
+        transport.requests.clear()
+        transport.getResponse = null // ağ hatası: link olduğu gibi işlenir
+        sdk.handleLink("https://fera.fly/a7kd2xq")
+        worker.drain()
+        sdk.flushNow()
+        assertEquals("off", transport.gets.single().second["Feralin-Attribution"])
+        val event = sentEvents().single { it.getString("event_name") == "deep_link_opened" }
+        assertFalse(event.props().has("fr_click"))
+        // Başka host ve tıklama kimliği taşıyan adres çözümlenmez.
+        sdk.handleLink("https://sahtefera.fly/a7kd2xq")
+        sdk.handleLink("https://fera.fly/a7kd2xq?fr_click=clk_hazir")
+        worker.drain()
+        assertEquals(1, transport.gets.size)
+    }
+
+    @Test
+    fun kisaLinkYanitiBozuksaCozumlemeYok() {
+        assertNull(ShortLinks.parse("{}"))
+        assertNull(ShortLinks.parse("html değil"))
+        val parsed = ShortLinks.parse("""{"code":"k1","deep_link_path":"//kotu","utm":{},"click_id":"kisa","rule":"default_url"}""")
+        assertNull("çift eğik çizgiyle başlayan yol (başka hosta benzeyen) alınmaz", parsed?.deepLinkPath)
+        assertNull("biçimsiz tıklama kimliği alınmaz", parsed?.clickId)
+        assertTrue(ShortLinks.isShortLink("https://FERA.fly/x", listOf("fera.fly")))
+        assertFalse(ShortLinks.isShortLink("https://fera.fly.saldirgan.test/x", listOf("fera.fly")))
     }
 
     @Test

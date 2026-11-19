@@ -173,6 +173,13 @@ enum Wire {
     static let maxProperties = 100
     static let maxIdentifierLength = 128
     static let attributionClickProperty = "fr_click"
+    /// İsteğe bağlı reklam kimliği (IDFA); yalnız açık reklam ölçümü izniyle gönderilir.
+    static let advertisingIDProperty = "advertising_id"
+
+    /// Önceki kurulum kimliği biçimi (toplayıcıdaki denetimle aynı).
+    static func isValidInstallReference(_ value: String) -> Bool {
+        (8...128).contains(value.count) && value.unicodeScalars.allSatisfy { CharacterSet(charactersIn: "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789._:-").contains($0) }
+    }
     static let installCodeProperty = "fr_install_code"
 
     /// Web, Node, .NET, Android ve Python SDK'larıyla aynı anahtar: sıralı tüm event_id'lerin FNV-1a 64 özeti ve sayı.

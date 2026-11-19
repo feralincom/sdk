@@ -1,0 +1,10 @@
+# Derleme çıktısı ve paketleme öncesi scripts/vendor.mjs ile üretilen çekirdek kopyaları; depoda tutulmaz.
+dist/
+ios/Sources/Feralin/
+android/maven-repo/
+android/build/
+android/.gradle/
+.build/
+.swiftpm/
+node_modules/
+*.tgz

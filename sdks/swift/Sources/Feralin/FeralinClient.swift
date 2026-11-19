@@ -10,7 +10,7 @@ public struct SDKIdentity: Equatable, Sendable {
         self.version = version
     }
 
-    public static let swift = SDKIdentity(name: "feralin-swift", version: "0.2.0")
+    public static let swift = SDKIdentity(name: "feralin-swift", version: "0.3.0")
 }
 
 /// UTP v1 toplayıcısına (`POST /v1/batch`) olay gönderen istemci. Kuyruk aktör içinde yaşar; aynı anda tek gönderici çalışır.
@@ -40,6 +40,17 @@ public actor FeralinClient {
         /// ilk olaya `fr_install_code` olarak eklenir; sunucu kodu olay verisinden söker ve bu kurulumu projeye bağlar. Kişisel veri
         /// değildir, 30 dakika geçerlidir; doğrulamadan sonra yapılandırmadan kaldırılabilir. Biçimi bozuk kod yok sayılır.
         public var installCode: String?
+        /// SDK imza anahtarı; verilirse ilk açılış ve link açılışı olayları imzalanır (`SigningKey`).
+        public var signingKey: SigningKey?
+        /// Çocuklara yönelik uygulama (COPPA ve benzeri kurallar). true ise reklam ölçümü ve kişiselleştirme izni uygulama ne verirse versin
+        /// kapalı sayılır: tıklama kimliği, pano ve AdServices kullanılmaz, olaylar reklam izni kapalı gider. Panelde projenin
+        /// "Çocuklara yönelik uygulama" ayarı ayrıca açılmalıdır.
+        public var childDirected: Bool
+        /// Reklam ölçümü izninin geçerlilik süresi (gün) ve iznin verildiği an. İkisi de verilirse izin bu süreden eskiyse yeniden sorulana
+        /// kadar verilmemiş sayılır (`advertisingConsentExpired`). İzin anını uygulama saklar (bu SDK kalıcı izin durumu tutmaz) ve
+        /// kullanıcı yeniden onaylayınca `setConsent(_:grantedAt:)` ile yeniler.
+        public var consentMaxAgeDays: Int?
+        public var advertisingConsentGrantedAt: Date?
         /// Yalnız testler: macOS üzerinde koşan testin iOS yolunu sınaması için.
         var platformOverride: String?
 
@@ -55,7 +66,11 @@ public actor FeralinClient {
             sdk: SDKIdentity = .swift,
             storageDirectory: URL? = nil,
             sessionTimeout: TimeInterval = FeralinClient.defaultSessionTimeout,
-            installCode: String? = nil
+            installCode: String? = nil,
+            signingKey: SigningKey? = nil,
+            childDirected: Bool = false,
+            consentMaxAgeDays: Int? = nil,
+            advertisingConsentGrantedAt: Date? = nil
         ) {
             self.projectKey = projectKey
             self.collectURL = collectURL
@@ -69,6 +84,10 @@ public actor FeralinClient {
             self.storageDirectory = storageDirectory
             self.sessionTimeout = sessionTimeout
             self.installCode = installCode
+            self.signingKey = signingKey
+            self.childDirected = childDirected
+            self.consentMaxAgeDays = consentMaxAgeDays
+            self.advertisingConsentGrantedAt = advertisingConsentGrantedAt
         }
     }
 
@@ -122,6 +141,8 @@ public actor FeralinClient {
     private let transport: any Transport
     private let now: @Sendable () -> Date
     private let installIDStore: any InstallIDStore
+    /// Kaldırmadan sağ kalan kasa (iOS anahtar zinciri); yeniden kurulum kanıtı için. Apple dışı platformlarda yoktur.
+    private let installVault: (any InstallIDStore)?
     private let adServicesTokenProvider: @Sendable () -> AdServicesTokenResult
     private let conversionUpdater: @Sendable (Int, CoarseConversionLevel, Bool, ConversionFrameworks) async -> ConversionUpdateResult
     private let trackingStatusProvider: @Sendable () -> TrackingAuthorizationStatus
@@ -142,9 +163,14 @@ public actor FeralinClient {
     // Global özellikler (UTP §8.2): `fr_` ile başlamayan her olaya eklenir; olayın kendi özelliği aynı anahtarda kazanır.
     private var globalProperties: [String: FeralinValue] = [:]
     private var installID: String?
+    private var lastPushToken: String?
     private var closed = false
     /// Yapılandırmadaki eşleştirme kodu; kuyruğa giren ilk olayla tüketilir.
     private var pendingInstallCode: String?
+    private let signingKey: SigningKey?
+    private let childDirected: Bool
+    private let consentMaxAgeDays: Int?
+    private var adConsentGrantedAt: Date?
     private var dropped = 0
     private var backoff: TimeInterval = 0
     private var backoffUntil: TimeInterval = 0
@@ -159,6 +185,7 @@ public actor FeralinClient {
         configuration: Configuration,
         transport: (any Transport)? = nil,
         installIDStore: (any InstallIDStore)? = nil,
+        installVault: (any InstallIDStore)? = nil,
         now: @escaping @Sendable () -> Date = { Date() },
         adServicesTokenProvider: @escaping @Sendable () -> AdServicesTokenResult = { FeralinApple.adServicesToken() },
         conversionUpdater: @escaping @Sendable (Int, CoarseConversionLevel, Bool, ConversionFrameworks) async -> ConversionUpdateResult = { fine, coarse, lock, frameworks in
@@ -179,6 +206,12 @@ public actor FeralinClient {
         }
         guard configuration.sessionTimeout > 0 else {
             throw FeralinError.configuration("sessionTimeout pozitif olmalı")
+        }
+        if let days = configuration.consentMaxAgeDays, !(1...3650).contains(days) {
+            throw FeralinError.configuration("consentMaxAgeDays 1-3650 olmalı")
+        }
+        if let key = configuration.signingKey, !key.isValid {
+            throw FeralinError.configuration("signingKey biçimi geçersiz (id sgn_ ile başlamalı, secret 16-200 karakter)")
         }
         if let attribution = configuration.attribution {
             _ = try Self.normalizedRoot(attribution.apiURL, field: "apiURL")
@@ -233,9 +266,18 @@ public actor FeralinClient {
         self.sdk = configuration.sdk
         self.platform = configuration.platformOverride ?? Self.platformName
         self.pendingInstallCode = Self.validInstallCode(configuration.installCode)
+        self.signingKey = configuration.signingKey
+        self.childDirected = configuration.childDirected
+        self.consentMaxAgeDays = configuration.consentMaxAgeDays
+        self.adConsentGrantedAt = configuration.advertisingConsentGrantedAt
         self.transport = transport ?? URLSessionTransport()
         self.now = now
         self.installIDStore = installIDStore ?? UserDefaultsInstallIDStore()
+        #if canImport(Security)
+        self.installVault = installVault ?? KeychainInstallIDStore()
+        #else
+        self.installVault = installVault
+        #endif
         self.adServicesTokenProvider = adServicesTokenProvider
         self.conversionUpdater = conversionUpdater
         self.trackingStatusProvider = trackingStatusProvider
@@ -336,9 +378,10 @@ public actor FeralinClient {
             }
             props = merged.isEmpty ? nil : merged
         }
-        // fr_click yalnız açık reklam ölçümü izniyle gönderilir.
+        // fr_click ve isteğe bağlı reklam kimliği yalnız açık reklam ölçümü izniyle gönderilir (çocuk kipinde ve ATT reddinde izin kapalıdır).
         if !effective.advertising, props != nil {
             props?.removeValue(forKey: Wire.attributionClickProperty)
+            props?.removeValue(forKey: Wire.advertisingIDProperty)
             if props?.isEmpty == true { props = nil }
         }
         // Yapılandırmadaki eşleştirme kodu ilk olaya eklenir (Android, Flutter ve Web SDK'larıyla aynı sözleşme).
@@ -356,6 +399,18 @@ public actor FeralinClient {
         let sid: String = explicitSession ?? self.sessionID
 
         let eventID = ulid.next(millis: Wire.epochMillis(now()))
+        // Atıf olayı reklam izninin verildiği anı taşır: sunucu projenin izin süresi kuralını bu değerle uygular.
+        if effective.advertising, let grantedAt = adConsentGrantedAt, EventSigner.signedEvents.contains(name) {
+            var stamped = props ?? [:]
+            stamped["consent_at"] = .string(Wire.formatTime(grantedAt))
+            props = stamped
+        }
+        // Atıf olayları imzalanır (anahtar verildiyse): imza olayın kimliğine ve kurulum kimliğine bağlıdır.
+        if let signingKey, EventSigner.signedEvents.contains(name) {
+            var signed = props ?? [:]
+            signed[EventSigner.property] = .string(EventSigner.sign(key: signingKey, atSeconds: Wire.epochMillis(now()) / 1000, eventID: eventID, eventName: name, anonymousID: aid))
+            props = signed
+        }
         let occurred = Wire.formatTime(occurredAt ?? now())
         var wire: [String: FeralinValue] = [
             "event_id": .string(eventID),
@@ -584,12 +639,78 @@ public actor FeralinClient {
     /// `constrained(by:)` çağırmayı unutsa da `denied` iken reklam verisi çıkmaz. Uygulamanın kararı saklı kaldığından
     /// ATT sonradan `authorized` olursa reklam izni yeniden `setConsent` gerekmeden açılır.
     private var effectiveConsent: Consent {
-        consent.constrained(by: trackingStatusProvider())
+        var effective = consent.constrained(by: trackingStatusProvider())
+        // Çocuklara yönelik uygulamada reklam ölçümü ve kişiselleştirme her zaman kapalıdır; süresi dolan izin verilmemiş sayılır.
+        if childDirected {
+            effective.advertising = false
+            effective.personalization = false
+        }
+        if advertisingConsentExpired { effective.advertising = false }
+        return effective
+    }
+
+    /// Reklam ölçümü izninin süresi doldu mu? `consentMaxAgeDays` ve izin anı verilmişse hesaplanır; uygulama kullanıcıya yeniden sormalıdır.
+    public var advertisingConsentExpired: Bool {
+        guard let days = consentMaxAgeDays, let grantedAt = adConsentGrantedAt, consent.advertising else { return false }
+        return now().timeIntervalSince(grantedAt) > TimeInterval(days) * 86_400
+    }
+
+    /// İzin durumunu ve reklam ölçümü izninin verildiği anı birlikte günceller (izin süresi kuralı için).
+    public func setConsent(_ newConsent: Consent, grantedAt: Date?) {
+        adConsentGrantedAt = newConsent.advertising ? grantedAt : nil
+        setConsent(newConsent)
     }
 
     private var advertisingAllowed: Bool {
         let effective = effectiveConsent
         return effective.analytics && effective.advertising
+    }
+
+    // Links.swift uzantısının kullandığı iç erişimler (ayrı dosyadaki uzantı `private` üyelere erişemez).
+    var attributionConfiguration: AttributionConfiguration? { attribution }
+
+    /// Kısa link çözümlemesi (Fera Fly) için ham istek; proje anahtarı ve olay gövdesi taşımaz.
+    func sendLinkRequest(_ request: TransportRequest) async throws -> TransportResponse {
+        try await transport.send(request)
+    }
+
+    /// Reklam ölçümü izni (kısa link çözümlemesinde tıklama kanıtı yazılıp yazılmayacağını belirler).
+    var linkAttributionAllowed: Bool { advertisingAllowed }
+
+    func postAttribution(_ attribution: AttributionConfiguration, path: String, body: FeralinValue) async throws -> TransportResponse {
+        try await post(attribution: attribution, path: path, body: body)
+    }
+
+    static func describe(_ error: Error) -> String { message(of: error) }
+
+    static func summarize(_ raw: Data) -> String { problemSummary(raw) }
+
+    /// Yeniden kurulum kanıtı: kasadaki kimlik bu kurulumunkinden farklıysa önceki kurulum kimliğidir. Kasa bu kurulumun kimliğiyle
+    /// güncellenir. Yalnız analitik izni varken çağrılır (kimlik izin olmadan üretilmez ve yazılmaz).
+    func previousInstallIDForFirstOpen() -> String? {
+        guard let installVault, consent.analytics else { return nil }
+        let current = ensureInstallID()
+        let previous = installVault.load()
+        installVault.save(current)
+        guard let previous, previous != current, Wire.isValidInstallReference(previous) else { return nil }
+        return previous
+    }
+
+    /// APNs cihaz belirtecini bildirir (kaldırma ölçümü, saas-api 0180): `fr_push_token` olayı. `application(_:didRegisterForRemoteNotificationsWithDeviceToken:)`
+    /// içinden çağrılır. Belirteç olay deposuna yazılmaz; panelde kaldırma ölçümü açık değilse sunucu belirteci saklamaz. Aynı belirteç
+    /// bu süreçte ikinci kez gönderilmez.
+    @discardableResult
+    public func setPushToken(_ deviceToken: Data) throws -> TrackedEvent? {
+        let hex = deviceToken.map { String(format: "%02x", $0) }.joined()
+        guard (32...200).contains(hex.count), hex != lastPushToken else { return nil }
+        let event = try track("fr_push_token", properties: ["push_token": .string(hex)])
+        if event != nil { lastPushToken = hex }
+        return event
+    }
+
+    /// Gelen uzak bildirim Feralin'in kaldırma ölçümü bildirimi mi? `true` ise uygulama hiçbir şey yapmamalıdır (içeriksiz, sessiz bildirimdir).
+    public static func isUninstallCheck(_ userInfo: [AnyHashable: Any]) -> Bool {
+        (userInfo["fr_uninstall_check"] as? String) == "1"
     }
 
     private func ensureInstallID() -> String {

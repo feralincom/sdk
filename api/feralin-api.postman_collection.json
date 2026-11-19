@@ -1900,7 +1900,7 @@
                 "switch-organization"
               ]
             },
-            "description": "Eski oturum kimliği geçersiz olur, yeni kimlik çerezle döner. Üye olunmayan organizasyon 404'tür. Sonraki giriş en son seçilen alana açılır.",
+            "description": "Eski oturum kimliği geçersiz olur, yeni kimlik çerezle döner. Üye olunmayan organizasyon 404'tür. Sonraki giriş en son seçilen alana açılır. Ajans ayar oturumunda `403 agency_session_org_bound` (organizasyon değiştirilemez; ajans çıkış yapıp kendi oturumuna döner).",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"organization_id\": \"\"\n}",
@@ -1965,7 +1965,7 @@
                 }
               ]
             },
-            "description": "Kendi rolünden yüksek rol verilemez (`role_not_grantable`), üst roldeki üye değiştirilemez (`member_outranks_actor`), son owner düşürülemez\n(`409 last_owner`). Rol düşünce oturum yetkisi sonraki istekte değişir, kişinin API anahtarları aynı transaction'da iptal olur.\n`project_ids` yalnız `member` rolünde geçerlidir ve tam listeyle değiştirir; başka kiracının projesi 404'tür. Her değişiklik ve her ret denetime yazılır.",
+            "description": "Kendi rolünden yüksek rol verilemez (`role_not_grantable`), üst roldeki üye değiştirilemez (`member_outranks_actor`), son owner düşürülemez\n(`409 last_owner`). Rol düşünce oturum yetkisi sonraki istekte değişir, kişinin API anahtarları aynı transaction'da iptal olur.\n`project_ids` yalnız `member` rolünde geçerlidir ve tam listeyle değiştirir; başka kiracının projesi 404'tür. Her değişiklik ve her ret denetime yazılır.\n`custom_role_id` yalnız owner tarafından ve yalnız `member` rolündeki üyeye verilir (`403 custom_role_owner_required`, `400 custom_role_requires_member`,\nbaşka kiracının rolü `404 custom_role_not_found`). Rol member dışına çıkınca özel rol düşer.",
             "body": {
               "mode": "raw",
               "raw": "{}",
@@ -2228,7 +2228,7 @@
                 "dpa"
               ]
             },
-            "description": "DPA sürümü ve özeti yapılandırmadan gelir (`SAAS_API_DPA_VERSION`, `SAAS_API_DPA_SUMMARY`, `SAAS_API_DPA_STATUS`); sürüm yoksa\n`dpa.available=false` ve `unavailable_reason=dpa_version_not_configured` döner, hiçbir sürüm uydurulmaz. `legal_status=draft` metnin\nhukuki onay beklediğini söyler. Yanıt organizasyonun kabul geçmişini (kim: kullanıcı kimliği, ne zaman, hangi sürüm, o anki alt işleyen\nlistesi sürümü) ve son alt işleyen değişikliğini taşır. `member` rolü ve makine kimlikleri 403 alır."
+            "description": "DPA sürümü koddaki yayımlanan sürümdür (`DPA_DOCUMENT`, `/legal/dpa` sayfasıyla aynı); `SAAS_API_DPA_VERSION` başka sürüm zorlar, `none` kapatır\n(`dpa.available=false`, `unavailable_reason=dpa_version_not_configured`). `SAAS_API_DPA_SUMMARY` özet, `SAAS_API_DPA_STATUS` durum verir. `legal_status=draft` metnin\nhukuki onay beklediğini söyler. Yanıt organizasyonun kabul geçmişini (kim: kullanıcı kimliği, ne zaman, hangi sürüm, o anki alt işleyen\nlistesi sürümü) ve son alt işleyen değişikliğini taşır. `member` rolü ve makine kimlikleri 403 alır."
           },
           "response": []
         },
@@ -2381,6 +2381,84 @@
           "response": []
         },
         {
+          "name": "Özel roller ve verilebilir scope listesi (owner ve admin oturumu)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/team/roles",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "team",
+                "roles"
+              ]
+            },
+            "description": "Özel rol yerleşik admin rolünün alt kümesidir; `grantable_scopes` dışında scope verilemez. `member_count` rolü taşıyan etkin üye sayısıdır."
+          },
+          "response": []
+        },
+        {
+          "name": "Özel rol tanımlar (yalnız owner; MFA'lı hesapta kod step-up'ı)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/team/roles",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "team",
+                "roles"
+              ]
+            },
+            "description": "Kuruluş başına en çok 20 rol (`409 custom_role_limit_reached`), ad kuruluşta büyük/küçük harf duyarsız tekildir (`409 custom_role_name_taken`).\n`workspace:read` her role eklenir. Owner'a özgü (`billing:manage`, `autopilot:manage`), makine (`admin:*`, `sdk:read`, `scim:provision`) ve\nbilinçli dışlanan (`billing:read`, `privacy:request`, `privacy:approve`, `webhooks:manage`, `events:write`, `sdk:publish`, `content:write`, `autopilot:*`,\n`projects:write`: ingest anahtarı, dış depo hedefi, veri içe/dışa aktarma ve destination uçlarını da açtığı için) scope'lar `400` döner.\nOluşturma ve her ret denetime yazılır.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"\",\n  \"scopes\": []\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Özel rolü siler (yalnız owner)",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/team/roles/:id",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "team",
+                "roles",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{project_id}}"
+                }
+              ]
+            },
+            "description": "Rol bir üyeye (devre dışı üyelik dahil) atanmışsa `409 custom_role_in_use` (`member_count` uzantısıyla). Silme ve ret denetime yazılır."
+          },
+          "response": []
+        },
+        {
           "name": "Davet önizlemesi (herkese açık, geçerli belirteç ister)",
           "request": {
             "method": "POST",
@@ -2436,7 +2514,7 @@
                 "accept"
               ]
             },
-            "description": "Hesabın e-postası davetle eşleşmelidir (`403 invitation_email_mismatch`, davet tüketilmez). Tek kullanımlıktır. Oturum davet edilen organizasyona geçer, eski kimlik geçersiz olur.",
+            "description": "Hesabın e-postası davetle eşleşmelidir (`403 invitation_email_mismatch`, davet tüketilmez). Tek kullanımlıktır. Oturum davet edilen organizasyona geçer, eski kimlik geçersiz olur. Ajans ayar oturumunda `403 agency_session_org_bound` (organizasyon değiştirilemez; ajans çıkış yapıp kendi oturumuna döner).",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"token\": \"\"\n}",
@@ -2979,6 +3057,33 @@
           "response": []
         },
         {
+          "name": "Projende ne var — kaynak × olay türü kapsamı ve takip kontrol listesi (scope projects:read)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/projects/:id/sources/event-coverage",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "projects",
+                ":id",
+                "sources",
+                "event-coverage"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{project_id}}"
+                }
+              ]
+            },
+            "description": "Etkin her kaynak için son 30 günde gelen olay türleri (sayfa/ekran, açılış, üyelik, satış, abonelik, oyun, reklam geliri, hata,\nderin link, kampanya, özel olay), olay adı başına sayım ve son görülme, türüne göre sıralı takip kontrol listesi (zorunlu/önerilen,\nkaynağın SDK'sına göre hazır kod) ve seçili sektör şablonunun olayları. Kaynak süzgeci metrik uçlarıyla aynı kuraldır\n(`GET /projects/{id}/sources`); başka kaynağın olayı sayılmaz. Bir adım yalnız olay geldiyse `received` olur.\nGizlilik: yalnız toplu olay sayımı döner (kişi, kullanıcı kimliği, olay gövdesi ya da özellik değeri yok); 1..k-1 arası sayılar\ngizlenir (`events_30d: null`, `below_k: true`). Olay deposu okunamazsa olay adımları `unknown`, `provenance_class: UNKNOWN`.\nSunucu doğrulaması (`verified_revenue`) ve webhook adımları proje kapsamlıdır ve PostgreSQL'den okunur."
+          },
+          "response": []
+        },
+        {
           "name": "Sihirli kurulum: site adresi ve mağaza bağlantılarından kaynak önerisi (scope projects:write)",
           "request": {
             "method": "POST",
@@ -3051,7 +3156,7 @@
           "response": []
         },
         {
-          "name": "Kaynak adı, tanımlayıcısı ya da SDK'sı (scope projects:write)",
+          "name": "Kaynak adı, tanımlayıcısı, SDK'sı ya da sektör şablonu (scope projects:write)",
           "request": {
             "method": "PATCH",
             "header": [
@@ -3082,7 +3187,7 @@
                 }
               ]
             },
-            "description": "Tür değişmez. Arşivli kaynak 409 `source_archived`. `identifier` ve `sdk` null ile temizlenir.",
+            "description": "Tür değişmez. Arşivli kaynak 409 `source_archived`. `identifier`, `sdk` ve `vertical` null ile temizlenir.",
             "body": {
               "mode": "raw",
               "raw": "{}",
@@ -3123,6 +3228,38 @@
               ]
             },
             "description": "Kaynak eşlemeden çıkar, olayları silinmez ve atanmamış satırında sayılır. Kaynağa bağlı anahtarlar iptal edilmez (uygulama veri\ngöndermeyi sürdürür); iptal `DELETE /projects/{id}/keys/{keyId}` ile ayrıca yapılır. İdempotenttir."
+          },
+          "response": []
+        },
+        {
+          "name": "Tek kaynağın olay kapsamı ve takip kontrol listesi (scope projects:read)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/projects/:id/sources/:sourceId/event-coverage",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "projects",
+                ":id",
+                "sources",
+                ":sourceId",
+                "event-coverage"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{project_id}}"
+                },
+                {
+                  "key": "sourceId",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "`getProjectEventCoverage` ile aynı biçim; `sources` dizisi yalnız bu kaynağı taşır. Kaynak bu projede etkin değilse (başka proje,\nbaşka kiracı ya da arşivli) 404 `source_not_found`. MCP `get_setup_plan` çıktısındaki `tracking_checklist.coverage_path` bu uçtur."
           },
           "response": []
         },
@@ -3247,7 +3384,7 @@
                 }
               ]
             },
-            "description": "Yalnız bu listedeki anahtarlar `fr_user_properties` ve `fr_group` olaylarında saklanır; toplayıcı liste dışı anahtarı düşürür ve ClickHouse\nkimlik projeksiyonu (kullanıcının son özellikleri, grup üyeliği) yalnız bunları görür. Varsayılan boş liste: hiçbir özellik saklanmaz, olay yine\nsayılır. Grup kimliği (`group_id`) listeden bağımsız saklanır. Toplayıcı listeyi anahtar önbelleğiyle okur; değişiklik en çok 60 saniyede yürürlüğe girer."
+            "description": "Liste doluysa yalnız bu anahtarlar `fr_user_properties` ve `fr_group` olaylarında saklanır; toplayıcı liste dışı anahtarı düşürür. Varsayılan boş\nliste otomatik kiptir (`mode: auto`): kişisel veriye benzemeyen her anahtar saklanır ve görülen anahtarlar `discovered_keys` alanında döner.\nKişisel veriye benzeyen anahtar ve e-posta biçimli değer iki kipte de düşer. Grup kimliği (`group_id`) listeden bağımsız saklanır. Toplayıcı listeyi anahtar önbelleğiyle okur; değişiklik en çok 60 saniyede yürürlüğe girer."
           },
           "response": []
         },
@@ -3691,6 +3828,148 @@
             "body": {
               "mode": "raw",
               "raw": "{\n  \"saml_response\": \"\",\n  \"relay_state\": \"\",\n  \"binding\": \"\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "OIDC SSO bağlantısını yazar (yalnız owner; parola ve MFA'lı hesapta kod step-up'ı)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/team/enterprise-identity/oidc",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "team",
+                "enterprise-identity",
+                "oidc"
+              ]
+            },
+            "description": "Kuruluş düzeyinde OpenID Connect bağlantısı (Adjust madde 13). Kayıttan önce `${issuer}/.well-known/openid-configuration` SSRF korumalı\nbağlantıyla okunur: `issuer` birebir eşleşmeli, uç noktalar https olmalı, `code_challenge_methods_supported` varsa `S256` içermeli; aksi hâlde\n`422 oidc_discovery_failed` (`reason` uzantısıyla) ve kayıt yapılmaz. `client_secret` ilk kayıtta zorunludur (`400 oidc_client_secret_required`),\nsonra verilmezse korunur; AES-256-GCM ile saklanır ve hiçbir yanıtta dönmez. Issuer, istemci kimliği ya da sır değişince veya bağlantı\nkapatılınca OIDC oturumları ve OIDC oturumuyla verilmiş kullanıcı OAuth izinleri düşer. `revision` iyimser kilittir (`409 oidc_connection_revision_conflict`).\nGiriş yalnız DNS ile doğrulanmış e-posta alanlarında açılır. Sağlayıcı `email_verified` göndermezse giriş reddedilir\n(`email_unverified_unknown`); `trust_unverified_email: true` bu kuralı açıkça gevşetir (`false` değeri hiçbir zaman kabul edilmez).\nİlk girişte (issuer, sub) kullanıcıya bağlanır; bağ değişirse `401 sso_assertion_invalid` (`subject_mismatch`). Bağlar bağlantı silinince sıfırlanır.\nSSO zorunluluğu bugün yalnız SAML bağlantısındadır.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"issuer\": \"\",\n  \"client_id\": \"\",\n  \"enabled\": false,\n  \"revision\": 0\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "OIDC SSO bağlantısını siler (yalnız owner; parola step-up'ı)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/team/enterprise-identity/oidc",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "team",
+                "enterprise-identity",
+                "oidc"
+              ]
+            },
+            "description": "Bağlantı, bekleyen giriş istekleri, OIDC oturumları ve OIDC oturumuyla verilmiş kullanıcı OAuth izinleri aynı işlemde düşer; denetime yazılır.",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "SP başlatmalı OIDC girişi (herkese açık, IP başına hız sınırlı)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/sso/oidc/start",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "sso",
+                "oidc",
+                "start"
+              ]
+            },
+            "description": "E-postanın alanını DNS ile doğrulamış ve OIDC bağlantısı açık kiracıyı bulur; yoksa `404 sso_not_available`. Yanıt sağlayıcının\nyetkilendirme adresidir (`response_type=code`, `scope=openid email`, `state`, `nonce`, `code_challenge` + `S256`) ve tarayıcı bağıdır:\npanel bağı HttpOnly çereze yazar, dönüşte geri gönderir. State ve bağ yalnız özetiyle, PKCE doğrulayıcısı şifreli saklanır; istek 10 dakika geçerlidir.\nSağlayıcıya ulaşılamazsa `502 oidc_provider_unavailable`.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "OIDC dönüşü (panelin route handler'ı çağırır; herkese açık, IP başına hız sınırlı)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/sso/oidc/callback",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "sso",
+                "oidc",
+                "callback"
+              ]
+            },
+            "description": "Sıra: state → tarayıcı bağı → isteğin atomik tüketimi → bağlantı → keşif → token isteği (PKCE doğrulayıcısı, istemci sırrı\n`client_secret_basic` ya da `client_secret_post`) → ID token (JWKS ile RS256/ES256 imza, `iss` birebir, `aud`/`azp`, `exp`/`iat` ±120 sn,\n`iat` en çok 10 dakika önce, `nonce`) → e-posta ve `email_verified` → alan doğrulaması → kullanıcı (JIT politikası) → oturum\n(`sso_method: oidc`, kiracıya bağlı). Başarıda `Set-Cookie` ile oturum çerezi yazılır. Ret: `400 sso_state_invalid` ya da\n`401 sso_assertion_invalid` (`reason` uzantısı), tanımsız kullanıcı `403 sso_user_not_provisioned`. Her ret denetime gerekçe koduyla yazılır.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"\",\n  \"state\": \"\",\n  \"binding\": \"\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -4367,7 +4646,7 @@
                 "consent"
               ]
             },
-            "description": "Karar sunucuda verilir. `approve` tek kullanımlık kod (60 sn) üretir; `scopes` istenen kümenin boş olmayan alt kümesi olmalıdır. Dönen adrese panel tarayıcıyı yönlendirir.",
+            "description": "Karar sunucuda verilir. `approve` tek kullanımlık kod (60 sn) üretir; `scopes` istenen kümenin boş olmayan alt kümesi olmalıdır. Özel rollü üyede kapsamlar rolün içindekilerle sınırlanır; hiçbiri kalmazsa `403 scope_not_permitted_by_role`. MCP ve developer uygulaması token'ları her istekte üyenin bugünkü özel rolüyle kesiştirilir (introspection `scope` da daralır). Dönen adrese panel tarayıcıyı yönlendirir.",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"decision\": \"approve\",\n  \"params\": {}\n}",
@@ -4834,6 +5113,18 @@
                   "value": "",
                   "disabled": true,
                   "description": "Doğrulama sayfasının açıldığı an"
+                },
+                {
+                  "key": "code",
+                  "value": "",
+                  "disabled": true,
+                  "description": "Eşleştirme kodu; verilirse adım yalnız bu kodu taşıyan olayla tamamlanır (tanınmayan kod `code_status: unknown`)"
+                },
+                {
+                  "key": "source_id",
+                  "value": "",
+                  "disabled": true,
+                  "description": "Kaynak başına doğrulama: platform kaynağın SDK ya da türünden gelir, sayımlar yalnız bu kaynağın olaylarıdır"
                 }
               ],
               "variable": [
@@ -4843,7 +5134,7 @@
                 }
               ]
             },
-            "description": "QA-04. Kurulum sihirbazının mobil adımı içindir. Yalnız proje platformuna uyan UTP `platform` değerleri sayılır\n(Android: android, flutter_android, react_native, unity, unreal, godot; iOS: ios, flutter_ios ve aynı çapraz platformlar;\nFlutter: flutter_android, flutter_ios). Web (`web`, `flutter_web`) ve sunucu SDK'larının olayları adımı tamamlamaz,\nyalnız `ignored_other_platform_events` içinde sayılır. Aralık toplayıcının kabul anına (`ingested_at`) göredir; `since`\nverilmezse son 5 dakika, en çok 60 dakika geriye bakılır. Kimlik, olay özellikleri ve sayfa adresi yanıtta yoktur.\nWeb, sunucu ve diğer platformlu projede 409 `project_not_mobile`."
+            "description": "QA-04. Kurulum sihirbazının mobil adımı içindir. Yalnız proje platformuna uyan UTP `platform` değerleri sayılır\n(Android: android, flutter_android, react_native, unity, unreal, godot; iOS: ios, flutter_ios ve aynı çapraz platformlar;\nFlutter: flutter_android, flutter_ios). Web (`web`, `flutter_web`) ve sunucu SDK'larının olayları adımı tamamlamaz,\nyalnız `ignored_other_platform_events` içinde sayılır. Aralık toplayıcının kabul anına (`ingested_at`) göredir; `since`\nverilmezse son 5 dakika, en çok 60 dakika geriye bakılır. Kimlik, olay özellikleri ve sayfa adresi yanıtta yoktur.\nWeb, sunucu ve diğer platformlu projede 409 `project_not_mobile`.\n\n`source_id` verilirse doğrulama kaynak başınadır (migrasyon 0152): kabul edilen platformlar proje platformundan değil\nkaynağın SDK'sından (Flutter, React Native, Unity, Godot) ya da türünden (Android, iOS, Unity, Godot) gelir; ilk olay,\n`mobile_events` ve `ignored_other_platform_events` yalnız o kaynağa düşen olaylardır (kaynak anahtarı, alan adı ve tür\nkuralı; `GET /projects/{id}/sources` ile aynı eşleme). Eşleştirme kodunu taşıyan olay başka kaynağa düştüyse kanıt bu\nkaynak için sayılmaz (`code_matched_other_source: true`). Kaynak bu projede değilse, başka kiracınınsa ya da arşivliyse\n404 `source_not_found`; web, Unreal, masaüstü, sunucu ve diğer kaynaklarında 409 `source_not_mobile`. `source_id`\nverilmezse davranış değişmez."
           },
           "response": []
         },
@@ -4864,6 +5155,14 @@
                 "mobile",
                 "code"
               ],
+              "query": [
+                {
+                  "key": "source_id",
+                  "value": "",
+                  "disabled": true,
+                  "description": "Kodun üretileceği uygulama kaynağı"
+                }
+              ],
               "variable": [
                 {
                   "key": "id",
@@ -4871,7 +5170,7 @@
                 }
               ]
             },
-            "description": "QA-04 / SDK-R11. Kurulum sihirbazının uygulama içi doğrulama adımı için tek kullanımlık kod üretir. Kullanıcı kodu SDK\nyapılandırmasına girer, SDK ilk olayla birlikte gönderir ve doğrulama yalnız o kodu taşıyan olayı sayar: \"bu kurulum bu\nprojeye bağlandı\" kanıtı kesinleşir, başka bir cihazdan gelen olay adımı tamamlayamaz.\n\nKod yanıtta **bir kez** döner ve saklanmaz; sunucuda yalnız SHA-256 özeti ve okunur ön eki tutulur. Kısa ömürlüdür\n(`ttl_seconds`), tek kullanımlıktır ve eşleşince ya da süresi dolunca geçersizdir. `property` alanı SDK'nın kodu\ntaşıdığı özelliğin adıdır; panel snippet'i ve belgeler tek kaynaktan okur.\n\nKurulumu değiştirdiği için `projects:write` ister: yalnız sahip ve yönetici oturumu üretebilir, API anahtarı\nkataloğunda bu scope yoktur. Web, sunucu ve diğer platformlu projede 409 `project_not_mobile`."
+            "description": "QA-04 / SDK-R11. Kurulum sihirbazının uygulama içi doğrulama adımı için tek kullanımlık kod üretir. Kullanıcı kodu SDK\nyapılandırmasına girer, SDK ilk olayla birlikte gönderir ve doğrulama yalnız o kodu taşıyan olayı sayar: \"bu kurulum bu\nprojeye bağlandı\" kanıtı kesinleşir, başka bir cihazdan gelen olay adımı tamamlayamaz.\n\nKod yanıtta **bir kez** döner ve saklanmaz; sunucuda yalnız SHA-256 özeti ve okunur ön eki tutulur. Kısa ömürlüdür\n(`ttl_seconds`), tek kullanımlıktır ve eşleşince ya da süresi dolunca geçersizdir. `property` alanı SDK'nın kodu\ntaşıdığı özelliğin adıdır; panel snippet'i ve belgeler tek kaynaktan okur.\n\nKurulumu değiştirdiği için `projects:write` ister: yalnız sahip ve yönetici oturumu üretebilir, API anahtarı\nkataloğunda bu scope yoktur. Web, sunucu ve diğer platformlu projede 409 `project_not_mobile`.\n\n`source_id` verilirse yüzey denetimi kaynağın türü ve SDK'sıyla yapılır: web projesindeki Android, iOS, Unity ya da Godot\nkaynağına da kod üretilir. Kod projeye bağlıdır (projede aynı anda tek bekleyen kod); kaynağa ait olduğu doğrulamada kodu\ntaşıyan olayın kaynağıyla denetlenir. Kaynak bu projede değilse 404 `source_not_found`, uygulama kaynağı değilse 409\n`source_not_mobile`."
           },
           "response": []
         },
@@ -4940,7 +5239,7 @@
                   "key": "dimensions",
                   "value": "",
                   "disabled": true,
-                  "description": "Virgülle ayrılmış, en çok 3. Her metriğin izinli boyutu katalogdadır (`referrer_host` ve web boyutları dahil); izin dışı boyut 400 `dimension_not_allowed`."
+                  "description": "Virgülle ayrılmış, en çok 3. Her metriğin izinli boyutu katalogdadır (`referrer_host`, web boyutları, `sdk_name`, `screen_name`, `visitor_type` dahil); izin dışı boyut 400 `dimension_not_allowed`."
                 },
                 {
                   "key": "timezone",
@@ -4952,7 +5251,7 @@
                   "key": "filter",
                   "value": "",
                   "disabled": true,
-                  "description": "`alan:değer`; tekrarlanabilir, en çok 10. Alanlar: platform, source, locale, sdk_version, event_name, page_path, referrer_host, country, device_class, browser, os, referrer_class, utm_source, utm_medium, utm_campaign. Sandbox ucu bu parametreyi reddeder (400 `sandbox_unsupported_parameter`)."
+                  "description": "`alan:değer`; tekrarlanabilir, en çok 10. Alanlar: platform, source, locale, sdk_name, sdk_version, event_name, page_path, screen_name, referrer_host, country, device_class, browser, os, referrer_class, traffic_source, channel, utm_source, utm_medium, utm_campaign, utm_term, utm_content. Sandbox ucu bu parametreyi reddeder (400 `sandbox_unsupported_parameter`)."
                 },
                 {
                   "key": "segment",
@@ -4968,7 +5267,7 @@
                 }
               ]
             },
-            "description": "Yalnız katalog metriği; serbest SQL yok. Doğrulanmış Test Lab olayı (`source=feralin_test_lab`) hiçbir metriğe girmez.\n\n**k-eşiği:** Hücredeki tekil aktör sayısı `k_threshold` (10) altındaysa `value` null ve `suppressed_reason=below_k_threshold` döner. Toplanabilir\nmetrikte tek gizli hücre toplamdan çıkarılamasın diye en küçük görünen hücre de gizlenir. Gizli kırılım satırının etiketi `__below_k__` olur,\naynı kovadaki gizli satırlar teke iner. Boş hücre 0'dır. Fark sorgusu (aralık kaydırma) bu eşikle tam kapanmaz.\n\n**null:** `value` null ve `suppressed_reason` varsa veri vardır ama gizlidir. `value` null ve `provenance_class=UNKNOWN` ise kapsamda hiç olay görülmemiştir.\n\n**Gelişmiş sorgu (F4-E04-T01):** `filter=alan:değer` tekrarlanabilir (en çok 10); aynı alanın değerleri VEYA, farklı alanlar VE ile bağlanır. Alanlar boyut\nlistesinin proje dışındaki üyeleridir (`platform, source, locale, sdk_version, event_name, page_path, referrer_host, country, device_class, browser, os, referrer_class, utm_source, utm_medium, utm_campaign`); `event_name` süzgeci yalnız en az k aktörün\nyaptığı olayı kabul eder, aksi 400 `event_not_in_catalog` (nadir olay oracle'ı kapalı). `segment=<kitle kimliği>` aktör kümesini kitle üyeliğiyle daraltır: yalnız tek\n`project_id` ile (400 `segment_requires_single_project`), kimlikte `audiences:read` de olmalıdır (403 `insufficient_scope`), başka kiracının ya da projenin kitlesi 404.\nk-eşiği süzülmüş ve daraltılmış kümeye aynen uygulanır; süzgeç ve segmentle yapılan ayrı sorguların farkı kesin sayı kararı gereği kapanmaz (ADR-0008).\nYeni boyut `referrer_host` yönlendirenin yalnız alan adıdır (collect origin yazar). **Web boyutları (katalog 0.3.0):** `country` (ISO 3166-1 alpha-2; GeoIP veritabanı yoksa `UNKNOWN`), `device_class`, `browser`, `os`, `referrer_class` (`direct|internal|search|social|email|ai_assistant|paid|referral|unknown`) ve `utm_source|utm_medium|utm_campaign` toplayıcıda istek anında kaba sınıfa indirgenir; ham IP ve User-Agent hiçbir yerde saklanmaz. Bu sütunlar yalnız yeni olaylarda doludur, eski olaylarda `UNKNOWN`/`unknown` görünür. `event_name` süzgeci yalnız tek `project_id` ile (400\n`filter_requires_single_project`). Süzgeçli ya da segmentli sorguda boş sonuç da `null` + `below_k_threshold` döner: `0` ile gizli ayrımı süzgeç\ndeğerinin (sayfa yolu, dil) az kişide var olduğunu ele vermesin."
+            "description": "Yalnız katalog metriği; serbest SQL yok. Doğrulanmış Test Lab olayı (`source=feralin_test_lab`) hiçbir metriğe girmez.\n\n**k-eşiği:** Hücredeki tekil aktör sayısı `k_threshold` (10) altındaysa `value` null ve `suppressed_reason=below_k_threshold` döner. Toplanabilir\nmetrikte tek gizli hücre toplamdan çıkarılamasın diye en küçük görünen hücre de gizlenir. Gizli kırılım satırının etiketi `__below_k__` olur,\naynı kovadaki gizli satırlar teke iner. Boş hücre 0'dır. Fark sorgusu (aralık kaydırma) bu eşikle tam kapanmaz.\n\n**null:** `value` null ve `suppressed_reason` varsa veri vardır ama gizlidir. `value` null ve `provenance_class=UNKNOWN` ise kapsamda hiç olay görülmemiştir.\n\n**Gelişmiş sorgu (F4-E04-T01):** `filter=alan:değer` tekrarlanabilir (en çok 10); aynı alanın değerleri VEYA, farklı alanlar VE ile bağlanır. Alanlar boyut\nlistesinin proje ve `visitor_type` dışındaki üyeleridir (`platform, source, locale, sdk_name, sdk_version, event_name, page_path, screen_name, referrer_host, country, device_class, browser, os, referrer_class, traffic_source, channel, utm_source, utm_medium, utm_campaign, utm_term, utm_content`); `event_name` süzgeci yalnız en az k aktörün\nyaptığı olayı kabul eder, aksi 400 `event_not_in_catalog` (nadir olay oracle'ı kapalı). `segment=<kitle kimliği>` aktör kümesini kitle üyeliğiyle daraltır: yalnız tek\n`project_id` ile (400 `segment_requires_single_project`), kimlikte `audiences:read` de olmalıdır (403 `insufficient_scope`), başka kiracının ya da projenin kitlesi 404.\nk-eşiği süzülmüş ve daraltılmış kümeye aynen uygulanır; süzgeç ve segmentle yapılan ayrı sorguların farkı kesin sayı kararı gereği kapanmaz (ADR-0008).\nYeni boyut `referrer_host` yönlendirenin yalnız alan adıdır (collect origin yazar). **Web boyutları (katalog 0.3.0):** `country` (ISO 3166-1 alpha-2; GeoIP veritabanı yoksa `UNKNOWN`), `device_class`, `browser`, `os`, `referrer_class` (`direct|internal|search|social|email|ai_assistant|paid|referral|unknown`) ve `utm_source|utm_medium|utm_campaign|utm_term|utm_content` toplayıcıda istek anında kaba sınıfa indirgenir; ham IP ve User-Agent hiçbir yerde saklanmaz. Ülke IP'den istek anında türetilir ve IP atılır; bölge ve şehir türetilmez. Bu sütunlar yalnız yeni olaylarda doludur, eski olaylarda `UNKNOWN`/`unknown` görünür. **Katalog 0.4.0:** `utm_term` bağlantıdaki anahtar kelime etiketidir (arama motorları organik arama sorgusunu göndermez; organik sorgular Search Console bağlantısıyla Search Intelligence ekranındadır), `utm_content` içerik etiketidir; `sdk_name` olayı gönderen SDK'nın adıdır; `screen_name` yalnız `screen_view` olayının `properties.screen_name` değeridir (mobil SDK `screen(...)` çağrısı), başka olaylarda boş, `page_views` ve kitle metriklerinde yoktur; `visitor_type` (`new|returning`, yalnız kırılım, süzgeç değildir) aktörün (K_ACTOR) aralık başından önceki 90 günde aynı projede olay yapıp yapmadığıdır: daha eski ziyaret görülmez, çerezi silinen tarayıcı yeni sayılır, sınıf ESTIMATED kalır. `event_name` süzgeci yalnız tek `project_id` ile (400\n`filter_requires_single_project`). Süzgeçli ya da segmentli sorguda boş sonuç da `null` + `below_k_threshold` döner: `0` ile gizli ayrımı süzgeç\ndeğerinin (sayfa yolu, dil) az kişide var olduğunu ele vermesin."
           },
           "response": []
         },
@@ -5220,6 +5519,65 @@
           "response": []
         },
         {
+          "name": "Dönüşüm kaynakları; kayıt, satın alma ve her özel olay hangi kaynaktan gelen ziyaretçiye ait (scope metrics:read)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/analytics/conversion-sources?project_id=&from=&to=&event=",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "analytics",
+                "conversion-sources"
+              ],
+              "query": [
+                {
+                  "key": "project_id",
+                  "value": "",
+                  "disabled": false,
+                  "description": "Tek proje; kiracı dışı proje 404"
+                },
+                {
+                  "key": "from",
+                  "value": "",
+                  "disabled": false
+                },
+                {
+                  "key": "to",
+                  "value": "",
+                  "disabled": false
+                },
+                {
+                  "key": "event",
+                  "value": "",
+                  "disabled": false,
+                  "description": "Dönüşüm olayının adı"
+                },
+                {
+                  "key": "dimension",
+                  "value": "referrer_host",
+                  "disabled": true
+                },
+                {
+                  "key": "model",
+                  "value": "session_entry",
+                  "disabled": true
+                },
+                {
+                  "key": "source_id",
+                  "value": "",
+                  "disabled": true,
+                  "description": "Proje veri kaynağı (`src_…`) ya da `unassigned` (hiçbir kaynağa düşmeyen olaylar). Yalnız tek project_id ile. Kaynak bu projede yoksa ya da arşivliyse 404 `source_not_found`. Verilmezse projenin tamamı: toplam kaynakların ve atanmamışın toplamıdır."
+                }
+              ]
+            },
+            "description": "Seçilen dönüşüm olayını (`event`: ör. `sign_up_completed`, `feralin_purchase`, `match_created`) aynı ziyaretçinin oturumlarının **giriş kaynağına** bağlar; olayın kendi\nsayfasındaki yönlendiren (genelde sitenin kendisi) kullanılmaz. Dokunuş birimi oturumdur: oturumun ilk olayının yönlendireni, `utm_*` değerleri, giriş sayfası, ülkesi.\nModel: `session_entry` dönüşümden önce başlayan son oturum, `first_touch` son 30 gündeki ilk oturum, `last_non_direct` son 30 gündeki doğrudan olmayan (kampanya etiketi,\narama, sosyal, e-posta, yapay zekâ asistanı, ücretli, başka site) son oturum; yoksa kaynak yok (`__none__`). Site içi yönlendiren kaynak sayılmaz. Ziyaretçi anonim kimlikle\ntanınır; sunucudan yalnız `user_id` ile gelen dönüşüm, aynı `user_id` ile identify edilmiş tarayıcı ya da uygulamanın oturumlarına bağlanır. `dimension=link` Feralin kısa link kodudur (yönlendirici web hedefine `fr_link` ekler). Her satırda dönüşen ziyaretçilerden aynı aralıkta ödeme yapanlar (`payers`) ve tahmini tutar (`paid_revenue`) döner; ödeyen k altındaysa null. Ödeme otomatik tanınır: `feralin_purchase` ya da adı satın alma, yenileme, abonelik başlangıcı veya başarılı ödeme anlamı taşıyan ve para birimi (ISO 4217) ile tutar (`amount_minor` ya da ana birimde `price`, `value`, `amount`, `revenue`, `tutar`, `fiyat`) içeren olay; ödeme başlatma, iptal, iade ve hata sayılmaz, aynı `transaction_id` bir kez sayılır (`payment_events`). Cihazlar arası olasılıksal\neşleştirme ve parmak izi yoktur. `feralin_purchase` için satır başına istemcinin bildirdiği tahmini tutar (para birimi başına, küçük birim) döner; doğrulanmış gelir\nGelir ekranındadır. Toplam ve her satır en az k tekil aktör içerir; ikincil gizleme uygulanır. Aralık en çok 92 gün. Sınıf `ESTIMATED`; hat gerideyse `STALE`, projede\nhiç olay yoksa `UNKNOWN`. **Kaynak:** sınır aşımı 422 `analytics_query_limit_exceeded`, eşzamanlılık aşımı 429 `analytics_concurrency_limit`. Bilinmeyen parametre 400."
+          },
+          "response": []
+        },
+        {
           "name": "Oturum özeti; sayı, ortalama süre, hemen çıkma, sayfa/oturum, giriş ve çıkış sayfası (scope metrics:read)",
           "request": {
             "method": "GET",
@@ -5255,11 +5613,260 @@
                   "key": "filter",
                   "value": "",
                   "disabled": true,
-                  "description": "`alan:değer`; tekrarlanabilir, en çok 10. Alanlar: platform, locale, sdk_version, country, device_class, browser, os, referrer_class, utm_source, utm_medium, utm_campaign."
+                  "description": "`alan:değer`; tekrarlanabilir, en çok 10. Alanlar: platform, locale, sdk_version, country, device_class, browser, os, referrer_class, traffic_source, channel, utm_source, utm_medium, utm_campaign, utm_term, utm_content."
+                },
+                {
+                  "key": "source_id",
+                  "value": "",
+                  "disabled": true,
+                  "description": "Proje veri kaynağı (`src_…`) ya da `unassigned` (hiçbir kaynağa düşmeyen olaylar). Yalnız tek project_id ile. Kaynak bu projede yoksa ya da arşivliyse 404 `source_not_found`. Verilmezse projenin tamamı: toplam kaynakların ve atanmamışın toplamıdır."
                 }
               ]
             },
-            "description": "Oturum, aynı projede aynı `session_id` taşıyan olayların kümesidir ve yalnız en az bir `page_view` içeren oturumlar sayılır. Süre ilk ve son olay arasındaki\nfarktır; tek olaylı oturumun süresi 0 sayılır (son sayfada geçen süre ölçülemez) ve ortalama bu yüzden alt sınırdır. Hemen çıkma tek olaylı (yalnız bir `page_view`)\noturum oranıdır. Giriş sayfası oturumun ilk, çıkış sayfası son `page_view` yoludur. Oturum özellikleri (ülke, cihaz, tarayıcı, işletim sistemi, yönlendiren sınıfı,\n`utm_*`, platform, dil, SDK sürümü) oturumun ilk olayından alınır; `filter=alan:değer` (tekrarlanabilir, en çok 10) buna uygulanır, aynı alanın değerleri VEYA,\nfarklı alanlar VE ile bağlanır. Özet ve her tablo satırı en az k tekil aktör içermelidir: k altında `sessions` ve oranlar `null` + `below_k_threshold` döner, tablolar\nikincil gizlemeden geçer, süzgeçli sorguda boş sonuç da gizlidir (ADR-0008). **Oynatma ve tek tek oturum listesi yoktur** (`not_available`): yalnız toplu sayılar.\nAralık en çok 92 gündür; aralığın kenarındaki oturumlar yalnız aralığa düşen olaylarıyla sayılır. Aktör kimliği istemcide üretildiği için sınıf `ESTIMATED`; hat gerideyse\n`STALE`, projede hiç olay yoksa `UNKNOWN`. **Kaynak:** sınır aşımı 422 `analytics_query_limit_exceeded`, kiracı başına eşzamanlılık aşımı 429 `analytics_concurrency_limit`.\nBilinmeyen sorgu parametresi 400."
+            "description": "Oturum, aynı projede aynı `session_id` taşıyan olayların kümesidir ve yalnız en az bir `page_view` içeren oturumlar sayılır. Süre ilk ve son olay arasındaki\nfarktır; tek olaylı oturumun süresi 0 sayılır (son sayfada geçen süre ölçülemez) ve ortalama bu yüzden alt sınırdır. Hemen çıkma tek olaylı (yalnız bir `page_view`)\noturum oranıdır. Giriş sayfası oturumun ilk, çıkış sayfası son `page_view` yoludur. Oturum özellikleri (ülke, cihaz, tarayıcı, işletim sistemi, yönlendiren sınıfı,\n`utm_*`, platform, dil, SDK sürümü) oturumun ilk olayından alınır; `filter=alan:değer` (tekrarlanabilir, en çok 10) buna uygulanır, aynı alanın değerleri VEYA,\nfarklı alanlar VE ile bağlanır. Özet ve her tablo satırı en az k tekil aktör içermelidir: k altında `sessions` ve oranlar `null` + `below_k_threshold` döner, tablolar\nikincil gizlemeden geçer, süzgeçli sorguda boş sonuç da gizlidir (ADR-0008). **Oynatma ve tek tek oturum listesi yoktur** (`not_available`): yalnız toplu sayılar.\nAralık en çok 92 gündür; aralığın kenarındaki oturumlar yalnız aralığa düşen olaylarıyla sayılır. Aktör kimliği istemcide üretildiği için sınıf `ESTIMATED`; hat gerideyse\n`STALE`, projede hiç olay yoksa `UNKNOWN`. **Kaynak:** sınır aşımı 422 `analytics_query_limit_exceeded`, kiracı başına eşzamanlılık aşımı 429 `analytics_concurrency_limit`.\n`source_id` verilirse oturumlar yalnız o proje veri kaynağının olaylarından kurulur (kaynak bu projede yoksa 404 `source_not_found`). Bilinmeyen sorgu parametresi 400."
+          },
+          "response": []
+        },
+        {
+          "name": "Web raporu; oturum, ziyaretçi, görüntüleme, olay, etkileşim oranı ve ortalama süre, isteğe bağlı oturum boyutuna göre (scope metrics:read)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/analytics/web/report?project_id=&from=&to=",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "analytics",
+                "web",
+                "report"
+              ],
+              "query": [
+                {
+                  "key": "project_id",
+                  "value": "",
+                  "disabled": false,
+                  "description": "Tek proje; kiracı dışı proje 404"
+                },
+                {
+                  "key": "from",
+                  "value": "",
+                  "disabled": false
+                },
+                {
+                  "key": "to",
+                  "value": "",
+                  "disabled": false
+                },
+                {
+                  "key": "dimension",
+                  "value": "",
+                  "disabled": true,
+                  "description": "Oturum boyutu; verilmezse yalnız toplamlar"
+                },
+                {
+                  "key": "dimension2",
+                  "value": "",
+                  "disabled": true,
+                  "description": "İkincil oturum boyutu; `dimension` ile birlikte ve ondan farklı"
+                },
+                {
+                  "key": "sort",
+                  "value": "sessions",
+                  "disabled": true,
+                  "description": "Satırların sıralandığı metrik; sıralama depoda yapılır"
+                },
+                {
+                  "key": "order",
+                  "value": "desc",
+                  "disabled": true,
+                  "description": "Sıralama yönü"
+                },
+                {
+                  "key": "filter",
+                  "value": "",
+                  "disabled": true,
+                  "description": "`alan:değer`; tekrarlanabilir, en çok 10. Alanlar: platform, locale, sdk_version, country, device_class, browser, os, referrer_class, traffic_source, channel, utm_source, utm_medium, utm_campaign, utm_term, utm_content."
+                },
+                {
+                  "key": "source_id",
+                  "value": "",
+                  "disabled": true,
+                  "description": "Proje veri kaynağı (`src_…`) ya da `unassigned` (hiçbir kaynağa düşmeyen olaylar). Yalnız tek project_id ile. Kaynak bu projede yoksa ya da arşivliyse 404 `source_not_found`. Verilmezse projenin tamamı: toplam kaynakların ve atanmamışın toplamıdır."
+                }
+              ]
+            },
+            "description": "GA4'ün edinim ve kitle raporlarının karşılığıdır. Oturum, aynı projede aynı `session_id` taşıyan olayların kümesidir; `session_id` taşımayan olay rapora girmez.\n`dimension` verilirse satırlar o boyuta göre döner; boyut değeri ve `filter` oturumun **ilk olayından** okunur (`landing_page` oturumun ilk `page_view` yoludur,\nsorgu dizgesi atılır). `dimension` verilmezse yalnız `totals` döner. Görüntüleme `page_view` ve `screen_view` olaylarıdır. Etkileşimli oturum, ilk ve son olayı\narasında en az 10 saniye olan ya da en az 2 görüntüleme içeren oturumdur; ortalama süre tek olaylı oturumu 0 saydığı için alt sınırdır. Ziyaretçi (`anonymous_id`)\nsatırlar arası toplanamaz. Satırlar `sort` metriğine göre (varsayılan oturum, azalan) **depoda** sıralanır ve en çok 50 satır döner (`truncated`): sınır seçilen metriğin ilk 50 satırını verir;\nk eşiğini geçen satırlar önce gelir. Toplam ve her satır en az k tekil aktör içermelidir:\nk altında toplam `null` + `below_k_threshold` döner ve satır yayımlanmaz; k altı satırlar ikincil gizlemeyle birlikte tek `__below_k__` satırında toplanır\n(`suppressed_row_count`); süzgeçli sorguda boş sonuç da gizlidir (ADR-0008). Karşılaştırma dönemi için uç önceki aralıkla ikinci kez çağrılır. Aralık en çok 92 gündür.\nSınıf `ESTIMATED` (kimlikler istemcide üretilir); hat gerideyse `STALE`, projede hiç olay yoksa `UNKNOWN` ve bütün değerler `null`. **Kaynak:** sınır aşımı 422\n`analytics_query_limit_exceeded`, eşzamanlılık aşımı 429 `analytics_concurrency_limit`. Bilinmeyen sorgu parametresi 400.\n\n**İkincil boyut:** `dimension2` verilirse satırlar (boyut, ikincil boyut) çiftine göre döner (`value`, `value2`); `dimension` olmadan ya da onunla aynı değerle 400 `invalid_dimension`.\n**Satın alma:** `purchases` oturumun içindeki tekil ödeme sayısıdır (`feralin_purchase` ya da adı satın alma, yenileme, abonelik başlangıcı olup ISO 4217 para birimi taşıyan olay;\naynı `transaction_id` / `order_id` bir kez). `purchase_revenue` para birimi başına tutardır (küçük birim, istemci beyanı, `ESTIMATED`). Ödeyen aktör k altındaki satırda\nikisi de gizlenir (`purchases_suppressed_reason`), satırlar arasında ikincil gizleme uygulanır. Sunucudan `session_id` olmadan gelen ödeme, ödeyenin aynı aralıkta\nödemeden önce başlamış son oturumuna bağlanır (anonim kimlik; yoksa kullanıcı kimliği, oturumda `identify` edilmiş olmalı); bağlanamayan ödeme rapora girmez\n(`/analytics/conversion-sources` 30 günlük geriye bakışla bağlar). Aynı işlem numarası istemciden ve sunucudan gelirse bir kez sayılır. Gizli satırların tekil aktörü depoda ayrıca sayılır: k altındaysa en küçük görünen satır da gizlenir;\nikincil boyutta bu denetim birinci boyutun her değeri için ayrı yapılır (tek boyutlu raporla çaprazlanamaz). Tutar para birimi başına yazıldığından her para biriminin\nödeyeni de sayılır: biri k altındaysa o grubun satın alması bütünüyle gizlenir. Yayımlanmayan satın almaların tekil ödeyeni k altındaysa en küçük görünen satırın\nsatın alması da gizlenir.\n**Tümleyen denetimi:** `filter` ya da `source_id` ile daraltılmış sorguda, daraltmanın dışında kalan oturumların tekil aktörü k altındaysa (0 hariç) sonuç gizlenir:\ndaraltılmış ve daraltılmamış toplamın farkı o küçük grubun sayısını verirdi. k = 1 kurulumda bu denetim çalışmaz."
+          },
+          "response": []
+        },
+        {
+          "name": "Sayfa raporu; sayfa yolu başına görüntüleme, ziyaretçi, oturum, giriş, çıkış ve çıkış oranı (scope metrics:read)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/analytics/web/pages?project_id=&from=&to=",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "analytics",
+                "web",
+                "pages"
+              ],
+              "query": [
+                {
+                  "key": "project_id",
+                  "value": "",
+                  "disabled": false,
+                  "description": "Tek proje; kiracı dışı proje 404"
+                },
+                {
+                  "key": "from",
+                  "value": "",
+                  "disabled": false
+                },
+                {
+                  "key": "to",
+                  "value": "",
+                  "disabled": false
+                },
+                {
+                  "key": "dimension",
+                  "value": "page_path",
+                  "disabled": true,
+                  "description": "Satır anahtarı"
+                },
+                {
+                  "key": "sort",
+                  "value": "views",
+                  "disabled": true,
+                  "description": "Satırların sıralandığı metrik; sıralama depoda yapılır"
+                },
+                {
+                  "key": "order",
+                  "value": "desc",
+                  "disabled": true,
+                  "description": "Sıralama yönü"
+                },
+                {
+                  "key": "filter",
+                  "value": "",
+                  "disabled": true,
+                  "description": "`alan:değer`; tekrarlanabilir, en çok 10. Alanlar: platform, locale, sdk_version, country, device_class, browser, os, referrer_class, traffic_source, channel, utm_source, utm_medium, utm_campaign, utm_term, utm_content."
+                },
+                {
+                  "key": "source_id",
+                  "value": "",
+                  "disabled": true,
+                  "description": "Proje veri kaynağı (`src_…`) ya da `unassigned` (hiçbir kaynağa düşmeyen olaylar). Yalnız tek project_id ile. Kaynak bu projede yoksa ya da arşivliyse 404 `source_not_found`. Verilmezse projenin tamamı: toplam kaynakların ve atanmamışın toplamıdır."
+                }
+              ]
+            },
+            "description": "GA4'ün \"sayfalar ve ekranlar\" ile \"açılış sayfası\" raporlarının karşılığıdır. Yalnız `session_id` taşıyan `page_view` olayları sayılır; sayfa adresin yoludur,\nsorgu dizgesi ve parça atılır. Giriş, oturumun ilk `page_view` yolu; çıkış sonuncusudur; çıkış oranı çıkış / sayfayı görüntüleyen oturumdur. `filter` oturumun\nilk olayına uygulanır. Satırlar `sort` metriğine göre (varsayılan görüntüleme, azalan) depoda sıralanır, en çok 50 satır döner. k-eşiği, ikincil gizleme, tümleyen denetimi,\naralık sınırı, sınıf ve kaynak sınırları `/analytics/web/report` ile aynıdır. `dimension=page_title` satırları sayfa başlığına göre kurar (varsayılan `page_path`);\nbaşlıktaki e-posta adresi `***@***`, en az altı rakamlı dizi (sipariş, telefon numarası) `###` olarak maskelenir ve maskelenen başlıklar tek satırda toplanır.\n**Sayfada süre:** Web SDK `fr_page_engagement` olayı gönderiyorsa (`visible_ms`: sayfanın sekmede görünür kaldığı süre) `avg_time_seconds` o sürelerin görüntüleme başına\nortalamasıdır; arka plandaki sekme sayılmaz ve oturumun son sayfası da ölçülür. Olay göndermeyen oturumda (eski SDK) süre, bir sonraki sayfa görüntülemesine kadar geçen\nsüredir ve son sayfa ölçülemez. `avg_time_basis` hangisinin kullanıldığını söyler (`visibility`, `navigation`, `mixed`). Hiç ölçüm yoksa `null`.\n**Alt ölçüm gizlemesi:** satırı görünür olsa da giriş, çıkış ya da süre ölçümünün aktörü k altındaysa o hücre `null` döner ve adı `suppressed_metrics` içinde yazar;\nsıralama ölçümü gizli satır sona alınır. Oturum başına en çok 500 tekil sayfa görüntülemesi sayılır."
+          },
+          "response": []
+        },
+        {
+          "name": "Olay raporu; olay adı başına olay sayısı, olayı yapan tekil aktör ve kullanıcı başına olay (scope metrics:read)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/analytics/web/events?project_id=&from=&to=",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "analytics",
+                "web",
+                "events"
+              ],
+              "query": [
+                {
+                  "key": "project_id",
+                  "value": "",
+                  "disabled": false,
+                  "description": "Tek proje; kiracı dışı proje 404"
+                },
+                {
+                  "key": "from",
+                  "value": "",
+                  "disabled": false
+                },
+                {
+                  "key": "to",
+                  "value": "",
+                  "disabled": false
+                },
+                {
+                  "key": "sort",
+                  "value": "events",
+                  "disabled": true,
+                  "description": "Satırların sıralandığı metrik; sıralama depoda yapılır"
+                },
+                {
+                  "key": "order",
+                  "value": "desc",
+                  "disabled": true,
+                  "description": "Sıralama yönü"
+                },
+                {
+                  "key": "filter",
+                  "value": "",
+                  "disabled": true,
+                  "description": "`alan:değer`; tekrarlanabilir, en çok 10. Alanlar: platform, locale, sdk_version, country, device_class, browser, os, referrer_class, traffic_source, channel, utm_source, utm_medium, utm_campaign, utm_term, utm_content."
+                },
+                {
+                  "key": "source_id",
+                  "value": "",
+                  "disabled": true,
+                  "description": "Proje veri kaynağı (`src_…`) ya da `unassigned` (hiçbir kaynağa düşmeyen olaylar). Yalnız tek project_id ile. Kaynak bu projede yoksa ya da arşivliyse 404 `source_not_found`. Verilmezse projenin tamamı: toplam kaynakların ve atanmamışın toplamıdır."
+                }
+              ]
+            },
+            "description": "GA4'ün olaylar raporunun karşılığıdır. Kabul edilen bütün olaylar olay adına göre sayılır; `session_id` taşımayan sunucu olayları dahildir. `users`, olayı en az bir kez\nyapan tekil aktördür (anonim kimlik, yoksa kullanıcı kimliği, yoksa oturum, yoksa olayın kendisi; kimlikler birleştirilmez) ve satırlar arası toplanamaz.\n`filter` bu uçta olayın **kendi** boyut değerine uygulanır (oturumun ilk olayına değil). Satırlar `sort` metriğine göre (varsayılan olay sayısı, azalan) depoda sıralanır,\nen çok 50 satır döner. Web SDK'nın görünür süre olayı (`fr_page_engagement`) ve öteki `fr_` olayları kendi adlarıyla listelenir. Tümleyen denetimi\n`/analytics/web/report` ile aynıdır.\nToplam ve her satır en az k tekil aktör içermelidir; eşik altındaki olayın adı dönmez, satırlar ikincil gizlemeyle tek `__below_k__` satırında toplanır ve gizli\nkümenin tekil aktörü k altındaysa en küçük görünen satır da gizlenir. Aralık sınırı, sınıf ve kaynak sınırları `/analytics/web/report` ile aynıdır."
+          },
+          "response": []
+        },
+        {
+          "name": "Etkin kullanıcılar; günlük DAU, WAU, MAU ve yapışkanlık (scope metrics:read)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/projects/:id/analytics/active-users",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "projects",
+                ":id",
+                "analytics",
+                "active-users"
+              ],
+              "query": [
+                {
+                  "key": "from",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "to",
+                  "value": "",
+                  "disabled": true
+                }
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{project_id}}"
+                }
+              ]
+            },
+            "description": "Her UTC günü için DAU (o gün görülen tekil aktör), WAU (o günle biten 7 gün, gün dahil), MAU (o günle biten 30 gün, gün dahil) ve\nyapışkanlık (dau / mau). Kayan pencereler günlük sayıların toplamı değildir: birkaç gün etkin olan aktör pencerede bir kez sayılır.\nSorgu `from` gününden 29 gün öncesini de okur (`lookback_from`), ilk günün pencereleri tamdır. Aktör metrik sorgularının k-eşiğinde\nsaydığı kuraldır (anonim kimlik, yoksa kullanıcı kimliği, yoksa oturum, yoksa olay); kimlikler birleştirilmez, bu yüzden sınıf en iyi\ndurumda ESTIMATED'dır. Doğrulanmış Test Lab olayları hariçtir. 1 ile k-1 arasındaki değer null döner ve alan `suppressed_fields`\niçinde listelenir; 0 aktör 0 kalır. Projede hiç olay yoksa `series` boş, `latest` null ve sınıf UNKNOWN'dır (0 değil). Hat gerideyse STALE.\nAralık `from`/`to` (ISO-8601, `to` dışlayıcı): `from` anının UTC gününden `to`'dan hemen önceki anın UTC gününe kadar tam günler.\nVarsayılan son 30 gün (bugün dahil; bitmemiş gün `incomplete: true`), en çok 90 gün. `to` gelecekteyse şimdiye kırpılır.\n`latest` bitmiş son günün satırıdır; aralıkta bitmiş gün yoksa son (kısmi) gün. Kiracı başına eşzamanlılık kapısından geçer (429).\nAtanmadığı projeyi kısıtlı üye ve başka kiracının projesini herkes 404 görür."
           },
           "response": []
         },
@@ -6274,7 +6881,7 @@
             "description": "Yalnız owner ve admin oturumu yazar: `projects:write` API anahtarı kataloğunda yoktur, anahtar 403 alır. `member` rolü 403 alır.\nDenetim kaydına alan adı ve sayı yazılır, değer yazılmaz. Tanım `GET /v1/metrics/query` ile aynı sözlükten doğrulanır: metrik Metric\nCatalog'dan, kırılım metriğin izinli boyutlarından (izin dışı 400 `dimension_not_allowed`), süzgeç izinli alanlardan; serbest SQL ya da\nbetik alanı yoktur. Proje başına en çok 50 kayıt (409 `saved_report_limit_reached`); aynı ad 409 `saved_report_name_taken`.",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"\",\n  \"metric_id\": \"sessions\",\n  \"range\": \"24h\"\n}",
+              "raw": "{\n  \"name\": \"\",\n  \"range\": \"24h\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -6908,6 +7515,112 @@
           "response": []
         },
         {
+          "name": "Meta Install Referrer ayarı ve kampanya kırılımı (scope links:read)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/projects/:id/attribution/meta-referrer",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "projects",
+                ":id",
+                "attribution",
+                "meta-referrer"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{project_id}}"
+                }
+              ]
+            },
+            "description": "Android'de Facebook/Instagram uygulamasının ve Meta reklamının Play referrer'ının taşıdığı şifreli kampanya verisi, Meta uygulama panelindeki\nçözme anahtarıyla çözülür ve ilk açılış o kampanya, reklam seti ve reklama bağlanır (kanıt sınıfı meta_install_referrer). Facebook SDK gerekmez.\nÇözme anahtarı hiçbir yanıtta dönmez; yalnız son 4 karakteri (key_hint). campaigns son 30 günün kurulum kırılımıdır (karar sayısı)."
+          },
+          "response": []
+        },
+        {
+          "name": "Facebook uygulama kimliği ve çözme anahtarını kaydet (scope links:write)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/projects/:id/attribution/meta-referrer",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "projects",
+                ":id",
+                "attribution",
+                "meta-referrer"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{project_id}}"
+                }
+              ]
+            },
+            "description": "app_id 5–20 rakam; decryption_key 64 onaltılı karakter (400 meta_referrer_invalid). Anahtar SAAS_API_SECRET_KEY ile şifreli saklanır; sunucu sırrı\nyoksa 503 secret_key_not_configured. Anahtar verilmezse mevcut anahtar korunur.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"app_id\": \"\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Meta Install Referrer ayarını kaldır (scope links:write)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Idempotency-Key",
+                "value": "",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/projects/:id/attribution/meta-referrer",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "projects",
+                ":id",
+                "attribution",
+                "meta-referrer"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{project_id}}"
+                }
+              ]
+            },
+            "description": "Meta Install Referrer ayarını kaldır (scope links:write)"
+          },
+          "response": []
+        },
+        {
           "name": "Test Lab kaydı (scope links:write)",
           "request": {
             "method": "POST",
@@ -6962,7 +7675,7 @@
                 }
               ]
             },
-            "description": "Silmeyi başlatmaz: DSAR kuyruğuna `erasure` talebi açar, yanıt 202 döner. Silme ikinci onaydan sonra PostgreSQL ve ClickHouse için birlikte yürür (`/projects/{id}/privacy/requests/{requestId}/approve`).\nAynı kurulum için açık talep varsa o döner, `created=false`. API anahtarı bu ucu kullanamaz (`403 api_key_route_not_allowed`).",
+            "description": "Silmeyi başlatmaz: DSAR kuyruğuna `erasure` talebi açar, yanıt 202 döner. Silme ikinci onaydan sonra PostgreSQL ve ClickHouse için birlikte yürür (`/projects/{id}/privacy/requests/{requestId}/approve`).\nAynı kurulum için açık talep varsa o döner, `created=false`. API anahtarı bu ucu kullanamaz (`403 api_key_route_not_allowed`).\nÖzel rollü üye scope'u olsa da kullanamaz (`403 custom_role_route_not_permitted`).",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"anonymous_id\": \"\"\n}",
@@ -7007,6 +7720,299 @@
             "body": {
               "mode": "raw",
               "raw": "{\n  \"anonymous_id\": \"\",\n  \"consent\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Kurulum mağazası kırılımı (scope attribution:read)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/projects/:id/attribution/install-stores",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "projects",
+                ":id",
+                "attribution",
+                "install-stores"
+              ],
+              "query": [
+                {
+                  "key": "from",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "to",
+                  "value": "",
+                  "disabled": true
+                }
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{project_id}}"
+                }
+              ]
+            },
+            "description": "İlk açılışların hangi mağazadan kurulduğu: Google Play, Samsung Galaxy Store, Huawei AppGallery, Amazon Appstore ve ötekiler.\nDeğer Android SDK'nın işletim sisteminden okuduğu kurucu paketten türer (`install_store`); mağaza tarafından doğrulanmaz.\nKurulum başına tekil sayılır. Listede olmayan değer `other`, alanı olmayan ilk açılış (iOS, eski SDK) `not_reported` olur.\nk eşiğinin altındaki mağaza satırı gizlenir. Varsayılan aralık son 30 gün, en çok 366 gün."
+          },
+          "response": []
+        },
+        {
+          "name": "Dolandırıcılık kuralı ayarları (scope attribution:read)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/projects/:id/attribution/fraud/settings",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "projects",
+                ":id",
+                "attribution",
+                "fraud",
+                "settings"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{project_id}}"
+                }
+              ]
+            },
+            "description": "Beş kural karar anında çalışır: tıklamadan kuruluma geçen sürenin çok kısa olması (tıklama enjeksiyonu), veri merkezi ya da Tor\nIP'si, emülatör bildirimi, root / jailbreak bildirimi ve SDK imzası. Kurallar olasılığa dayanır; sonuç ESTIMATED'dır. Varsayılan kip `flag`, imza `off`."
+          },
+          "response": []
+        },
+        {
+          "name": "Dolandırıcılık kuralı ayarlarını güncelle (scope links:write)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/projects/:id/attribution/fraud/settings",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "projects",
+                ":id",
+                "attribution",
+                "fraud",
+                "settings"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{project_id}}"
+                }
+              ]
+            },
+            "description": "Kısmi güncelleme; verilmeyen alan olduğu gibi kalır. Etkin imza anahtarı yokken imza kuralı açılamaz (409).",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Dolandırıcılık işaret ve ret raporu (scope attribution:read)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/projects/:id/attribution/fraud/report",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "projects",
+                ":id",
+                "attribution",
+                "fraud",
+                "report"
+              ],
+              "query": [
+                {
+                  "key": "from",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "to",
+                  "value": "",
+                  "disabled": true
+                }
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{project_id}}"
+                }
+              ]
+            },
+            "description": "Aralıktaki kurulum kararlarında kural başına işaretlenen ve reddedilen kurulum sayısı ile işaretli kurulumu en çok olan linkler.\nSayılar karar sayısıdır; kişi, cihaz ya da IP dönmez. Varsayılan aralık son 30 gün, en çok 366 gün."
+          },
+          "response": []
+        },
+        {
+          "name": "SDK imza anahtarları (scope attribution:read)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/projects/:id/attribution/fraud/signing-secrets",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "projects",
+                ":id",
+                "attribution",
+                "fraud",
+                "signing-secrets"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{project_id}}"
+                }
+              ]
+            },
+            "description": "Anahtarın kendisi listede dönmez; yalnız kimliği, etiketi ve durumu görünür."
+          },
+          "response": []
+        },
+        {
+          "name": "SDK imza anahtarı üret (scope links:write)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/projects/:id/attribution/fraud/signing-secrets",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "projects",
+                ":id",
+                "attribution",
+                "fraud",
+                "signing-secrets"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{project_id}}"
+                }
+              ]
+            },
+            "description": "Uygulama ilk açılış ve link açılışı olaylarını bu anahtarla imzalar (HMAC-SHA256; imza `fr_sig` özelliğinde taşınır:\n`v1.<anahtar kimliği>.<unix saniye>.<hex>`; imzalanan dizgi `v1\\n<saniye>\\n<event_id>\\n<event_name>\\n<anonymous_id>`).\nHam anahtar yalnız bu yanıtta döner. En çok 5 etkin anahtar olabilir.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"label\": \"\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "SDK imza anahtarını iptal et (scope links:write)",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/projects/:id/attribution/fraud/signing-secrets/:secretId",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "projects",
+                ":id",
+                "attribution",
+                "fraud",
+                "signing-secrets",
+                ":secretId"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{project_id}}"
+                },
+                {
+                  "key": "secretId",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "İptal geri alınmaz. Son etkin anahtar iptal edilirse imza kuralı kendiliğinden kapanır."
+          },
+          "response": []
+        },
+        {
+          "name": "Ertelenmiş derin bağlantı (SDK; proje anahtarı)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/projects/:id/attribution/deferred-link",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "projects",
+                ":id",
+                "attribution",
+                "deferred-link"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{project_id}}"
+                }
+              ]
+            },
+            "description": "Uygulama ilk açılıştan sonra kurulum kimliğiyle sorar. Kurulum bir linke atfedildiyse (`matched`) linkin uygulama içi yolu döner;\nilk açılış kararı henüz yazılmadıysa `pending` ve yeniden sorma süresi; karar var ama atıf yoksa `no_match` ve nedeni.\nReklam ölçümü izni şarttır. Yanıt yalnız bu kurulumun kendi kararını taşır; ham kurulum ya da tıklama kimliği dönmez.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"install_id\": \"\",\n  \"consent\": true\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -7376,6 +8382,319 @@
           "response": []
         },
         {
+          "name": "Kaldırma ölçümü ayarı (scope attribution:read)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/projects/:id/uninstall/settings",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "projects",
+                ":id",
+                "uninstall",
+                "settings"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{project_id}}"
+                }
+              ]
+            },
+            "description": "Kaldırma ve yeniden kurulum ölçümü (migrasyon 0180) varsayılan kapalıdır. Bildirim anahtarları (FCM hizmet hesabı, APNs .p8)\nhiçbir yanıtta dönmez; yalnız tanımlı olup olmadıkları ve gizli olmayan alanlar döner."
+          },
+          "response": []
+        },
+        {
+          "name": "Kaldırma ölçümü ayarını günceller (scope projects:write)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/projects/:id/uninstall/settings",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "projects",
+                ":id",
+                "uninstall",
+                "settings"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{project_id}}"
+                }
+              ]
+            },
+            "description": "Kısmi güncelleme. `fcm: null` ya da `apns: null` o anahtarı siler. Ölçümü açmak için en az bir anahtar gerekir (409). Ölçüm\nkapatılınca projenin bütün push belirteçleri silinir. Ölçüm açıkken her kuruluma 24 saatte en çok bir içeriksiz (sessiz) bildirim\ngider; sağlayıcı belirteci tanımazsa (FCM `UNREGISTERED`, APNs 410) kurulum kaldırılmış sayılır ve `install.uninstalled` webhook'u\nüretilir. Değişiklik denetim günlüğüne yazılır; anahtar içeriği yazılmaz.",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Kaldırma ve yeniden kurulum raporu (scope attribution:read)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/projects/:id/uninstall/report",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "projects",
+                ":id",
+                "uninstall",
+                "report"
+              ],
+              "query": [
+                {
+                  "key": "from",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "to",
+                  "value": "",
+                  "disabled": true
+                }
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{project_id}}"
+                }
+              ]
+            },
+            "description": "Aralıkta tespit edilen kaldırma (geri alınanlar hariç) ve yeniden kurulum sayıları, günlük dağılım (UTC) ve kanıta göre döküm;\nbelirteç sayıları anlık durumdur. Kaldırma alt sınırdır ve gecikmelidir. Yeniden kurulum yalnız önceki kurulum kimliği (iOS\nanahtar zinciri) ya da isteğe bağlı reklam kimliği eşleşirse görülür. Varsayılan son 30 gün, en çok 366 gün."
+          },
+          "response": []
+        },
+        {
+          "name": "SKAN ve AdAttributionKit panosu (scope attribution:read)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/projects/:id/skan/report",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "projects",
+                ":id",
+                "skan",
+                "report"
+              ],
+              "query": [
+                {
+                  "key": "from",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "to",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "kind",
+                  "value": "",
+                  "disabled": true
+                }
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{project_id}}"
+                }
+              ]
+            },
+            "description": "Aralıkta alınan, Apple üretim anahtarıyla imzalı postback'lerin dökümü: reklam ağı × kaynak tanımlayıcısı satırları, pencere\n(sıra) başına sayılar, ince dönüşüm değeri dağılımı ve kalabalık anonimliği özeti (ince değer / yalnız kaba değer / değer yok,\nkaynak tanımlayıcısının hane sayısı). Apple postback'te anonimlik kademesini bildirmez; özet gözlenen ayrıntı düzeyidir.\nAralık postback alış anına göredir. Kişi, cihaz ya da işlem kimliği dönmez. Varsayılan son 30 gün, en çok 366 gün."
+          },
+          "response": []
+        },
+        {
+          "name": "Ham SKAN / AdAttributionKit postback listesi, JSON ya da CSV (scope attribution:read)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/projects/:id/skan/postbacks",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "projects",
+                ":id",
+                "skan",
+                "postbacks"
+              ],
+              "query": [
+                {
+                  "key": "from",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "to",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "kind",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "limit",
+                  "value": "200",
+                  "disabled": true,
+                  "description": "Yalnız JSON biçiminde geçerlidir"
+                },
+                {
+                  "key": "format",
+                  "value": "json",
+                  "disabled": true
+                }
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{project_id}}"
+                }
+              ]
+            },
+            "description": "Üretim postback'leri, en yeniden eskiye. `format=csv` dosya döner (en çok 10.000 satır; kesildiyse `x-feralin-export-truncated: true`).\nİşlem kimliği ve imzalı gövde dönmez. Varsayılan son 30 gün, en çok 366 gün."
+          },
+          "response": []
+        },
+        {
+          "name": "SKAN reklam ağı → harcama sağlayıcısı eşlemesi (scope attribution:read)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/projects/:id/skan/spend-mapping",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "projects",
+                ":id",
+                "skan",
+                "spend-mapping"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{project_id}}"
+                }
+              ]
+            },
+            "description": "SKAN reklam ağı → harcama sağlayıcısı eşlemesi (scope attribution:read)"
+          },
+          "response": []
+        },
+        {
+          "name": "Eşleme listesini bütünüyle değiştirir (scope links:write)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/projects/:id/skan/spend-mapping",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "projects",
+                ":id",
+                "skan",
+                "spend-mapping"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{project_id}}"
+                }
+              ]
+            },
+            "description": "Apple postback'i reklam ağını yalnız `ad_network_id` ile bildirir; hangi kimliğin hangi harcama sağlayıcısına ait olduğunu müşteri\neşler (Feralin tahmin etmez). Gönderilmeyen eşleme silinir; bir sağlayıcıya birden çok ağ kimliği eşlenebilir.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"items\": []\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Eşlenen SKAN ağları için harcama ve kurulum başına maliyet (scope revenue:read)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/projects/:id/skan/spend",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "projects",
+                ":id",
+                "skan",
+                "spend"
+              ],
+              "query": [
+                {
+                  "key": "from",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "to",
+                  "value": "",
+                  "disabled": true
+                }
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{project_id}}"
+                }
+              ]
+            },
+            "description": "Sağlayıcı bazında: eşlenen ağ kimliklerinin kazanan ilk pencere postback'leri (kurulum) ve sağlayıcının aynı aralıktaki harcaması.\nKurulum başına maliyet yalnız harcama tek para birimindeyse verilir ve tahmindir (ESTIMATED): postback gecikmelidir, harcama\nsağlayıcının bütün kampanyalarını kapsar; kampanya düzeyinde maliyet verilmez. Eşlenmemiş ağlar ayrıca listelenir."
+          },
+          "response": []
+        },
+        {
           "name": "AASA ve assetlinks yayın denetimi; gerçek HTTP (scope links:read)",
           "request": {
             "method": "GET",
@@ -7739,6 +9058,154 @@
                 }
               }
             }
+          },
+          "response": []
+        },
+        {
+          "name": "Kullanıcı davet programı ayarı (scope links:read)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/projects/:id/referrals/program",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "projects",
+                ":id",
+                "referrals",
+                "program"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{project_id}}"
+                }
+              ]
+            },
+            "description": "Şablon link ve programın açık olup olmadığı; üretilmiş davet linki sayısı (migrasyon 0186)."
+          },
+          "response": []
+        },
+        {
+          "name": "Davet programını günceller (scope links:write)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/projects/:id/referrals/program",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "projects",
+                ":id",
+                "referrals",
+                "program"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{project_id}}"
+                }
+              ]
+            },
+            "description": "Kısmi güncelleme. Şablon bu projenin silinmemiş bir linki olmalıdır (aksi 404). Şablonsuz açılamaz (409).",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Davet edenin kısa linki, idempotent (scope links:write)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/projects/:id/referrals/links",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "projects",
+                ":id",
+                "referrals",
+                "links"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{project_id}}"
+                }
+              ]
+            },
+            "description": "Davet eden için şablondan kopyalanan bir kısa link üretir: hedefler ve önizleme şablondan, derin bağlantı yoluna `fr_referrer`\neklenir, UTM `source=referral`, `medium=user_referral`, `content=<referrer_id>`, atıf açık. Aynı davet eden için ikinci istek\naynı linki 200 ile döner; ilk üretim 201. Program kapalıysa yeni link üretilmez (409), var olan döner. `referrer_id` müşterinin\nkendi kullanıcı kimliğidir; e-posta ya da telefon kabul edilmez.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"referrer_id\": \"\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Davet eden başına tıklama, kurulum ve uygulamada açılış (scope links:read)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/projects/:id/referrals/report",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "projects",
+                ":id",
+                "referrals",
+                "report"
+              ],
+              "query": [
+                {
+                  "key": "from",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "to",
+                  "value": "",
+                  "disabled": true
+                }
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{project_id}}"
+                }
+              ]
+            },
+            "description": "Tıklama bot olmayan tıklamadır; kurulum davet linkine atfedilmiş ilk açılış kararı, uygulamada açılış davet linkiyle yapılan\nderin bağlantı açılışıdır (Test Lab hariç). En çok 100 davet eden döner. Varsayılan son 30 gün, en çok 366 gün."
           },
           "response": []
         },
@@ -8234,6 +9701,93 @@
           "response": []
         },
         {
+          "name": "Toplu link oluştur (scope links:write)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/projects/:id/links/bulk",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "projects",
+                ":id",
+                "links",
+                "bulk"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{project_id}}"
+                }
+              ]
+            },
+            "description": "En çok 100 link. Her satır tek link oluşturmayla aynı kurallardan geçer ve kendi işleminde oluşur: hatalı satır ötekileri\ndurdurmaz. Yanıt her satırın sonucunu gönderilen sırayla taşır. Kota dolunca kalan satırlar hata alır.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"links\": []\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Link hata ayıklayıcı (scope links:read)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/projects/:id/links/:linkId/debug",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "projects",
+                ":id",
+                "links",
+                ":linkId",
+                "debug"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{project_id}}"
+                },
+                {
+                  "key": "linkId",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "Verilen cihaz için link yönlendiricisinin vereceği yanıtı açıklar: hangi hedef alanı seçildi, hedef adres, bot ya da önizleme\nbotu sayıldı mı, tıklama kimliği yazılır mı ve nasıl taşınır. Kararı yönlendiricinin kendisi verir; gösterilen hedef gerçek\ntıklamanın gideceği hedeftir. Tıklama sayılmaz, tıklama kimliği üretilmez. `device` ya da `user_agent` alanlarından tam biri verilir.",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
           "name": "Kısa linkin QR kodu (scope links:read)",
           "request": {
             "method": "GET",
@@ -8404,6 +9958,212 @@
             "description": "`_feralin-challenge.<hostname>` TXT kaydını sorgular. Olumsuz DNS sonucu da 200'dür; sonuç `status` ve `last_error_code` alanındadır\n(`txt_not_found`, `txt_mismatch`, `dns_timeout`, `dns_error`, `dns_busy`). Geçici DNS hatası doğrulanmış sahipliği düşürmez.\nAlan adı başına bekleme ve tenant başına dakikalık sınır 429 `domain_verify_rate_limited` üretir. Başarılı denetim periyodik\nyeniden denetimin sayaçlarını sıfırlar ve sıradaki denetimi (`next_check_at`) bir dönem sonraya koyar. Doğrulanmış alan\nperiyodik olarak yeniden denetlenir: TXT kaydı art arda `LINK_DOMAIN_RECHECK_MAX_FAILURES` kez bulunamaz ya da farklıysa,\nya da DNS art arda `LINK_DOMAIN_RECHECK_MAX_TRANSIENT_FAILURES` kez yanıt vermezse alan `failed` olur; TLS onayı ve link\nyönlendiricisi alanı bırakır, alan başka bir sahip tarafından yeniden kanıtlanabilir."
           },
           "response": []
+        },
+        {
+          "name": "Projenin kısa link alt alanı (scope links:read)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/projects/:id/link-subdomain",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "projects",
+                ":id",
+                "link-subdomain"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{project_id}}"
+                }
+              ]
+            },
+            "description": "Feralin kısa link alanı (`LINK_SHORT_DOMAIN`) ayarlıysa proje `<alt-alan>.<kısa-alan>` adresini seçer; yeni kısa adres\n`https://<alt-alan>.<kısa-alan>/<kod>` olur ve link listesinde `short_url` bu adresi gösterir. Eski `.../l/<kod>` adresi her zaman çalışır.\nKısa alan ayarlı değilse `enabled` false ve diğer alanlar null döner. Alt alan seçilmemişse `suggestion` proje adından önerilir."
+          },
+          "response": []
+        },
+        {
+          "name": "Kısa link alt alanını seç ya da değiştir (scope links:write)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/projects/:id/link-subdomain",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "projects",
+                ":id",
+                "link-subdomain"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{project_id}}"
+                }
+              ]
+            },
+            "description": "3–32 karakter; küçük harf, rakam ve tek tire, tireyle başlayıp bitemez (400 `link_subdomain_invalid`). Alt alan bütün hesaplar arasında\ntekildir; alınmış ya da ayrılmış ad 409 `link_subdomain_taken` ve sahibi açıklanmaz. Değiştirmek eski alt alanı hemen kapatır.\nKısa alan ayarlı değilse 503 `link_domain_not_configured`. DNS ve sertifikayı Feralin işletir; müşteriden kayıt istenmez.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"subdomain\": \"\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Kısa link alt alanını kaldır (scope links:write)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Idempotency-Key",
+                "value": "",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/projects/:id/link-subdomain",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "projects",
+                ":id",
+                "link-subdomain"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{project_id}}"
+                }
+              ]
+            },
+            "description": "Alt alan hemen kapanır; linkler eski `.../l/<kod>` adresiyle çalışmaya devam eder. Alt alan yoksa da 204."
+          },
+          "response": []
+        },
+        {
+          "name": "Projenin Fera Fly yol ad alanı (scope links:read)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/projects/:id/link-namespace",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "projects",
+                ":id",
+                "link-namespace"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{project_id}}"
+                }
+              ]
+            },
+            "description": "Fera Fly FF-4: kısa alan (`LINK_SHORT_DOMAIN`, canlıda fera.fly) ayarlıysa proje `https://<kısa-alan>/<ad-alanı>/<ad>` biçiminde marka\nyolu kullanabilir. Linkin adı `slug` alanıdır; adres link görünümünde `namespace_url` olarak döner. DNS ve sertifika gerekmez.\nKısa alan ayarlı değilse `enabled` false döner. Ad alanı seçilmemişse `suggestion` proje adından önerilir."
+          },
+          "response": []
+        },
+        {
+          "name": "Fera Fly ad alanını seç ya da değiştir (scope links:write)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/projects/:id/link-namespace",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "projects",
+                ":id",
+                "link-namespace"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{project_id}}"
+                }
+              ]
+            },
+            "description": "3–32 karakter; küçük harf, rakam ve tek tire (400 `link_namespace_invalid`). Bütün hesaplar arasında tekildir; alınmış, bırakılıp ayrılmış,\nhizmet yolu adı (`api`, `docs`, `sdk`...) ya da taklidi (`oauth2`, `api-v2`) olan ad 409 `link_namespace_taken`, sahibi açıklanmaz.\nDeğiştirmek eski ad alanındaki adresleri kapatır; kodlu kısa adres (`short_url`) çalışmaya devam eder. Kota aşımı 429.\nKısa alan ayarlı değilse 503 `link_domain_not_configured`.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"namespace\": \"\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Fera Fly ad alanını bırak (scope links:write)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Idempotency-Key",
+                "value": "",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/projects/:id/link-namespace",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "projects",
+                ":id",
+                "link-namespace"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{project_id}}"
+                }
+              ]
+            },
+            "description": "Ad alanındaki adresler kapanır, ad bu hesaba ayrılmış kalır; kodlu kısa adres çalışmaya devam eder. Ad alanı yoksa da 204."
+          },
+          "response": []
         }
       ]
     },
@@ -8456,7 +10216,7 @@
             "description": "Scope: `webhooks:manage`. Hedef URL SSRF filtresinden geçer (internal IP, link-local, DNS rebind engeli);\nyalnız https. İmza secret'ı yalnız bir kez döner (`secret_once`).",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"target_url\": \"\",\n  \"events\": []\n}",
+              "raw": "{\n  \"events\": []\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -9647,6 +11407,159 @@
       "name": "Partners",
       "description": "Partner temeli: ticari ortaklık (affiliate, bayi) ve teknoloji ortaklığı ayrı programlardır. Komisyon ve ödeme yoktur (Faz 5)",
       "item": [
+        {
+          "name": "Ajans ayar oturumundan kendi çalışma alanına dönüş (yalnız ajans oturumu)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/auth/agency-session/return",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "agency-session",
+                "return"
+              ]
+            },
+            "description": "Panel, ajans oturumu açılırken sakladığı kaynak oturum kimliğini gönderir. Sunucu bunun bu ajans oturumunun kaynağı (özet\nkarşılaştırması), aynı kullanıcıya ait ve canlı olduğunu doğrular. Ajans oturumu her durumda silinir ve oturum çerezi temizlenir;\n`restored: true` yalnız doğrulama geçerse döner (panel ancak o zaman kaynak oturumu geri yükler). Ajans oturumu olmayan istekte\n`403 agency_session_required`. Sonuç `agency.settings_session_ended` olarak denetime yazılır. Ajans oturumundan normal çıkış\n(`POST /auth/logout`) kaynak oturumu da kapatır.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"source_session\": \"\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Ajansa ayar yetkisi durumu (müşteri tarafı; owner ve admin oturumu)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/workspace/agency-access",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "workspace",
+                "agency-access"
+              ]
+            },
+            "description": "Etkin bayi/ajans ilişkisi, etkin yetki, son 20 yetki kaydı, ajansa açılacak scope'lar ve yazma uçları ile hiçbir koşulda açılmayan alanlar."
+          },
+          "response": []
+        },
+        {
+          "name": "Ajansa ayar yetkisi verir (yalnız owner; MFA'lı hesapta kod step-up'ı)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/workspace/agency-access/grant",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "workspace",
+                "agency-access",
+                "grant"
+              ]
+            },
+            "description": "Yalnız bu kuruluşun etkin ilişkisinde (`404 reseller_access_not_found`); zaten verilmişse `409 agency_settings_access_exists`. İki tarafın\ndenetimine yazılır (karşı tarafa kişi kimliği gitmez). Ajans bundan sonra `POST /reseller/clients/{id}/settings-session` ile sınırlı oturum açabilir.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"relationship_id\": \"\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Ajansın ayar yetkisini geri alır (yalnız owner)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/workspace/agency-access/revoke",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "workspace",
+                "agency-access",
+                "revoke"
+              ]
+            },
+            "description": "Etkin yetki geri alınır ve ajansın açık ayar oturumları aynı işlemde silinir (`sessions_ended` denetimde). Etkin yetki yoksa `404 agency_settings_access_not_found`."
+          },
+          "response": []
+        },
+        {
+          "name": "Ayar yetkisi veren müşteriler (ajans tarafı; owner ve admin oturumu)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/reseller/settings-access",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "reseller",
+                "settings-access"
+              ]
+            },
+            "description": "Ayar yetkisi veren müşteriler (ajans tarafı; owner ve admin oturumu)"
+          },
+          "response": []
+        },
+        {
+          "name": "Müşteride sınırlı ayar oturumu açar (ajansın owner/admin üyesi; MFA'lı hesapta kod step-up'ı)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/reseller/clients/:id/settings-session",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "reseller",
+                "clients",
+                ":id",
+                "settings-session"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{project_id}}"
+                }
+              ]
+            },
+            "description": "Müşteri yetki vermiş ve ilişki etkin olmalı (`403 agency_settings_access_not_granted`). Yanıt müşterinin çalışma alanındaki oturum özetidir\n(`role: agency`) ve `Set-Cookie` ile yeni oturum çerezi yazılır. Ajans oturumu isteği yapan kaynak oturuma bağlıdır: kaynaktan uzun yaşamaz\n(en çok 8 saat), kaynak silinince (çıkış, SSO kaynağının iptali, SSO zorunluluğu) düşer; ajans kuruluşunun SSO kuralı her istekte kaynağa\nuygulanır. Her istekte yetki, ilişki ve ajans üyeliği yeniden doğrulanır. Ajans oturumu organizasyon değiştiremez, davet kabul edemez,\nkimlik onayı yerine geçmez. Scope'lar: workspace:read, projects:read, projects:write, metrics:read, links:read, links:write, attribution:read.\n`projects:write` yalnız otomasyonlar ve dönüşüm kuralları uçlarında geçerlidir (otomasyon webhook eylemi yalnız müşterinin mevcut aboneliğini\nseçer). Reklam dönüşüm hedefi yazma (veri çıkışı), faturalama, ekip, SSO, SCIM, gizlilik/izin, veri içe/dışa aktarma, API anahtarı,\nwebhook, developer, bayi ve organizasyon değiştirme uçları `403 agency_route_not_permitted` döner."
+          },
+          "response": []
+        },
         {
           "name": "Kuruluşun ortaklık kayıtları (scope partners:read)",
           "request": {
@@ -10944,7 +12857,7 @@
                   "key": "dimensions",
                   "value": "",
                   "disabled": true,
-                  "description": "Virgülle ayrılmış, en çok 3. Her metriğin izinli boyutu katalogdadır (`referrer_host` ve web boyutları dahil); izin dışı boyut 400 `dimension_not_allowed`."
+                  "description": "Virgülle ayrılmış, en çok 3. Her metriğin izinli boyutu katalogdadır (`referrer_host`, web boyutları, `sdk_name`, `screen_name`, `visitor_type` dahil); izin dışı boyut 400 `dimension_not_allowed`."
                 },
                 {
                   "key": "timezone",
@@ -11449,6 +13362,12 @@
                   "key": "to",
                   "value": "",
                   "disabled": true
+                },
+                {
+                  "key": "currency",
+                  "value": "",
+                  "disabled": true,
+                  "description": "Rapor para birimi (ISO 4217, büyük harf). Verilirse yanıta `converted` eklenir; verilmezse yanıt değişmez."
                 }
               ],
               "variable": [
@@ -11458,7 +13377,7 @@
                 }
               ]
             },
-            "description": "Harcama sağlayıcının hesap para birimindedir, çevrilmez; tarih hesabın saat dilimindeki gündür. Kaynak yoksa `no_source`, veri yoksa `no_data` ve `UNKNOWN`.\nHarcama gerçek sağlayıcı verisidir; sınıf REAL_VERIFIED yalnız tüm etkin kaynaklar hatasız ve kapsanan gün aralığın gerektirdiği güne ulaşmışsa, aksi halde `STALE`\n(`stale_sources`). Aralık `from` gününden `to`'dan hemen önceki anın gününe kadar tam UTC günlerdir. Para birimi toplamları kampanya listesinden (en çok 500 satır) bağımsızdır."
+            "description": "Harcama sağlayıcının hesap para birimindedir, çevrilmez; tarih hesabın saat dilimindeki gündür. Kaynak yoksa `no_source`, veri yoksa `no_data` ve `UNKNOWN`.\nHarcama gerçek sağlayıcı verisidir; sınıf REAL_VERIFIED yalnız tüm etkin kaynaklar hatasız ve kapsanan gün aralığın gerektirdiği güne ulaşmışsa, aksi halde `STALE`\n(`stale_sources`). Aralık `from` gününden `to`'dan hemen önceki anın gününe kadar tam UTC günlerdir. Para birimi toplamları kampanya listesinden (en çok 500 satır) bağımsızdır.\n`currency` verilirse günlük harcama (`spend_date`, hesabın kendi günü) kur tarihi o günden sonra olmayan en yeni elle girilmiş kurla o para birimine çevrilir\n(doğrudan çift, yoksa ters çift; çapraz kur yok) ve `converted` döner. Kuru olmayan tutar toplanmaz (`converted.unconverted`). Kur elle girildiği için\n`converted.provenance_class` en iyi durumda ESTIMATED'dır; harcama gerideyse STALE, toplam eksikse ya da veri yoksa UNKNOWN. Para birimi satırları değişmez."
           },
           "response": []
         },
@@ -12603,7 +14522,230 @@
           "response": []
         },
         {
-          "name": "Reklam ağı dönüşüm hedefleri (Meta, Google Ads, TikTok; scope projects:read)",
+          "name": "Olay iletim hedefleri (Segment, Amplitude, Mixpanel, Braze; scope projects:read)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/projects/:id/event-forwarding",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "projects",
+                ":id",
+                "event-forwarding"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{project_id}}"
+                }
+              ]
+            },
+            "description": "Adjust madde 10. Müşterinin kendi olaylarını kendi ürün analitiği / CDP hesabına sunucudan sunucuya iletir. Proje başına araç başına tek\nhedef: `segment` (HTTP Tracking API `/v1/batch`), `amplitude` (HTTP V2 API), `mixpanel` (Import API `/import`, `strict=1`), `braze`\n(`/users/track`). Uç yalnız `tools[].regions` kapalı listesinden seçilir; adres yazılamaz. Kimlik bilgisi hiçbir yanıtta dönmez; yalnız\n`credential.configured`, türü ve son dört karakter. `secret_key_configured: false` ise hedef kurulamaz (503 `secret_key_not_configured`).\nHedef başına bekleyen teslim sınırı vardır (varsayılan 5000): dolunca okuma durur, olay kaybolmaz, `status: backlog_full`. Olay başına gövde\nen çok 64 KB'tır (Segment'te 32 KB). Geçersiz kaynak olay (kimlik ya da zaman biçimi) atlanır, `last_error: invalid_source_event` olur."
+          },
+          "response": []
+        },
+        {
+          "name": "Olay iletim hedefi kur (scope projects:write; oturum ve step-up)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/projects/:id/event-forwarding",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "projects",
+                ":id",
+                "event-forwarding"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{project_id}}"
+                }
+              ]
+            },
+            "description": "Müşteri kendi kimliğini girer: Segment `credentials.write_key` (`settings.region`: `us`, `eu`); Amplitude `credentials.api_key`\n(`us`, `eu`); Mixpanel `credentials.project_token` ya da `credentials.service_account_username` + `service_account_secret` (hizmet\nhesabında `settings.project_id` zorunlu; `region`: `us`, `eu`, `in`); Braze `credentials.rest_api_key` (izin `users.track`;\n`settings.instance` örnek kimliği, ör. `us-01`, `eu-01`; isteğe bağlı `app_id`). `event_mapping`: Feralin olay adı → araç olay adı (en çok\n50; izin listesidir, eşlenmemiş olay gitmez). `include_properties` (varsayılan false): yalnız üst düzey basit özellikler gider. Yalnız\n`consent.analytics === true` olaylar iletilir; ham IP ve User-Agent hiçbir araca gönderilmez. Hedef kapalı doğar. Yalnız kullanıcı oturumu\n(API anahtarı 403 `session_required`); MFA açıksa son 5 dakikada step-up (403 `member_step_up_required`). 409\n`event_forwarding_destination_exists`, 422 `event_forwarding_invalid`, 503 `secret_key_not_configured`.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tool\": \"segment\",\n  \"credentials\": {\n    \"write_key\": \"<SEGMENT_WRITE_KEY>\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Olay iletim hedefini düzenle, aç ya da kapat (scope projects:write; oturum ve step-up)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/projects/:id/event-forwarding/:did",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "projects",
+                ":id",
+                "event-forwarding",
+                ":did"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{project_id}}"
+                },
+                {
+                  "key": "did",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "Verilen alanlar değişir; `credentials` verilirse kimlik yenilenir. `enabled: true` kimlik ve en az bir eşleme ister (409\n`event_forwarding_not_ready`); açılınca olay deposu imleci o ana konur, geçmiş olay gönderilmez. Kapatınca bekleyen teslimler `cancelled`\n(`destination_disabled`) olur. Silme ya da analitik izni geri çekme bekleyen teslimleri iptal eder. Eşlemeden çıkarılan olayların bekleyen\nteslimleri `dead` (`last_error: mapping_removed`) olur; ad değişikliği ve özellik iletiminin kapatılması gönderim anında uygulanır. Arşivli\nvarlıkta açma 409 `asset_archived`. Bu düzenleme `invalid_source_event` uyarısını temizler.",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Olay iletim hedefini sil (scope projects:write; oturum ve step-up)",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/projects/:id/event-forwarding/:did",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "projects",
+                ":id",
+                "event-forwarding",
+                ":did"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{project_id}}"
+                },
+                {
+                  "key": "did",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "Hedef, şifreli kimlik ve teslim günlüğü silinir. Araca gitmiş olay geri alınamaz; araçtan silme müşterinin araç hesabındaki işlemdir."
+          },
+          "response": []
+        },
+        {
+          "name": "Araca deneme olayı gönder (scope projects:write; oturum ve step-up)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/projects/:id/event-forwarding/:did/test",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "projects",
+                ":id",
+                "event-forwarding",
+                ":did",
+                "test"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{project_id}}"
+                },
+                {
+                  "key": "did",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "Hedef kapalıyken de çalışır. Araçların deneme kipi yoktur: `feralin_forwarding_test` adlı, sabit sınama kimlikli ve kişi verisi\ntaşımayan gerçek bir olay gönderilir (`mode: live_test_event`). Braze'de `_update_existing_only: true` ile gönderilir, profil oluşturulmaz\n(`mode: existing_profiles_only`). Hedef başına dakikada 10 deneme (429 `event_forwarding_test_rate_limited`). Üye step-up ister (MFA açıksa\n403 `member_step_up_required`). Teslim günlüğü `last_error` kodlarına ek: `mapping_removed`, `batch_rejected` (toplu ret sonrası tekli\ndeneme sınırı aşıldı, yeniden denenir)."
+          },
+          "response": []
+        },
+        {
+          "name": "Olay iletim teslim günlüğü (scope projects:read)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/projects/:id/event-forwarding/:did/deliveries",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "projects",
+                ":id",
+                "event-forwarding",
+                ":did",
+                "deliveries"
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "cursor",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "limit",
+                  "value": "25",
+                  "disabled": true
+                }
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{project_id}}"
+                },
+                {
+                  "key": "did",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "En yeni önce, imleçli. Satır durum, deneme sayısı, aracın HTTP kodu ve sabit hata kodunu taşır; gövde ve kişisel veri yoktur. Durumlar:\n`pending`, `succeeded`, `failed` (geri çekilerek yeniden denenecek; 429 bekleme başlığına uyulur), `dead` (kalıcı hata ya da 6 deneme\ntükendi, DLQ), `cancelled` (`consent_withdrawn`, `erasure`, `destination_disabled`)."
+          },
+          "response": []
+        },
+        {
+          "name": "Reklam ağı dönüşüm hedefleri (Meta, Google Ads, TikTok, Snap, Pinterest; scope projects:read)",
           "request": {
             "method": "GET",
             "header": [],
@@ -12624,7 +14766,7 @@
                 }
               ]
             },
-            "description": "A17. Proje başına ağ başına tek hedef: `meta_capi` (Meta Conversions API), `google_ads_conversions` (Google Data Manager API ile Google Ads\ndönüşüm eylemi) ve `tiktok_events` (TikTok Events API 2.0). Kimlik bilgisi hiçbir yanıtta dönmez; yalnız `credential.configured` ve son\ndört karakter (`credential.hint`). `networks` her ağın ayar alanlarını, kabul ettiği olay adlarını, platform kapsamını ve istek sınırını\nsöyler. `secret_key_configured: false` ise hedef kurulamaz (503 `secret_key_not_configured`)."
+            "description": "A17. Proje başına ağ başına tek hedef: `meta_capi` (Meta Conversions API), `google_ads_conversions` (Google Data Manager API ile Google Ads\ndönüşüm eylemi), `tiktok_events` (TikTok Events API 2.0), `snap_capi` (Snap Conversions API v3, yalnız web) ve `pinterest_capi`\n(Pinterest Conversions API v5, web ve Android/iOS uygulama olayı). Kimlik bilgisi hiçbir yanıtta dönmez; yalnız `credential.configured` ve son\ndört karakter (`credential.hint`). `networks` her ağın ayar alanlarını, kabul ettiği olay adlarını, platform kapsamını ve istek sınırını\nsöyler. `secret_key_configured: false` ise hedef kurulamaz (503 `secret_key_not_configured`)."
           },
           "response": []
         },
@@ -12655,7 +14797,7 @@
                 }
               ]
             },
-            "description": "Müşteri kendi kimliğini girer: Meta `settings.pixel_id` + `credentials.access_token`; TikTok `settings.pixel_code` + `credentials.access_token`;\nGoogle `settings.customer_id` (isteğe bağlı `login_customer_id`) + `credentials.service_account_json` (hizmet hesabı e-postası Google Ads\nhesabına eklenmelidir). `event_mapping`: Feralin olay adı → Meta/TikTok standart olay adı ya da Google dönüşüm eylemi kimliği (en çok 20).\n`value_policy`: `verified_only` (varsayılan; yalnız defterde REAL_VERIFIED satış tutarı), `measured`, `none`. Hedef kapalı doğar. Yalnız\nkullanıcı oturumu (API anahtarı 403 `session_required`); MFA açıksa son 5 dakikada step-up (403 `member_step_up_required`). 409\n`ad_conversion_destination_exists`, 422 `ad_conversion_invalid` ya da `ad_conversion_credentials_invalid`, 503 `secret_key_not_configured`.",
+            "description": "Müşteri kendi kimliğini girer: Meta `settings.pixel_id` + `credentials.access_token`; TikTok `settings.pixel_code` + `credentials.access_token`;\nGoogle `settings.customer_id` (isteğe bağlı `login_customer_id`) + `credentials.service_account_json` (hizmet hesabı e-postası Google Ads\nhesabına eklenmelidir); Snap `settings.pixel_id` + `credentials.access_token` (Ads Manager uzun ömürlü Conversions API anahtarı); Pinterest\n`settings.ad_account_id` (en çok 18 rakam) + `credentials.access_token` (Ads Manager Conversions API anahtarı). `event_mapping`: Feralin olay\nadı → Meta/TikTok/Snap/Pinterest standart olay adı ya da Google dönüşüm eylemi kimliği (en çok 20). Snap `PURCHASE` değer ister: değer yoksa\nolay atlanır (`missing_value`).\n`value_policy`: `verified_only` (varsayılan; yalnız defterde REAL_VERIFIED satış tutarı), `measured`, `none`. Hedef kapalı doğar. Yalnız\nkullanıcı oturumu (API anahtarı 403 `session_required`); MFA açıksa son 5 dakikada step-up (403 `member_step_up_required`). 409\n`ad_conversion_destination_exists`, 422 `ad_conversion_invalid` ya da `ad_conversion_credentials_invalid`, 503 `secret_key_not_configured`.",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"network\": \"meta_capi\",\n  \"settings\": {\n    \"pixel_id\": \"123456789012345\"\n  },\n  \"credentials\": {\n    \"access_token\": \"<META_ACCESS_TOKEN>\"\n  }\n}",
@@ -12700,7 +14842,7 @@
                 }
               ]
             },
-            "description": "Verilen alanlar değişir; `credentials` verilirse kimlik yenilenir. `enabled: true` kimlik ve en az bir eşleme ister (409 `ad_conversion_not_ready`);\naçılınca olay deposu imleci o ana konur, geçmiş olay gönderilmez. Kapatınca bekleyen teslimler `cancelled` (`destination_disabled`) olur.\nYalnız `consent.advertising === true` olaylar gider; silme ya da reklam izni geri çekme bekleyen teslimleri iptal eder. Denetim kaydı\nalan adlarını ve açık/kapalı durumunu yazar, değerleri yazmaz.",
+            "description": "Verilen alanlar değişir; `credentials` verilirse kimlik yenilenir. `enabled: true` kimlik ve en az bir eşleme ister (409 `ad_conversion_not_ready`);\naçılınca olay deposu imleci o ana konur, geçmiş olay gönderilmez. Kapatınca bekleyen teslimler `cancelled` (`destination_disabled`) olur.\nYalnız `consent.advertising === true` olaylar gider; silme ya da reklam izni geri çekme bekleyen teslimleri iptal eder. Denetim kaydı\nalan adlarını ve açık/kapalı durumunu yazar, değerleri yazmaz. Arşivli varlıkta açma 409 `asset_archived`.",
             "body": {
               "mode": "raw",
               "raw": "{}",
@@ -12745,7 +14887,7 @@
           "response": []
         },
         {
-          "name": "Reklam ağına deneme olayı gönder (scope projects:write; oturum)",
+          "name": "Reklam ağına deneme olayı gönder (scope projects:write; oturum ve step-up)",
           "request": {
             "method": "POST",
             "header": [
@@ -12777,7 +14919,7 @@
                 }
               ]
             },
-            "description": "Hedef kapalıyken de çalışır. Meta ve TikTok'ta test olay kodu zorunludur (gövdede `test_event_code` ya da hedef ayarında; yoksa 422\n`ad_conversion_test_code_required`): olay ağın test görünümüne düşer. Google'da `validateOnly` ile istek doğrulanır, dönüşüm yazılmaz.\nDeneme olayı gerçek kişi verisi taşımaz. Hedef başına dakikada 10 deneme (429 `ad_conversion_test_rate_limited`).",
+            "description": "Hedef kapalıyken de çalışır. Meta ve TikTok'ta test olay kodu zorunludur (gövdede `test_event_code` ya da hedef ayarında; yoksa 422\n`ad_conversion_test_code_required`): olay ağın test görünümüne düşer. Google'da `validateOnly` ile istek doğrulanır, dönüşüm yazılmaz.\nSnap'te `…/events/validate` ucuna gider (olay kaydedilmez; yanıt `status` `VALID` değilse `ok: false`, `error: snap_validation_failed`);\nPinterest'te `?test=true` (olay kaydedilmez). Snap ve Pinterest test olay kodu istemez (`mode: validate_only`).\nDeneme olayı gerçek kişi verisi taşımaz. Hedef başına dakikada 10 deneme (429 `ad_conversion_test_rate_limited`). Üye step-up ister\n(MFA açıksa 403 `member_step_up_required`). Teslim günlüğünde yeni `last_error` kodu: `batch_rejected`.",
             "body": {
               "mode": "raw",
               "raw": "{}",
@@ -14394,6 +16536,101 @@
             "description": "Yalnız talep sahibi kiracı açabilir; başka kiracı 404 alır. Süre dolunca (varsayılan 7 gün) gövde silinir ve 410 `privacy_export_expired` döner. İndirme denetime yazılır."
           },
           "response": []
+        },
+        {
+          "name": "Proje gizlilik ayarı (scope privacy:read)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/projects/:id/privacy/settings",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "projects",
+                ":id",
+                "privacy",
+                "settings"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{project_id}}"
+                }
+              ]
+            },
+            "description": "Çocuklara yönelik uygulama kipi (COPPA ve benzeri kurallar) ve reklam ölçümü izninin geçerlilik süresi. Kip açıkken hiçbir\natıf kanıtı değerlendirilmez (`blocked_by_consent`, neden `coppa_mode`). İzin süresi tanımlıysa ve olay iznin verildiği anı\n(`consent_at` özelliği) taşıyorsa süresi dolmuş izin verilmemiş sayılır (neden `consent_expired`)."
+          },
+          "response": []
+        },
+        {
+          "name": "Proje gizlilik ayarını güncelle (scope privacy:approve)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/projects/:id/privacy/settings",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "projects",
+                ":id",
+                "privacy",
+                "settings"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{project_id}}"
+                }
+              ]
+            },
+            "description": "Kısmi güncelleme; verilmeyen alan olduğu gibi kalır. `consent_max_age_days` null verilirse süre sınırı kaldırılır.",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Mağaza gizlilik beyanı yardımcısı (scope privacy:read)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/projects/:id/privacy/store-disclosures",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "projects",
+                ":id",
+                "privacy",
+                "store-disclosures"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{project_id}}"
+                }
+              ]
+            },
+            "description": "Google Play Data Safety formu ve Apple gizlilik etiketi için, bu projenin ayarlarına göre Feralin SDK'sının topladığı veri\ntürleri. Yalnız SDK'nın ve proje ayarlarının yol açtığı toplamayı listeler; uygulamanın kendi topladığı veriyi ve öteki\nSDK'ları kapsamaz. Yardımcıdır, hukuki tavsiye değildir."
+          },
+          "response": []
         }
       ]
     },
@@ -15520,6 +17757,243 @@
           "response": []
         },
         {
+          "name": "Mağaza bağlantıları: App Store ve Google Play (scope revenue:read)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/projects/:id/store-connections",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "projects",
+                ":id",
+                "store-connections"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{project_id}}"
+                }
+              ]
+            },
+            "description": "Projenin proje başına mağaza bağlantıları (P1-1): uygulama kimliği, ortam, kimliğin ipucu, doğrulama durumu, bağlantıya özel bildirim adresi, test bildirimi durumu,\nson alınan bildirim zamanı ve son 10 bildirimin türü/analitik adı/sonucu. Özel anahtar (.p8) ve hizmet hesabı JSON'u hiçbir yanıtta dönmez.\n`apple_root_configured: false` ise sunucuda Apple Root CA - G3 yoktur ve Apple bildirimleri doğrulanamaz (BLOCKED_EXTERNAL)."
+          },
+          "response": []
+        },
+        {
+          "name": "Mağaza bağlantısı oluştur (scope projects:write)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/projects/:id/store-connections",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "projects",
+                ":id",
+                "store-connections"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{project_id}}"
+                }
+              ]
+            },
+            "description": "Apple: bundle id, ortam (sandbox ya da production; App Store Connect'te iki ayrı bildirim adresi vardır, her biri ayrı bağlantıdır), issuer id, key id ve uygulama içi satın\nalma anahtarı (.p8, P-256). Google: paket adı, Play Console API erişimi olan hizmet hesabı JSON'u ve Pub/Sub itme aboneliğinin kimlik doğrulama hizmet hesabı.\nKimlik AES-256-GCM ile `SAAS_API_SECRET_KEY` altında saklanır (anahtar yoksa 503 `secret_key_not_configured`), denetim kaydına yalnız sağlayıcı yazılır.\nGoogle bağlantısı hemen `monetization.subscriptions.list` ile sınanır (`verified` ya da `error`); Apple bağlantısı test bildirimi isteğiyle doğrulanır (`pending`).\nAynı projede aynı uygulama ve ortam ikinci kez açılamaz (409); kaynak (`source_id`) aynı projede ve uygun türde olmalı (422). Oluşturma, güncelleme ve kaldırma\nüye yeniden doğrulaması (step-up) ister.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"provider\": \"apple\",\n  \"bundle_id\": \"\",\n  \"environment\": \"sandbox\",\n  \"issuer_id\": \"\",\n  \"key_id\": \"\",\n  \"private_key\": \"\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Mağaza bağlantısı (scope revenue:read)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/projects/:id/store-connections/:connectionId",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "projects",
+                ":id",
+                "store-connections",
+                ":connectionId"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{project_id}}"
+                },
+                {
+                  "key": "connectionId",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "Mağaza bağlantısı (scope revenue:read)"
+          },
+          "response": []
+        },
+        {
+          "name": "Mağaza bağlantısını güncelle (scope projects:write)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/projects/:id/store-connections/:connectionId",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "projects",
+                ":id",
+                "store-connections",
+                ":connectionId"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{project_id}}"
+                },
+                {
+                  "key": "connectionId",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "Kaynak, ortam, issuer id, key id, özel anahtar, hizmet hesabı JSON'u ya da itme hizmet hesabı. Kimlik verilmezse saklı kimlik kalır; kimlik değişince bağlantı yeniden\ndoğrulanana kadar `pending` olur (Google'da hemen yeniden sınanır). Sağlayıcıya ait olmayan alan 422.",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Mağaza bağlantısını kaldır (scope projects:write)",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/projects/:id/store-connections/:connectionId",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "projects",
+                ":id",
+                "store-connections",
+                ":connectionId"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{project_id}}"
+                },
+                {
+                  "key": "connectionId",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "Bağlantı `revoked` olur (satır silinmez); bildirim adresi bundan sonra 404 verir. Defter ve abonelik kayıtları silinmez."
+          },
+          "response": []
+        },
+        {
+          "name": "Test bildirimi iste ya da kimliği sına (scope projects:write)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/projects/:id/store-connections/:connectionId/test",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "projects",
+                ":id",
+                "store-connections",
+                ":connectionId",
+                "test"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{project_id}}"
+                },
+                {
+                  "key": "connectionId",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "Apple: kiracının kimliğiyle \"Request a Test Notification\" (`POST /inApps/v1/notifications/test`); yalnız 200 bağlantıyı `verified` yapar (sahiplik kanıtı) ve Apple bağlantının\nadresine `TEST` bildirimi gönderir. 404 (bu ortam için bildirim adresi yok ya da uygulama bulunamadı) kanıt sayılmaz, durum değişmez (`last_error: apple_http_404`);\n401 bağlantıyı `error` yapar. Google: test bildirimi API ile istenemez (Play Console → Kazanç sağlama ayarları → \"Test bildirimi gönder\"); burada kimlik ve paket erişimi sınanır."
+          },
+          "response": []
+        },
+        {
+          "name": "Test bildirimi gönderim sonucunu yenile (scope projects:write)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/projects/:id/store-connections/:connectionId/refresh",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "projects",
+                ":id",
+                "store-connections",
+                ":connectionId",
+                "refresh"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{project_id}}"
+                },
+                {
+                  "key": "connectionId",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "Apple'da kayıtlı test belirteciyle \"Get Test Notification Status\" (`GET /inApps/v1/notifications/test/{testNotificationToken}`) sorulur, son `sendAttemptResult` yazılır."
+          },
+          "response": []
+        },
+        {
           "name": "Müşteri abonelik webhook alıcısı (kimliksiz, imzalı)",
           "request": {
             "method": "POST",
@@ -15581,7 +18055,7 @@
                 "apple"
               ]
             },
-            "description": "Kimlik yerine Apple imzası (JWS, x5c zinciri Apple köküne bağlı) doğrulanır; imzasız ya da hatalı gövde 401 alır ve yazılmaz. `REFUND` ve `REVOKE` bildirimi, eşleşen\ngelir satırı için tam tutarlı `refund` defter kaydı (REAL_VERIFIED) yazar; `notificationUUID` tekildir, yeniden gönderim `duplicate` döner. Eşleşen satır henüz defterde\ndeğilse 409 `no_matching_entry` (Apple yeniden dener). `REFUND_REVERSED` ve öteki türler `ignored`: defter yalnız eklendiğinden iade geri alma türü yoktur.\nAdaptör yapılandırılmadıysa 503 (BLOCKED_EXTERNAL).",
+            "description": "Kimlik yerine Apple imzası (JWS, x5c zinciri Apple köküne bağlı) doğrulanır; imzasız ya da hatalı gövde 401 alır ve yazılmaz. `REFUND` ve `REVOKE` bildirimi, eşleşen\ngelir satırı için tam tutarlı `refund` defter kaydı (REAL_VERIFIED) yazar; `notificationUUID` tekildir, yeniden gönderim `duplicate` döner. Eşleşen satır henüz defterde\ndeğilse 409 `no_matching_entry` (Apple yeniden dener). `REFUND_REVERSED` ve öteki türler `ignored`: defter yalnız eklendiğinden iade geri alma türü yoktur.\nAdaptör yapılandırılmadıysa 503 (BLOCKED_EXTERNAL). Eski tek uygulama ucudur (ortam değişkenli `APPLE_IAP_*`); müşteri uygulamaları proje başına\n`/store-notifications/apple/{connectionId}` ucunu kullanır.",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"signedPayload\": \"\"\n}",
@@ -15617,7 +18091,93 @@
                 "google"
               ]
             },
-            "description": "Pub/Sub push aboneliğinin `Authorization: Bearer` OIDC jetonu Google anahtarlarıyla (RS256) doğrulanır; hedef kitle ve itme hizmet hesabı yapılandırılandır.\n`voidedPurchaseNotification` (tam iade) eşleşen gelir satırı için `refund` defter kaydı yazar; kısmi iade (`refundType` 2) tutar taşımadığından `ignored`.\n`messageId` tekildir. Eşleşme yoksa 409 (Pub/Sub yeniden dener). RTDN yapılandırılmadıysa 503 (BLOCKED_EXTERNAL).",
+            "description": "Pub/Sub push aboneliğinin `Authorization: Bearer` OIDC jetonu Google anahtarlarıyla (RS256) doğrulanır; hedef kitle ve itme hizmet hesabı yapılandırılandır.\n`voidedPurchaseNotification` (tam iade) eşleşen gelir satırı için `refund` defter kaydı yazar; kısmi iade (`refundType` 2) tutar taşımadığından `ignored`.\n`messageId` tekildir. Eşleşme yoksa 409 (Pub/Sub yeniden dener). RTDN yapılandırılmadıysa 503 (BLOCKED_EXTERNAL). Eski tek uygulama ucudur (`GOOGLE_PLAY_*`);\nmüşteri uygulamaları proje başına `/store-notifications/google/{connectionId}` ucunu kullanır.",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Proje bağlantısına özel App Store Server Notifications V2 alıcısı (kimliksiz, imzalı)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/store-notifications/apple/:connectionId",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "store-notifications",
+                "apple",
+                ":connectionId"
+              ],
+              "variable": [
+                {
+                  "key": "connectionId",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "Kiracı ve proje yalnız adresteki bağlantıdan çözülür. `signedPayload` ve `data.signedTransactionInfo` JWS imzası `x5c` zinciriyle doğrulanır; zincir yapılandırılan Apple\nköküne (Apple Root CA - G3) bağlanmalı ve Apple App Store işaretleyici uzantılarını taşımalıdır. Bozuk ya da yabancı zincir 401 (ret sayacı artar). `data.bundleId` ve işlemin\n`bundleId`'si bağlantının bundle id'si değilse `ignored` (başka kiracının bildirimi yazılmaz). `TEST` → `test_received`. Ortam bağlantınınkiyle aynı değilse deftere yazılmaz.\nBağlantı doğrulanmadıysa 409 `store_connection_unverified` (Apple yeniden dener). `SUBSCRIBED`, `DID_RENEW`, `ONE_TIME_CHARGE` imzalı fiyatla REAL_VERIFIED brüt satır yazar\n(aynı `transactionId` bir kez sayılır; istemcinin ESTIMATED satırı yeniden sınıflanır); `DID_CHANGE_RENEWAL_STATUS`/`AUTO_RENEW_DISABLED` iptal, `EXPIRED` sona erme;\n`REFUND`/`REVOKE` brüt satır tutarı kadar REAL_VERIFIED iade (oransal iadede oranı). Abonelik olayı müşteri abonelik ölçümüne yazılır. `notificationUUID` bağlantı başına tekildir.\nBilinmeyen ya da kaldırılmış bağlantı 404; Apple kökü yoksa 503.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"signedPayload\": \"\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Proje bağlantısına özel Google Play RTDN (Pub/Sub push) alıcısı (kimliksiz, OIDC jetonlu)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/store-notifications/google/:connectionId",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "store-notifications",
+                "google",
+                ":connectionId"
+              ],
+              "variable": [
+                {
+                  "key": "connectionId",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "`Authorization: Bearer` OIDC jetonu Google anahtarlarıyla (RS256) doğrulanır: `iss` Google, `aud` bu adres, `email` bağlantıya yazılmış itme hizmet hesabı, `email_verified` true.\nDüşerse 401. `packageName` bağlantınınki değilse `ignored`. `testNotification` → `test_received`. Abonelik bildiriminde ayrıntı kiracının kimliğiyle `purchases.subscriptionsv2.get`\nile okunur (Google'a ulaşılamazsa 502, Pub/Sub yeniden dener): 4 PURCHASED başlangıç, 2 RENEWED / 1 RECOVERED / 7 RESTARTED yenileme (son başarılı sipariş, bir kez sayılır),\n3 CANCELED iptal, 12 REVOKED iade, 13 EXPIRED sona erme. Temel fiyat aşamasında tutar REAL_VERIFIED, tanıtım ya da bilinmeyen aşamada liste fiyatı ESTIMATED, ücretsiz denemede 0;\ntest satın alması deftere yazılmaz. Tek seferlik ürün `purchases.products.get` ile doğrulanır (fiyat dönmez: `receipt_verified`). `voidedPurchaseNotification` tam iadesi\nsiparişin Voided Purchases API'de (`purchases.voidedpurchases.list`, `type=1`) kiracının kimliğiyle görülmesinden sonra yazılır; görülmezse 409 `voided_purchase_unconfirmed`;\nkısmi iade `ignored`. Eşleşen işlem yoksa 409. `messageId` bağlantı başına tekildir. Hız sınırı kovası bağlantı başınadır.",
             "body": {
               "mode": "raw",
               "raw": "{}",
@@ -15659,6 +18219,12 @@
                   "key": "to",
                   "value": "",
                   "disabled": true
+                },
+                {
+                  "key": "currency",
+                  "value": "",
+                  "disabled": true,
+                  "description": "Rapor para birimi (ISO 4217, büyük harf). Verilirse `converted`, `converted_status` ve `converted_reason` elle girilen kurlarla (`/portfolio/exchange-rates`) hesaplanır; verilmezse yanıt değişmez."
                 }
               ],
               "variable": [
@@ -15668,7 +18234,7 @@
                 }
               ]
             },
-            "description": "Okumadan önce olay deposundaki yeni `feralin_purchase` olayları deftere alınır (idempotent: aynı işlem ya da aynı olay ikinci kez yazılmaz); depo yoksa\ndefterdeki kayıtlar yine döner ve `sync.status` nedenini söyler. Brüt: purchase + subscription_start + subscription_renew; net: brüt − refund − chargeback,\nbrüt kayıt silinmez. İade ve ters ibraz yalnız sunucu webhook kaydından gelir; adaptör bağlı değilken (`reversal_sources.status`) sıfır iade kaynak yokluğudur. Abonelik iptali tutar taşımaz.\n`amount_minor` satır toplamıdır, `quantity` bilgi amaçlıdır. Doğrulama sınıfı yalnız sunucu tarafı makbuz doğrulayıcısından gelir: istemci beyanı ESTIMATED, doğrulayıcı reddi UNKNOWN; istemcinin\ngönderdiği `verified` alanı hiçbir katmanda okunmaz. Ödeyen, olaydaki anonim ya da kullanıcı kimliğinin kiracıya özel özetidir; kimliksiz kayıt ödeyen sayılmaz. Ödeyen sayısı k altındaki hücre null ve `below_k_threshold`; null sıfır değildir. Kur yalnız kaynağı yazılı kurla\nuygulanır; kaynak yoksa `converted` null ve `converted_status` UNKNOWN. Scope yalnız owner ve admin oturumunda, API anahtarında ve MCP OAuth'ta vardır.\nAralık `from`/`to` (ISO-8601), varsayılan son 30 gün, en çok 400 gün."
+            "description": "Okumadan önce olay deposundaki yeni `feralin_purchase` olayları deftere alınır (idempotent: aynı işlem ya da aynı olay ikinci kez yazılmaz); depo yoksa\ndefterdeki kayıtlar yine döner ve `sync.status` nedenini söyler. Brüt: purchase + subscription_start + subscription_renew; net: brüt − refund − chargeback,\nbrüt kayıt silinmez. İade ve ters ibraz yalnız sunucu webhook kaydından gelir; adaptör bağlı değilken (`reversal_sources.status`) sıfır iade kaynak yokluğudur. Abonelik iptali tutar taşımaz.\n`amount_minor` satır toplamıdır, `quantity` bilgi amaçlıdır. Doğrulama sınıfı yalnız sunucu tarafı makbuz doğrulayıcısından gelir: istemci beyanı ESTIMATED, doğrulayıcı reddi UNKNOWN; istemcinin\ngönderdiği `verified` alanı hiçbir katmanda okunmaz. Ödeyen, olaydaki anonim ya da kullanıcı kimliğinin kiracıya özel özetidir; kimliksiz kayıt ödeyen sayılmaz. Ödeyen sayısı k altındaki hücre null ve `below_k_threshold`; null sıfır değildir. Kur yalnız kaynağı yazılı kurla\nuygulanır; kaynak yoksa `converted` null ve `converted_status` UNKNOWN. Scope yalnız owner ve admin oturumunda, API anahtarında ve MCP OAuth'ta vardır.\nAralık `from`/`to` (ISO-8601), varsayılan son 30 gün, en çok 400 gün.\n`currency` verilirse net gelir o para birimine çevrilir: her UTC gününün neti, kur tarihi o günden sonra olmayan en yeni elle girilmiş kurla çarpılır\n(önce doğrudan çift; yalnız o yoksa ters çiftin 1/kur değeri; üçüncü para birimi üzerinden çapraz kur yok). Kuru bulunmayan tutarlar toplanmaz ve\n`converted.unconverted` altında kendi para biriminde döner; başlığı k-eşiğinde gizli para birimi çevrilmez ve tutarı yazılmaz (`below_k_threshold`).\nYuvarlama en sonda bir kez yapılır (yarım, sıfırdan uzağa), hedef para biriminin küçük birim üssüyle (JPY 0, USD 2, KWD 3). Kurlar elle girildiği için\nçevrilmiş toplam hiçbir koşulda REAL_VERIFIED değildir: her tutar çevrildiyse ESTIMATED, eksikse ya da toplam yoksa UNKNOWN. Geçersiz kod 400."
           },
           "response": []
         },
@@ -18050,6 +20616,217 @@
               ]
             },
             "description": "Dosya `attachment` ve `Cache-Control: no-store` ile verilir; CSV'de `= + - @` ile başlayan metin formül olarak çalışmasın diye tırnakla ön ekli. Süre dolduysa 410 `export_expired`. İndirme denetime yazılır."
+          },
+          "response": []
+        },
+        {
+          "name": "Ham veri dışa aktarma ayarı (scope privacy:read)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/projects/:id/privacy/raw-export",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "projects",
+                ":id",
+                "privacy",
+                "raw-export"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{project_id}}"
+                }
+              ]
+            },
+            "description": "Ham olay (`raw_events`) ve kurulum kararı (`raw_installs`) dışa aktarması varsayılan olarak kapalıdır. Ayar, açık olup olmadığını\nve çıkabilecek alanların izin listesini taşır. `available_fields` seçilebilecek bütün alanlardır; `identifier: true` kişi ya da\ncihaz düzeyinde tanımlayıcı ya da serbest içerik demektir. IP adresi olay deposunda tutulmadığı için listede yoktur."
+          },
+          "response": []
+        },
+        {
+          "name": "Ham veri dışa aktarma ayarını günceller (scope privacy:approve)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/projects/:id/privacy/raw-export",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "projects",
+                ":id",
+                "privacy",
+                "raw-export"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{project_id}}"
+                }
+              ]
+            },
+            "description": "Kısmi güncelleme: verilmeyen alan olduğu gibi kalır. İzin listesi `veri_kümesi.alan` biçimindedir (ör. `raw_events.event_name`).\nBilinmeyen alan 400, alan seçmeden açmak 409 döner. Değişiklik denetim günlüğüne yazılır.",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Dışa aktarma depolama hedefleri ve son teslimler (scope projects:read)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/projects/:id/export-targets",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "projects",
+                ":id",
+                "export-targets"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{project_id}}"
+                }
+              ]
+            },
+            "description": "Hedefin yalnız ana makinesi döner; erişim anahtarı ve SAS imzası hiçbir yanıtta yer almaz. Son 20 teslim kaydı eklenir."
+          },
+          "response": []
+        },
+        {
+          "name": "Depolama hedefi ekler (scope projects:write)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/projects/:id/export-targets",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "projects",
+                ":id",
+                "export-targets"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{project_id}}"
+                }
+              ]
+            },
+            "description": "`s3`: S3 uyumlu depo, yol biçimli adres ve AWS Signature Version 4 (AWS S3 ve aynı imzayı kabul eden depolar). `azure_blob`:\nyazma izinli kapsayıcı SAS adresi. Kimlik bilgisi şifreli saklanır. Uç yalnız https olabilir; özel, iç ağ ve metadata adresleri\nreddedilir (422). Proje başına en çok 5 hedef. SFTP desteklenmez.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"kind\": \"s3\",\n  \"name\": \"\",\n  \"endpoint\": \"\",\n  \"region\": \"\",\n  \"bucket\": \"\",\n  \"access_key_id\": \"\",\n  \"secret_access_key\": \"\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Depolama hedefini siler (scope projects:write)",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/projects/:id/export-targets/:targetId",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "projects",
+                ":id",
+                "export-targets",
+                ":targetId"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{project_id}}"
+                },
+                {
+                  "key": "targetId",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "Depolama hedefini siler (scope projects:write)"
+          },
+          "response": []
+        },
+        {
+          "name": "Hazır dışa aktarmayı depolama hedefine yükler (scope projects:write)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/projects/:id/exports/:exportId/deliver",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "projects",
+                ":id",
+                "exports",
+                ":exportId",
+                "deliver"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{project_id}}"
+                },
+                {
+                  "key": "exportId",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "Nesne adı `önek + dosya adı` olur. Depo hata dönerse istek yine 200 döner: sonuç teslim kaydıdır (`status: failed` ve sabit hata\nkodu, ör. `http_403`, `timeout`, `connection_failed`). Süresi dolmuş dışa aktarma 410 döner. Denetim günlüğüne yazılır.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"target_id\": \"\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
           },
           "response": []
         },

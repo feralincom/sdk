@@ -31,7 +31,7 @@ npm install @feralin/web
   window.addEventListener("load", () => {
     feralin.initialize({
       projectKey: "pk_live_…",              // yalnız public anahtar
-      collectUrl: "https://collect.feralin.com",
+      collectUrl: "https://feralin.com/collect",
       consent: { analytics: true, advertising: false }, // consent yoksa olay üretilmez
     });
   });
@@ -40,7 +40,7 @@ npm install @feralin/web
 
 ```ts
 import { initialize, track } from "@feralin/web";
-initialize({ projectKey: "pk_live_…", collectUrl: "https://collect.feralin.com", consent: { analytics: true } });
+initialize({ projectKey: "pk_live_…", collectUrl: "https://feralin.com/collect", consent: { analytics: true } });
 track("signup_completed", { plan: "growth" });
 ```
 

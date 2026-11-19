@@ -81,6 +81,7 @@ func makeClient(
     attribution: AttributionConfiguration? = nil,
     platform: String? = nil,
     store: any InstallIDStore = InMemoryInstallIDStore(),
+    installVault: any InstallIDStore = InMemoryInstallIDStore(),
     now: @escaping @Sendable () -> Date = { Date() },
     tokenProvider: @escaping @Sendable () -> AdServicesTokenResult = { .notSupported },
     conversionUpdater: @escaping @Sendable (Int, CoarseConversionLevel, Bool, ConversionFrameworks) async -> ConversionUpdateResult = { _, _, _, _ in
@@ -89,7 +90,11 @@ func makeClient(
     trackingStatus: @escaping @Sendable () -> TrackingAuthorizationStatus = { .authorized },
     storageDirectory: URL? = nil,
     sessionTimeout: TimeInterval = FeralinClient.defaultSessionTimeout,
-    installCode: String? = nil
+    installCode: String? = nil,
+    signingKey: SigningKey? = nil,
+    childDirected: Bool = false,
+    consentMaxAgeDays: Int? = nil,
+    advertisingConsentGrantedAt: Date? = nil
 ) throws -> FeralinClient {
     var configuration = FeralinClient.Configuration(
         projectKey: testKey,
@@ -101,13 +106,18 @@ func makeClient(
         attribution: attribution,
         storageDirectory: storageDirectory,
         sessionTimeout: sessionTimeout,
-        installCode: installCode
+        installCode: installCode,
+        signingKey: signingKey,
+        childDirected: childDirected,
+        consentMaxAgeDays: consentMaxAgeDays,
+        advertisingConsentGrantedAt: advertisingConsentGrantedAt
     )
     configuration.platformOverride = platform
     return try FeralinClient(
         configuration: configuration,
         transport: transport,
         installIDStore: store,
+        installVault: installVault,
         now: now,
         adServicesTokenProvider: tokenProvider,
         conversionUpdater: conversionUpdater,

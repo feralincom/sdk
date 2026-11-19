@@ -22,6 +22,12 @@ public data class Consent(
  * @property debug `true` ise Logcat'e olay adı ve durum kodu yazılır; anahtar ve özellik değeri asla yazılmaz.
  * @property wrapper Yalnız resmî Feralin sarmalayıcıları içindir (React Native); uygulama kodunda verilmez.
  */
+/**
+ * Kısa link açılışının sonucu (Fera Fly). [destination] uygulamanın açacağı yoldur; [linkCode] çözümlenen kısa kod (çözülemediyse `null`);
+ * [hasClickId] tıklama kimliğinin yönlendiriciden alındığını söyler (reklam izni yoksa olaya eklenmez).
+ */
+public data class ShortLinkOpen(val destination: String, val linkCode: String?, val hasClickId: Boolean)
+
 public data class FeralinConfig(
     val projectKey: String,
     val collectUrl: String,
@@ -39,6 +45,42 @@ public data class FeralinConfig(
      * değildir, 30 dakika geçerlidir; doğrulamadan sonra yapılandırmadan kaldırılabilir. Biçimi bozuk kod yok sayılır.
      */
     val installCode: String? = null,
+    /**
+     * Facebook uygulama kimliği (Meta App ID). Verilirse SDK, Meta reklamından gelen kurulumun kampanya verisini Facebook/Instagram
+     * uygulamasından okur (Meta Install Referrer; Facebook SDK gerekmez). Çözme anahtarı panelde projeye girilir, uygulamaya konmaz.
+     */
+    val metaAppId: String? = null,
+    /**
+     * SDK imza anahtarı (panel: Atıf > Dolandırıcılık kuralları). Verilirse ilk açılış ve link açılışı olayları bu anahtarla imzalanır;
+     * sunucu imzasız ya da bozuk imzalı kurulumu projenin kuralına göre işaretler ya da reddeder. Anahtar uygulamaya gömülüdür:
+     * sürüm başına ayrı anahtar üretip eskisini panelden iptal edebilirsiniz.
+     */
+    val signingKey: SigningKey? = null,
+    /**
+     * Çocuklara yönelik uygulama (COPPA ve benzeri kurallar). `true` ise reklam ölçümü ve kişiselleştirme izni uygulama ne verirse versin
+     * kapalı sayılır: tıklama kimliği, mağaza yönlendiricileri, Meta yönlendiricisi ve pano okunmaz, olaylar reklam izni kapalı gider.
+     * Panelde projenin "Çocuklara yönelik uygulama" ayarı ayrıca açılmalıdır: sunucu o ayarla eski SDK sürümlerinin olaylarını da korur.
+     */
+    val childDirected: Boolean = false,
+    /**
+     * Reklam ölçümü izninin geçerlilik süresi (gün). Verilirse izin bu süreden eskiyse yeniden sorulana kadar verilmemiş sayılır
+     * (`getStatus().advertisingConsentExpired`); kullanıcı yeniden onaylayınca `Feralin.confirmAdvertisingConsent()` çağrılır.
+     */
+    val consentMaxAgeDays: Int? = null,
+    /**
+     * Google reklam kimliğini (GAID) topla. Varsayılan `false`: SDK kimliği hiç okumaz. `true` ise kimlik yalnız kullanıcı reklam
+     * ölçümü iznini verdiyse, uygulama çocuklara yönelik değilse (`childDirected = false`) ve kullanıcı cihazda reklam
+     * kişiselleştirmeyi kapatmadıysa ilk açılışta bir kez okunur. Uygulamanın `play-services-ads-identifier` kütüphanesini ve
+     * `com.google.android.gms.permission.AD_ID` iznini kendisi eklemesi gerekir. Sunucu kimliği yalnız panelde projenin
+     * "Reklam kimliği" ayarı da açıksa saklar ve yalnız reklam ağına dönüşüm iletiminde kullanır; Play Data Safety beyanınızı güncelleyin.
+     */
+    val collectAdvertisingId: Boolean = false,
+    /**
+     * Fera Fly kısa link hostları (varsayılan `fera.fly`; alt alanları da kapsar, ör. `marka.fera.fly`). Uygulama bu hostlardaki bir App
+     * Link ile açılınca SDK linki yönlendiriciden çözümler: derin yol, UTM ve (reklam izni varsa) tıklama kimliği `deep_link_opened`
+     * olayına eklenir. Markalı alanınızı ekleyebilirsiniz; boş liste çözümlemeyi kapatır.
+     */
+    val shortLinkHosts: List<String> = listOf("fera.fly"),
 ) {
     /** Hata mesajı döner; geçerliyse `null`. Mesajda anahtar değeri bulunmaz. */
     internal fun validationError(): String? = when {
@@ -46,8 +88,26 @@ public data class FeralinConfig(
         projectKey.startsWith("sk_") -> "gizli anahtar istemci uygulamasında kullanılamaz"
         !collectUrl.startsWith("https://") && !collectUrl.startsWith("http://") -> "collectUrl http(s) olmalı"
         wrapper != null && wrapper.validationError() != null -> wrapper.validationError()
+        metaAppId != null && !Regex("^[0-9]{5,20}$").matches(metaAppId) -> "metaAppId 5-20 rakam olmalı"
+        signingKey != null && signingKey.validationError() != null -> signingKey.validationError()
+        consentMaxAgeDays != null && consentMaxAgeDays !in 1..3650 -> "consentMaxAgeDays 1-3650 olmalı"
         else -> null
     }
+}
+
+/** SDK imza anahtarı: [id] panelde görünen kimlik (`sgn_…`), [secret] üretildiği anda bir kez gösterilen değer (`fsk_…`). */
+public data class SigningKey(
+    val id: String,
+    val secret: String,
+) {
+    internal fun validationError(): String? = when {
+        !Regex("^sgn_[a-z0-9]{12,40}$").matches(id) -> "signingKey.id biçimi geçersiz"
+        secret.length < 16 || secret.length > 200 -> "signingKey.secret 16-200 karakter olmalı"
+        else -> null
+    }
+
+    /** Anahtar değeri loglara ve hata dökümlerine düşmesin. */
+    override fun toString(): String = "SigningKey(id=$id)"
 }
 
 /**
@@ -115,6 +175,8 @@ public data class FeralinStatus(
     val version: String,
     val queued: Int,
     val consent: Consent?,
+    /** Reklam ölçümü izninin süresi doldu; uygulama kullanıcıya yeniden sormalı. */
+    val advertisingConsentExpired: Boolean = false,
     val anonymousId: String?,
     val sessionId: String?,
     val userId: String?,

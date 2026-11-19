@@ -8,6 +8,8 @@ public struct TransportRequest: Sendable {
     public let body: Data
     public let headers: [String: String]
     public let timeout: TimeInterval
+    /// HTTP yöntemi; olay ve atıf istekleri `POST`, kısa link çözümlemesi (Fera Fly) `GET`. Özel `Transport` uygulamaları bu alanı okumalıdır.
+    public var method: String = "POST"
 }
 
 public struct TransportResponse: Sendable {
@@ -59,8 +61,9 @@ public struct URLSessionTransport: Transport {
 
     public func send(_ request: TransportRequest) async throws -> TransportResponse {
         var urlRequest = URLRequest(url: request.url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: request.timeout)
-        urlRequest.httpMethod = "POST"
-        urlRequest.httpBody = request.body
+        urlRequest.httpMethod = request.method
+        // GET gövde taşımaz (URLSession reddeder).
+        if request.method != "GET" { urlRequest.httpBody = request.body }
         for (name, value) in request.headers {
             urlRequest.setValue(value, forHTTPHeaderField: name)
         }

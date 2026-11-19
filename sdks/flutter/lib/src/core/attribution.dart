@@ -1,9 +1,32 @@
 /// Sözleşmedeki `properties.attribution_source` değerleri.
 abstract final class AttributionSource {
   static const String playInstallReferrer = 'play_install_referrer';
+  static const String huaweiInstallReferrer = 'huawei_install_referrer';
   static const String appLink = 'app_link';
   static const String universalLink = 'universal_link';
   static const String none = 'none';
+}
+
+/// Kurulum mağazası (`properties.install_store`): Android'de uygulamayı kuran paketten yerel tarafta türetilir. Kapalı listedir;
+/// kurucu paket adı Dart'a hiç gelmez. Liste Android SDK ile aynıdır.
+abstract final class InstallStore {
+  static const Set<String> values = {
+    'google_play',
+    'samsung_galaxy_store',
+    'huawei_appgallery',
+    'amazon_appstore',
+    'xiaomi_getapps',
+    'oppo_app_market',
+    'vivo_app_store',
+    'honor_app_market',
+    'sideload',
+    'unknown',
+    'other',
+  };
+
+  /// Yerel kanaldan gelen değeri kapalı listeden yeniden geçirir; liste dışı değer (ör. paket adı) olaya yazılmaz.
+  static String? sanitize(Object? value) =>
+      value is String && values.contains(value) ? value : null;
 }
 
 const Set<String> _utmKeys = {
@@ -36,7 +59,12 @@ final RegExp _frClickPattern = RegExp(r'^[A-Za-z0-9._~-]{1,256}$');
 
 /// Referrer veya URL'den alınmasına izin verilen tek veri: `fr_click` ve standart `utm_*`.
 class AttributionParams {
-  const AttributionParams({this.frClick, this.utm = const {}, this.deepLinkPath});
+  const AttributionParams({
+    this.frClick,
+    this.utm = const {},
+    this.deepLinkPath,
+    this.source = AttributionSource.playInstallReferrer,
+  });
 
   static const AttributionParams empty = AttributionParams();
 
@@ -45,6 +73,17 @@ class AttributionParams {
 
   /// Ertelenmiş derin bağlantı yolu. Kanıt değildir, olaya yazılmaz.
   final String? deepLinkPath;
+
+  /// Yönlendiricinin okunduğu mağaza; olayın `attribution_source` değeri olur.
+  final String source;
+
+  /// Aynı kanıt, başka kaynak adıyla (ör. AppGallery'den okunan yönlendirici).
+  AttributionParams withSource(String source) => AttributionParams(
+    frClick: frClick,
+    utm: utm,
+    deepLinkPath: deepLinkPath,
+    source: source,
+  );
 
   bool get isEmpty => frClick == null && utm.isEmpty;
 

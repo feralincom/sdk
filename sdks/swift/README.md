@@ -22,11 +22,11 @@ Swift 5.9 araç zinciri (Xcode 15+). iOS 14, macOS 11, tvOS 14, watchOS 7.
 
 Paket herkese açık depodadır: <https://github.com/feralincom/sdk>. Swift Package Manager bildirimi yalnız depo kökünde aradığı için depo kökünde `sdks/swift` kaynağını gösteren bir `Package.swift` vardır. Sürüm etiketi kökte düz semver'dir (`0.2.0`); paket kimliği adresin son parçasıdır (`sdk`).
 
-Xcode: **File → Add Package Dependencies…** → `https://github.com/feralincom/sdk.git` → **Exact Version** `0.2.0` → ürün `Feralin`. Ya da `Package.swift`:
+Xcode: **File → Add Package Dependencies…** → `https://github.com/feralincom/sdk.git` → **Exact Version** `0.3.0` → ürün `Feralin`. Ya da `Package.swift`:
 
 ```swift
 // Package.swift
-.package(url: "https://github.com/feralincom/sdk.git", exact: "0.2.0")
+.package(url: "https://github.com/feralincom/sdk.git", exact: "0.3.0")
 // hedef bağımlılığı
 .product(name: "Feralin", package: "sdk")
 ```
@@ -134,6 +134,31 @@ let client = try FeralinClient(configuration: .init(
 
 Attribution uçlarında proje anahtarı `Authorization: Bearer` ile gider, `X-Feralin-Project-Key` yalnız toplayıcıdadır. Token saklanmaz ve loglanmaz.
 
+### Bağlantılar: açılış, ertelenmiş derin bağlantı, pano eşlemesi
+
+```swift
+// Universal Link ile açılış: olayı gönderir, uygulamanın açacağı yolu döner.
+let open = try await client.handleUniversalLink(url)        // open.destination == "/urun/42?renk=mavi"
+
+// İlk açılış ve ertelenmiş derin bağlantı (kurulumdan sonraki ilk açılışta bir kez).
+let click = await client.clipboardClickID(linkHosts: ["feralin.com", "go.markaniz.com"])   // izinli pano eşlemesi; istemezseniz çağırmayın
+try await client.trackFirstOpen(clickID: click, source: click == nil ? nil : "clipboard")
+if case .matched(let link) = await client.fetchDeferredDeepLink(), let path = link.deepLinkPath {
+    router.open(path)
+}
+```
+
+- `handleUniversalLink(_:)` `deep_link_opened` olayını `attribution_source = universal_link` ile gönderir. Reklam ölçümü izni yoksa tıklama
+  kimliği olaya eklenmez; yol yine döner.
+- `fetchDeferredDeepLink()` sunucuya `POST /v1/projects/{id}/attribution/deferred-link` ile sorar (`attribution` yapılandırması ve reklam
+  ölçümü izni gerekir). Karar birkaç saniyede yazıldığı için `pending` yanıtında kısa aralıkla yeniden sorar (varsayılan 4 deneme).
+  Eşleşme yöntemi yanıttadır (`evidenceClass`): pano, olasılıksal eşleme ya da başka kanıt; kesinlik iddia edilmez.
+- `clipboardClickID(linkHosts:)` panoyu yalnız reklam ölçümü izni varken okur ve yalnız verdiğiniz hostlara ait, `fr_click` taşıyan `https`
+  adresini kabul eder; başka pano içeriği saklanmaz ve gönderilmez. iOS okuma sırasında kullanıcıya yapıştırma izni sorabilir. Panoya
+  yazan taraf link yönlendiricisinin ara sayfasıdır: linkte "iOS pano eşlemesi" açıksa kullanıcı düğmeye basınca adres kopyalanır.
+- `UIPasteboard` çağrısı yalnız iOS'ta derlenir (`#if canImport(UIKit)`); Linux'ta derlenen ve sınanan kısım adres çözümlemesi, izin
+  kapısı ve sunucu çağrısıdır. Gerçek cihazda pano izni penceresi ve Universal Link teslimi Mac ve cihaz ister: bu repoda sınanmadı.
+
 ## Kalıcı kuyruk ve oturum
 
 `storageDirectory` verilirse kuyruk diskte de tutulur; uygulama kapanınca ya da çökünce gönderilmemiş olaylar bir sonraki açılışta geri yüklenir. Verilmezse kuyruk yalnız bellektedir (eski davranış). Dizin tek bir istemciye aittir.
@@ -223,3 +248,66 @@ DATABASE_URL='postgres://KULLANICI:PAROLA@127.0.0.1:5432/TEST_VERITABANI?sslmode
 2. `AdAttributionKit` için Xcode 15.3 ve üstü gerekir; eski SDK'da `canImport` yanlış döner ve `notSupported` çalışır.
 3. Linux'ta `FoundationNetworking` ile derlenmesi amaçlandı, denenmedi.
 4. `FeralinApple.adServicesToken` ve `updateConversionValue` `@usableFromInline` oldu; `FeralinClient.init` varsayılan bağımsız değişkenlerinin bunlara başvurması derleyiciyle doğrulanmadı.
+
+## Dolandırıcılık işaretleri: SDK imzası, kurulum kaynağı ve simülatör
+
+```swift
+let client = try FeralinClient(configuration: .init(
+    projectKey: "pk_live_...",
+    collectURL: "https://feralin.com/collect",
+    signingKey: SigningKey(id: "sgn_...", secret: "fsk_...")
+))
+try await client.trackFirstOpen(installStore: await FeralinInstallSource.current())
+```
+
+- `signingKey` verilirse `app_first_open` ve `deep_link_opened` olayları imzalanır (`fr_sig`, HMAC-SHA256; saf Swift, bağımlılık yok).
+  Anahtar panelde **Sahtecilik > Dolandırıcılık kuralları** altında üretilir ve yalnız bir kez gösterilir. Uygulamaya gömülü anahtar
+  paketten çıkarılabilir: imza sahte kurulumu zorlaştırır, imkânsız kılmaz.
+- `FeralinInstallSource.current()` kurulum kaynağını döner: `app_store`, `testflight`, `alt_marketplace`, `web_distribution`, `enterprise`,
+  `simulator`. Apple bu bilgiyi yalnız iOS / iPadOS 17.4 ve sonrasında verir (`AppDistributor.current`, MarketplaceKit); daha eski sürümde
+  ve öteki Apple platformlarında `nil` döner ve olaya alan eklenmez (tahmin yürütülmez). Alternatif pazar yerinin kimliği gönderilmez.
+- Simülatörde derlenmiş uygulama ilk açılışa `device_emulator: true` ekler (derleme zamanında bilinir; cihazdan veri okunmaz).
+- Jailbreak'li görünen iPhone / iPad ilk açılışa `device_rooted: true` ekler (`FeralinInstallSource.isJailbroken`: bilinen jailbreak dosyalarının
+  varlığı; yalnız iOS, simülatör hariç). Tek bir evet/hayır değeridir; kendini gizleyen jailbreak'i görmez. Gerçek cihazda denenmedi.
+- Linux'ta derlenip test edilen kısım: imza, SHA-256/HMAC vektörleri, kapalı liste. `AppDistributor` ve simülatör dalı yalnız Mac'te
+  derlenir; gerçek iPhone'da doğrulanmadı (`docs/MAC_GOREVLERI.md` M18).
+
+## Çocuklara yönelik uygulama ve izin süresi
+
+```swift
+let client = try FeralinClient(configuration: .init(
+    projectKey: "pk_live_...",
+    collectURL: "https://feralin.com/collect",
+    childDirected: true,                          // COPPA ve benzeri kurallar
+    consentMaxAgeDays: 180,
+    advertisingConsentGrantedAt: savedConsentDate // iznin verildiği an; uygulama saklar
+))
+```
+
+- `childDirected: true`: reklam ölçümü ve kişiselleştirme izni her zaman kapalıdır; tıklama kimliği, pano ve AdServices kullanılmaz.
+  Panelde **SDK Merkezi > Gizlilik ayarları** altındaki "Çocuklara yönelik uygulama" ayarını da açın.
+- İzin süresi: bu SDK kalıcı izin durumu tutmaz; iznin verildiği anı uygulama saklar ve yapılandırmada ya da
+  `setConsent(_:grantedAt:)` ile verir. Süre dolmuşsa `advertisingConsentExpired` true olur ve olaylar reklam izni kapalı gider.
+- Apple gizlilik etiketi için panelde **SDK Merkezi > Mağaza gizlilik beyanı yardımcısı** projenin ayarlarına göre veri türlerini listeler.
+
+## İşletim sistemi sürümü (reklam ağına uygulama olayı)
+
+`trackFirstOpen` Apple platformlarında ilk açılışa `os_version` ekler (`ProcessInfo.operatingSystemVersion`, ör. `17.4.1`). Cihaz kimliği
+değildir. Panelde bir Meta dönüşüm hedefi açıksa sunucu bu kurulumun olaylarını Meta'ya uygulama olayı olarak gönderirken bu değeri
+kullanır; sürümü bildirmeyen kurulumun uygulama olayı gönderilmez. Gerçek iPhone'da denenmedi.
+
+## İsteğe bağlı reklam kimliği (IDFA)
+
+SDK AdSupport'a bağlanmaz ve IDFA'yı kendisi okumaz. Uygulama ATT izni `authorized` olduktan sonra kimliği verir:
+`try client.trackFirstOpen(advertisingID: ASIdentifierManager.shared().advertisingIdentifier.uuidString)`. Kimlik yalnız reklam ölçümü
+izni açıksa, `childDirected` kapalıysa ve değer sıfırlanmamış bir UUID ise gönderilir. Sunucu onu yalnız panelde projenin
+"Reklam kimliği" ayarı da açıksa saklar, yalnız reklam ağına dönüşüm iletiminde (Meta `madid`) kullanır ve 90 gün sonra siler.
+Uygulamanın gizlilik etiketini ve gizlilik bildirim dosyasını güncelleyin. Gerçek iPhone'da denenmedi.
+
+## Push açılışı ve e-posta (ESP) bağlantıları
+
+- `try client.trackPushOpen(userInfo: response.notification.request.content.userInfo)`: kullanıcı bildirime dokunarak açınca (`fr_push_open`).
+  Yalnız `utm_*` ve `fr_push_id` gider; kampanya bilgisi yoksa `utm_medium=push`. Kaldırma ölçümü bildirimi açılış sayılmaz.
+- `let url = await FeralinClient.resolveTrackedLink(incoming)`: Universal Link bir ESP tıklama alanından geldiyse sarılı adresi Feralin kısa
+  linkine çözer; sonucu `handleUniversalLink(_:)` ile işleyin. ESP alanının `apple-app-site-association` dosyasını sunması ESP'nin ayarıdır.
+  Gerçek iPhone'da ve gerçek ESP ile denenmedi.

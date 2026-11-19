@@ -6,6 +6,7 @@
 
 Depodadır, npm'deki 0.1.0 içinde yoktur; sonraki sürüm numarasıyla yayımlanacak.
 
+- Sayfada görünür süre: çekirdek her `page_view` için sekmenin görünür olduğu süreyi ölçer ve `fr_page_engagement` {`visible_ms`} olarak gönderir (sekme gizlenince, sayfa kapanırken ve sonraki `page_view`'dan önce; ölçülen sayfanın adresi, başlığı ve oturumuyla). Arka plandaki sekme sayılmaz, oturumun son sayfası ölçülür. `pageEngagement: false` kapatır; `PAGE_ENGAGEMENT_EVENT_NAME` dışa aktarılır (19 Kasım 2026).
 - `@feralin/web/errors`: V8 yığın izinin `Tür: mesaj` başlığı mesajında `@` varsa (ör. e-posta) Firefox çerçevesi sanılıp `top_frame` ve parmak izine giriyordu; V8 biçiminde artık yalnız `at ` satırları okunur. Toplayıcı `top_frame` alanını sunucuda da temizlediği için saklanan veriye e-posta yazılmıyordu; düzeltme istemciden çıkışı da keser (17 Kasım 2026).
 
 ## 0.1.0 (npm'de yayımlı, 17 Kasım 2026, git b1a7d127)

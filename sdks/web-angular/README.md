@@ -63,7 +63,7 @@ import { provideFeralin, provideFeralinErrorHandler } from "@feralin/angular";
 
 bootstrapApplication(AppComponent, {
   providers: [
-    provideFeralin({ projectKey: "pk_live_...", collectUrl: "https://collect.feralin.com" }),
+    provideFeralin({ projectKey: "pk_live_...", collectUrl: "https://feralin.com/collect" }),
     provideFeralinErrorHandler({ appVersion: "1.4.2", delegate: new MyErrorHandler() }),
   ],
 });

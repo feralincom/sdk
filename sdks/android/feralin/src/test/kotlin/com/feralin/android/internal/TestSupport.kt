@@ -63,6 +63,15 @@ internal class FakeTransport : Transport {
         }
         return responses.removeFirst() ?: throw IOException("ağ yok")
     }
+
+    /** Kısa link çözümlemesi (Fera Fly) GET istekleri; yanıt yoksa ağ hatası. */
+    val gets = ArrayList<Pair<String, Map<String, String>>>()
+    var getResponse: TransportResponse? = null
+
+    override fun get(url: String, headers: Map<String, String>): TransportResponse {
+        gets.add(url to headers)
+        return getResponse ?: throw IOException("ağ yok")
+    }
 }
 
 internal fun JSONObject.props(): JSONObject = getJSONObject("properties")

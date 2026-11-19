@@ -244,3 +244,144 @@ dokunarak izin, olay, gönderim, ağ kesikken kuyruk ve geri gönderimi yürüt�
 ```bash
 DATABASE_URL='postgres://...' CLICKHOUSE_URL=http://127.0.0.1:18127 node sdks/android/scripts/e2e-clean-install.mjs
 ```
+
+## Meta Install Referrer (Android)
+
+Facebook ya da Instagram reklamından gelen kurulumun kampanya, reklam seti ve reklam bilgisi Meta'nın kendi verisinden okunur; Facebook SDK
+gerekmez. Yapılacaklar:
+
+1. Feralin panelinde Atıf ekranındaki Meta kartına Facebook App ID'yi ve Meta uygulama panelindeki Install Referrer çözme anahtarını girin.
+2. SDK yapılandırmasına Facebook App ID'yi verin (`metaAppId`; Unity'de `FeralinBehaviour` alanı ya da `FeralinOptions.MetaAppId`).
+3. Android 11 ve üzerinde uygulama manifestine paket görünürlüğü ekleyin (Android SDK ve Flutter eklentisi bunu kendi manifestinden
+   birleştirir; Unity'de `Assets/Plugins/Android/AndroidManifest.xml` içine elle eklenir):
+
+```xml
+<queries>
+    <package android:name="com.facebook.katana" />
+    <package android:name="com.instagram.android" />
+    <package android:name="com.facebook.lite" />
+</queries>
+```
+
+Veri yalnız reklam ölçümü izni (`consent.advertising`) açıkken okunur; içerik şifrelidir ve uygulamada açılmaz.
+
+## Kurulum mağazası
+
+SDK ilk açılış olayına (`app_first_open`) uygulamanın hangi mağazadan kurulduğunu `install_store` özelliğiyle ekler. Değer işletim
+sisteminin bildirdiği kurucu paketten türer (`PackageManager`, Android 11+ `getInstallSourceInfo`) ve kapalı listedendir:
+`google_play`, `samsung_galaxy_store`, `huawei_appgallery`, `amazon_appstore`, `xiaomi_getapps`, `oppo_app_market`, `vivo_app_store`,
+`honor_app_market`, `sideload` (APK dosyasından), `unknown` (kurucu bildirilmedi: `adb`, Android Studio, ön yüklü) ve `other`.
+
+- Kişisel veri değildir ve reklam ölçümü izninden bağımsızdır; analitik izni yeter. Listede olmayan kurucunun paket adı gönderilmez.
+- Mağaza tarafından doğrulanmaz: cihazın bildirdiği değerdir. Panelde Atıf ekranındaki "Kurulum mağazaları" tablosunda ve
+  `GET /v1/projects/{id}/attribution/install-stores` ucunda görünür.
+- Play dışı mağazaların kendi kurulum yönlendiricisi (Huawei, Samsung) okunmaz: bu mağazalardan gelen kurulumun tıklama kanıtı yalnız
+  uygulama bağlantısıyla (App Link) taşınır. Play hizmeti olmayan cihazda Play Install Referrer isteği sonuçsuz kalır, ilk açılış yine gider.
+
+## Dolandırıcılık işaretleri: SDK imzası ve emülatör
+
+Panelde **Sahtecilik > Dolandırıcılık kuralları** altında bir imza anahtarı üretip yapılandırmaya ekleyin:
+
+```kotlin
+Feralin.init(
+    context,
+    FeralinConfig(
+        projectKey = "pk_live_...",
+        collectUrl = "https://feralin.com/collect",
+        signingKey = SigningKey(id = "sgn_...", secret = "fsk_..."),
+    ),
+)
+```
+
+- Anahtar verilirse `app_first_open` ve `deep_link_opened` olayları imzalanır (`fr_sig`, HMAC-SHA256). İmza olayın kimliğine ve kurulum
+  kimliğine bağlıdır; sunucu projenin kuralına göre imzasız ya da bozuk imzalı kurulumu işaretler ya da reddeder.
+- Anahtar uygulamaya gömülüdür: kararlı bir saldırgan paketten çıkarabilir. İmza sahte kurulum üretmeyi zorlaştırır, imkânsız kılmaz.
+  Sürüm başına ayrı anahtar üretip eskisini panelden iptal edebilirsiniz (en çok 5 etkin anahtar). Anahtarı kaynak deposuna yazmayın.
+- Emülatörde çalışan uygulama ilk açılışa `device_emulator: true` ekler. Tek bir evet/hayır değeridir; `Build` alanları gönderilmez,
+  cihaz kimliği ya da parmak izi üretilmez. Yaygın emülatörleri tanır, kendini gerçek cihaz gibi gösteren özel emülatörü görmez.
+- Root'lu görünen cihaz ilk açılışa `device_rooted: true` ekler: sınama anahtarlarıyla imzalı sistem görüntüsüne ve bilinen `su` yollarına bakar.
+  Tek bir evet/hayır değeridir; dosya listesi gönderilmez, komut çalıştırılmaz. Kendini gizleyen root'u (ör. Magisk gizleme) görmez.
+- Birim testleriyle doğrulandı (imza değeri sunucu uygulamasıyla aynı vektörle). Gerçek cihazda denenmedi.
+
+## Huawei AppGallery kurulum yönlendiricisi
+
+Play hizmeti olmayan Huawei cihazlarında kurulum kanıtı AppGallery'den gelir. SDK önce Play Install Referrer'ı okur; Play kanıt vermezse
+(hizmet yok, organik ya da boş) AppGallery'nin içerik sağlayıcısına sorar (`content://com.huawei.appmarket.commondata/item/5`,
+bağımlılık yok) ve ilk açılışı `attribution_source: huawei_install_referrer` ile gönderir.
+
+- Link tarafı: linkin Android hedefine AppGallery'nin uygulama linkini yazın:
+  `https://appgallery.cloud.huawei.com/appDetail?pkgName=<paket adı>&detailType=0&callType=AGDLINK`. Link yönlendirici tıklama kimliğini,
+  derin bağlantı yolunu ve UTM'i `referrer` parametresine yazar (en çok 500 karakter; sığmayan UTM atılır, kimlik korunur).
+  `appmarket://` ve `appgallery.huawei.com/app/C…` biçimlerinde `referrer` desteği Huawei belgesinde yoktur: bu hedeflerde kimlik
+  kuruluma taşınmaz. Linkte ayrıca **Huawei AppGallery hedefi** alanı vardır: doluysa Huawei cihazından (Huawei Browser, HMS ya da HarmonyOS
+  kullanıcı-ajanı) gelen tıklama oraya, öteki Android cihazı Android hedefine gider; böylece tek link iki mağazaya da hizmet eder.
+  Huawei cihazında Chrome gibi başka bir tarayıcı bu işaretleri taşımaz ve tanınmaz: o tıklama Android hedefine gider.
+- Yalnız reklam ölçümü izni açıkken okunur (Huawei bu sorguyu kullanıcı onayından sonra ister). Yalnız `referrer` sütunu okunur ve izin
+  listesinden (`fr_click`, `fr_dl`, `utm_*`) geçer; AppGallery'nin zaman damgaları ve ücretli tanıtım izleme kimliği okunmaz.
+- `referrer` sütunu AppGallery 10.5.0.300 ve sonrasında vardır; eski sürümde kanıt yoktur ve ilk açılış kanıtsız gider.
+- Manifest: SDK `<queries>` altına `com.huawei.appmarket` paketini ekler (Android 11+ paket görünürlüğü). Huawei belgesi bu girdiyi
+  anmaz; Android kuralına göre eklendi.
+- **Gerçek Huawei cihazında denenmedi.** Sütun sırası ve link biçimi Huawei AppGallery Connect belgelerinden alındı; `referrer` değerinin
+  kodlama kuralı belgede yazmaz (sorgu kaçışı uygulanır). Birim testleri ve sunucu entegrasyon testiyle doğrulandı.
+
+## Samsung Galaxy Store kurulum yönlendiricisi
+
+Galaxy Store'dan kurulan uygulamada Play yönlendiricisi organik döner; kanıt Galaxy Store'dan gelir. SDK sırayla Play'i, Galaxy Store'u ve
+AppGallery'yi okur ve ilk kanıtı kullanır. Galaxy Store kanıtı `attribution_source: samsung_install_referrer` ile gönderilir.
+
+- Bağımlılık yok: SDK Galaxy Store'un servisine doğrudan bağlanır (eylem `com.sec.android.app.samsungapps.api.InstallReferrerAgent`).
+  Protokol Samsung'un Maven Central'da yayımladığı kütüphaneden (`store.galaxy.samsung.installreferrer:samsung_galaxystore_install_referrer:4.0.0`,
+  Apache-2.0) okundu: istek `guid` = paket adı, yanıt `install_referrer`. Tıklama ve kurulum zaman damgaları okunmaz.
+- Link tarafı: linkin Android hedefi `https://apps.samsung.com/appquery/appDetail.as?appId=<paket adı>` olmalıdır; link yönlendirici tıklama
+  kimliğini `referrer` parametresine yazar. `https://galaxystore.samsung.com/detail/...` adresi `referrer` taşımaz. Bu link biçimi Samsung'un
+  kendi belgesinden değil (belge Samsung hesabı girişinin arkasında), Adjust'ın Galaxy Store ölçüm rehberinden alındı.
+- Yalnız reklam ölçümü izni açıkken okunur; değer izin listesinden (`fr_click`, `fr_dl`, `utm_*`) geçer. Galaxy Store'un organik varsayılanı
+  (`utm_medium=organic`) kanıt sayılmaz. Servis 5 saniyede yanıt vermezse kanıt yok sayılır; ilk açılış gecikmez, yine gider.
+- Manifest: SDK `<queries>` altına `com.sec.android.app.samsungapps` paketini ekler (Samsung'un kütüphanesindeki kayıtla aynı).
+- **Gerçek Samsung cihazında denenmedi.** Servisle konuşan bağlayıcı (Binder) kodu birim testiyle sınanamaz; sınanan kısım yanıtın işlenmesi,
+  süre aşımı, zincir sırası ve sunucu kararıdır. Galaxy Store 4.5.20.1 ve sonrası gerekir (Samsung'un duyurusu).
+
+## Çocuklara yönelik uygulama ve izin süresi
+
+```kotlin
+FeralinConfig(
+    projectKey = "pk_live_...",
+    collectUrl = "https://feralin.com/collect",
+    childDirected = true,        // COPPA ve benzeri kurallar
+    consentMaxAgeDays = 180,     // reklam ölçümü izninin geçerlilik süresi
+)
+```
+
+- `childDirected = true`: reklam ölçümü ve kişiselleştirme izni uygulama ne verirse versin kapalı sayılır. Mağaza yönlendiricileri, Meta
+  yönlendiricisi ve tıklama kimliği okunmaz; olaylar reklam izni kapalı gider. Panelde **SDK Merkezi > Gizlilik ayarları** altındaki
+  "Çocuklara yönelik uygulama" ayarını da açın: sunucu o ayarla eski SDK sürümlerinin olaylarını da atıf dışında tutar.
+- `consentMaxAgeDays`: reklam izninin verildiği an bir kez saklanır (uygulama her açılışta aynı izni yeniden verse de sıfırlanmaz). Süre dolunca
+  izin "verilmemiş" sayılır ve `Feralin.getStatus().advertisingConsentExpired` true olur; kullanıcıya yeniden sorup onay alınca
+  `Feralin.confirmAdvertisingConsent()` çağırın. Sürenin dolduğu yalnız SDK açılışında ve `setConsent` çağrısında denetlenir.
+- Atıf olayları iznin verildiği anı `consent_at` özelliğiyle taşır; sunucu projenin izin süresi ayarını bu değerle uygular.
+- Mağaza beyanları (Google Play Data Safety) için panelde **SDK Merkezi > Mağaza gizlilik beyanı yardımcısı** projenin ayarlarına göre
+  SDK'nın topladığı veri türlerini listeler. Yardımcıdır, hukuki tavsiye değildir.
+
+## İşletim sistemi sürümü (reklam ağına uygulama olayı)
+
+SDK ilk açılış olayına `os_version` ekler (`Build.VERSION.RELEASE`, ör. `14`). Cihaz kimliği değildir. Panelde bir Meta dönüşüm hedefi
+açıksa, sunucu bu kurulumun olaylarını Meta'ya uygulama olayı olarak (`action_source: app`) gönderirken bu değeri kullanır; sürümü
+bildirmeyen (eski SDK) kurulumun uygulama olayı gönderilmez ve hedef ekranında "kurulum işletim sistemi sürümünü bildirmedi" görünür.
+Feralin reklam kimliği toplamadığı için Meta'da eşleşme yalnız e-posta / telefon özeti, harici kimlik ya da Meta tıklama kimliğiyle olur.
+
+## İsteğe bağlı reklam kimliği (GAID)
+
+Varsayılan kapalıdır: SDK reklam kimliğini okumaz. `FeralinConfig(collectAdvertisingId = true)` verilirse kimlik yalnız kullanıcı reklam
+ölçümü iznini verdiyse, `childDirected = false` ise ve kullanıcı cihazda reklam kişiselleştirmeyi kapatmadıysa ilk açılışta bir kez okunur
+(`advertising_id`). SDK Google Play Services'e bağımlı değildir: uygulama `com.google.android.gms:play-services-ads-identifier`
+kütüphanesini ve `com.google.android.gms.permission.AD_ID` iznini kendisi ekler. Sunucu kimliği yalnız panelde projenin
+"Reklam kimliği" ayarı da açıksa saklar, yalnız reklam ağına dönüşüm iletiminde (Meta `madid`) kullanır ve 90 gün sonra siler.
+Play Data Safety beyanınızı güncelleyin. Gerçek cihazda denenmedi.
+
+## Push açılışı ve e-posta (ESP) bağlantıları
+
+- `Feralin.trackPushOpen(remoteMessage.data)`: kullanıcı bildirime dokunarak uygulamayı açınca çağrılır (`fr_push_open`). Yalnız `utm_*` ve
+  `fr_push_id` alanları gider; kampanya bilgisi yoksa `utm_medium=push` yazılır. Kaldırma ölçümü bildirimi açılış sayılmaz.
+- `Feralin.resolveTrackedLink(url) { resolved -> ... }`: uygulama App Link ile bir e-posta servis sağlayıcısının (SendGrid, Iterable, Braze,
+  Klaviyo…) tıklama alanından açıldığında sarılı adresi Feralin kısa linkine çözer; dönen adres olağan uygulama linki akışına verilir.
+  ESP alanının `assetlinks.json` dosyasını sunması ESP'nin ayarıdır (ESP belgesine bakın). Gerçek cihazda ve gerçek ESP ile denenmedi.

@@ -10,7 +10,7 @@
 |---|---|
 | Dil | Dart |
 | Paket | `feralin_flutter` |
-| Sürüm | 0.2.0 |
+| Sürüm | 0.3.0 |
 | Yaşam döngüsü | INTEGRATION_TESTED |
 | Kaynak dizin | `sdks/flutter` |
 | Registry | pub.dev: **BLOCKED_EXTERNAL** (gereken: Google hesabıyla dart pub login (anahtar yok; pub-credentials.json); feralin.com doğrulanmış yayıncısı önerilir (DNS alanı doğrulaması); otomatik yayın yalnız ilk sürümden sonra) |
@@ -54,6 +54,11 @@ Feralin.setGlobalProperties({'app_release': '2.4.0'}); // fr_ ile başlamayan he
 Feralin.setUserProperties({'plan': 'pro', 'seats': 12}); // fr_user_properties
 Feralin.group('acme-team', {'plan': 'team'}); // fr_group, group_id + özellikler
 Feralin.clearGlobalProperties();
+```
+
+```dart
+final open = await Feralin.handleShortLink(uri); // iOS'ta ya da autoCaptureDeepLinks: false iken
+navigator.pushNamed(open.destination);           // ör. /urun/42
 ```
 
 ```dart

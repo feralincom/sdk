@@ -1,0 +1,53 @@
+// Feralin Capacitor Android eklentisi. Çekirdek sdks/android (com.feralin:android) içindedir; burada yalnız köprü vardır.
+// Uygulama içinde derlenirken SDK düzeylerini uygulama belirler (variables.gradle); eklenti Capacitor 8 ile aynı Java 21 düzeyini kullanır.
+buildscript {
+    repositories {
+        google()
+        mavenCentral()
+    }
+    dependencies {
+        classpath "com.android.tools.build:gradle:8.13.2"
+    }
+}
+
+apply plugin: "com.android.library"
+
+def feralinCoreVersion = "0.1.0"
+
+// Maven Central yayını BLOCKED_EXTERNAL: çekirdek, npm paketiyle gelen yerel depodan (scripts/vendor.mjs) çözülür. Çözümlemeyi
+// uygulama modülü de yaptığı için depo tüm projelere eklenir; kapsam yalnız com.feralin grubudur.
+def vendorRepo = file("maven-repo")
+if (vendorRepo.exists()) {
+    rootProject.allprojects { p ->
+        p.repositories {
+            maven {
+                url = uri(vendorRepo)
+                content { includeGroup "com.feralin" }
+            }
+        }
+    }
+}
+
+android {
+    namespace = "com.feralin.capacitor"
+    compileSdk = project.hasProperty("compileSdkVersion") ? rootProject.ext.compileSdkVersion : 36
+
+    defaultConfig {
+        minSdkVersion project.hasProperty("minSdkVersion") ? rootProject.ext.minSdkVersion : 24
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_21
+        targetCompatibility JavaVersion.VERSION_21
+    }
+}
+
+repositories {
+    google()
+    mavenCentral()
+}
+
+dependencies {
+    implementation project(":capacitor-android")
+    implementation "com.feralin:android:$feralinCoreVersion"
+}

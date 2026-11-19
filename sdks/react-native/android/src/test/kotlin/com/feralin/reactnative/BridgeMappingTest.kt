@@ -21,6 +21,20 @@ class BridgeMappingTest {
     }
 
     @Test
+    fun `kisa link hostlari cekirdege iletilir, yoksa varsayilan kalir`() {
+        assertEquals(listOf("fera.fly"), BridgeMapping.configFrom(base)!!.shortLinkHosts)
+        val config = BridgeMapping.configFrom(base + mapOf("shortLinkHosts" to listOf("fera.fly", 7, "go.marka.com")))!!
+        assertEquals(listOf("fera.fly", "go.marka.com"), config.shortLinkHosts)
+        assertEquals(listOf("fera.fly"), BridgeMapping.configFrom(base + mapOf("shortLinkHosts" to emptyList<String>()))!!.shortLinkHosts)
+    }
+
+    @Test
+    fun `kisa link sonucu JS haritasina cevrilir`() {
+        val map = BridgeMapping.shortLinkOpenToMap(com.feralin.android.ShortLinkOpen("/urun/42", "kampanya", true))
+        assertEquals(mapOf("destination" to "/urun/42", "linkCode" to "kampanya", "hasClickId" to true), map)
+    }
+
+    @Test
     fun `kopruden gelen Double alanlar tam sayiya cevrilir`() {
         val config = BridgeMapping.configFrom(base + mapOf("flushIntervalMs" to 500.0, "batchSize" to 10.0, "queueLimit" to 20.0, "sessionTimeoutMs" to 1000.0, "autoCaptureDeepLinks" to false, "debug" to true))!!
         assertEquals(500L, config.flushIntervalMs)
@@ -36,6 +50,20 @@ class BridgeMappingTest {
         assertEquals("K7M2-Q9XR4", BridgeMapping.configFrom(base + mapOf("installCode" to " K7M2-Q9XR4 "))!!.installCode)
         assertNull(BridgeMapping.configFrom(base + mapOf("installCode" to "  "))!!.installCode)
         assertNull(BridgeMapping.configFrom(base)!!.installCode)
+        assertEquals("1234567890", BridgeMapping.configFrom(base + mapOf("metaAppId" to " 1234567890 "))!!.metaAppId)
+        assertNull(BridgeMapping.configFrom(base)!!.metaAppId)
+    }
+
+    @Test
+    fun `imza anahtari cekirdege iletilir, eksik alan yapilandirma hatasidir`() {
+        val key = BridgeMapping.configFrom(base + mapOf("signingKey" to mapOf("id" to "sgn_0123456789abcdef", "secret" to "fsk_gizli_anahtar_degeri")))!!.signingKey!!
+        assertEquals("sgn_0123456789abcdef", key.id)
+        assertEquals("fsk_gizli_anahtar_degeri", key.secret)
+        assertFalse(key.toString().contains("fsk_"))
+        assertNull(BridgeMapping.configFrom(base)!!.signingKey)
+        assertNull(BridgeMapping.configFrom(base + mapOf("signingKey" to mapOf("id" to "sgn_0123456789abcdef"))))
+        assertNull(BridgeMapping.configFrom(base + mapOf("signingKey" to mapOf("id" to 5.0, "secret" to "fsk_gizli_anahtar_degeri"))))
+        assertNull(BridgeMapping.configFrom(base + mapOf("signingKey" to "sgn_0123456789abcdef")))
     }
 
     @Test
@@ -65,7 +93,7 @@ class BridgeMappingTest {
 
     @Test
     fun `durum ve gonderim sonucu haritaya cevrilir, anahtar yoktur`() {
-        val status = BridgeMapping.statusToMap(FeralinStatus(true, "@feralin/react-native", "0.1.0", 2, Consent(true, advertising = true), "a", "s", null))
+        val status = BridgeMapping.statusToMap(FeralinStatus(true, "@feralin/react-native", "0.1.0", 2, Consent(true, advertising = true), anonymousId = "a", sessionId = "s", userId = null))
         assertEquals(true, status["initialized"])
         assertEquals(2, status["queued"])
         assertEquals(mapOf("analytics" to true, "advertising" to true), status["consent"])

@@ -11,15 +11,13 @@
 | Dil | Go |
 | Paket | `github.com/feralincom/sdk/sdks/go` |
 | Sürüm | 0.1.0 |
-| Yaşam döngüsü | INTEGRATION_TESTED |
+| Yaşam döngüsü | INSTALL_VERIFIED |
 | Kaynak dizin | `sdks/go` |
-| Registry | Go modules: **BLOCKED_EXTERNAL** (gereken: Herkese açık depo github.com/feralincom/sdk ve kalıcı modül yolu github.com/feralincom/sdk/sdks/go hazır; kalan güncel içeriğin gönderimi ve sdks/go/v0.1.0 etiketi (site sahibinin onayı, docs/sdk/git-yayin-adimlari.md)) |
+| Registry | Go modules: **PUBLISHED** (sonraki adım: yeni sürümde yeni etiket (sdks/go/vX.Y.Z); etiket taşınmaz ve silinmez (sum.golang.org kalıcı saklar)) |
 | Derleme | `cd sdks/go && go build ./...` |
 | Test | `cd sdks/go && go test -count=1 ./...` |
 
 ## Kurulum
-
-Registry yayını durumu **BLOCKED_EXTERNAL**: paket henüz `Go modules` üzerinde yayınlanmış olarak doğrulanmadı; aşağıdaki adımlar kaynaktan ya da yerel pakettendir.
 
 ```bash
 go get github.com/feralincom/sdk/sdks/go@v0.1.0
@@ -105,8 +103,8 @@ defer func() {
 | source | PASS |  |
 | build | PASS |  |
 | test | PASS |  |
-| registry | BLOCKED_EXTERNAL | 17 Kasım 2026: modül yolu kalıcı (github.com/feralincom/sdk/sdks/go), herkese açık depo var; sdks/go/v0.1.0 etiketi gönderilmedi, proxy.golang.org modülü görmez. |
-| clean_install | PARTIAL | Boş modül yerel kaynağa replace ile bağlandı. FERALIN_E2E_FROM_REGISTRY=1 ile go get kipi yazıldı (etiketten, proxy.golang.org ve sum.golang.org üzerinden, replace olmadan); etiket gönderilmediği için koşmadı. Yerel Git deposu ve aynı etiketle go get, scripts/sdk-publish/verify-git-install.mjs ile geçti. |
+| registry | PASS | Git etiketi sdks/go/v0.1.0 yayında (herkese açık depo commit 84b5c99, açıklamalı etiket (18 Kasım 2026, site sahibinin onayı)). Kurulum: go get github.com/feralincom/sdk/sdks/go@v0.1.0. verify-git-install.mjs --remote: GEÇTİ (go get + go build). |
+| clean_install | PASS | 18 Kasım 2026: FERALIN_E2E_FROM_REGISTRY=1 scripts/sdk-e2e/run.mjs go: modül herkese açık etiketten indirildi (go: downloading github.com/feralincom/sdk/sdks/go v0.1.0; replace yok), tüketici bütün senaryoları geçti, outbox 9 satır, ClickHouse 5 olay tam bir kez, izinsiz 2 olay yok. |
 | event_receipt | PASS | scripts/sdk-e2e/run.mjs go: 202, outbox satırı, izinsiz red, 401, idempotency. |
 | documentation | PASS | docs/sdk/go.md: kurulum ve kullanım kod blokları README'den, yetenek ve zincir durumu yetenek dosyasından üretilir (scripts/sdk-dry-run/docs.mjs); registry yayını ve Super Admin kanıtı ayrı halkadır. |
 | super_admin_proof | NOT_STARTED |  |

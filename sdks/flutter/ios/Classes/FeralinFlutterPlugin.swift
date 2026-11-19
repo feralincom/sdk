@@ -2,8 +2,12 @@ import CryptoKit
 import Flutter
 import Foundation
 import Security
+#if canImport(AdServices)
+import AdServices
+#endif
 
-/// Yalnız kuyruk şifreleme köprüsü: AES-256-GCM anahtarı Keychain'de kalır ve Dart'a hiç geçmez.
+/// Kuyruk şifreleme köprüsü (AES-256-GCM anahtarı Keychain'de kalır ve Dart'a hiç geçmez) ve Apple Ads kesin atıf köprüsü
+/// (`getAdServicesToken`: AAAttribution.attributionToken; Apple Ads kampanyasından gelen kurulum Apple'ın kendi API'siyle kesin eşlenir).
 /// Biçim Android çekirdeği ve Android eklentisiyle aynıdır: `enc1:` + onaltılı(nonce ‖ şifreli metin ‖ etiket), ilişkilendirilmiş veri olay kimliği.
 /// Hata durumunda kanal `nil` döner; Dart tarafı olayı düz metne yazmadan bellekte tutar.
 public class FeralinFlutterPlugin: NSObject, FlutterPlugin {
@@ -21,6 +25,15 @@ public class FeralinFlutterPlugin: NSObject, FlutterPlugin {
     private let queue = DispatchQueue(label: "com.feralin.flutter.queue-crypto")
 
     public func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
+        if call.method == "getAdServicesToken" {
+            // attributionToken() eşzamanlıdır ve ağ beklemez ama ana iş parçacığını bloklamasın. iOS 14.3 öncesinde ya da framework yoksa nil:
+            // Dart tarafı dürüstçe `unsupported` der. İzin (analitik + reklam) denetimi Dart motorundadır, burada token yalnız üretilir.
+            queue.async {
+                let token = Self.adServicesToken()
+                DispatchQueue.main.async { result(token) }
+            }
+            return
+        }
         guard call.method == "encryptQueue" || call.method == "decryptQueue" else {
             result(FlutterMethodNotImplemented)
             return
@@ -37,6 +50,16 @@ public class FeralinFlutterPlugin: NSObject, FlutterPlugin {
             let value = encrypting ? Self.encrypt(first, aad: aad) : Self.decrypt(first, aad: aad)
             DispatchQueue.main.async { result(value) }
         }
+    }
+
+    /// Apple Ads atıf token'ı; desteklenmeyen sürümde ya da hata olursa nil (hata ayrıntısı Dart'a taşınmaz).
+    static func adServicesToken() -> String? {
+        #if canImport(AdServices)
+        if #available(iOS 14.3, *) {
+            return try? AAAttribution.attributionToken()
+        }
+        #endif
+        return nil
     }
 
     static func encrypt(_ plain: String, aad: String) -> String? {

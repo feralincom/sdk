@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!--
+  Feralin Roku SDK Task düğümü. roUrlTransfer yalnız Task düğümünde kullanılabilir
+  (https://developer.roku.com/dev/docs/brightscript-support); ağ, kayıt bölümü ve zamanlayıcı bu iş parçacığındadır.
+  Komutlar `command` alanına yazılır; alan alwaysNotify="true" olduğu için aynı değer art arda yazılsa da her yazım bildirilir
+  (https://developer.roku.com/dev/docs/interface). Durum `status` alanından okunur.
+-->
+<component name="FeralinTask" extends="Task">
+  <interface>
+    <field id="config" type="assocarray" />
+    <field id="command" type="assocarray" alwaysNotify="true" />
+    <field id="status" type="assocarray" />
+  </interface>
+  <script type="text/brightscript" uri="pkg:/components/feralin/FeralinCore.brs" />
+  <script type="text/brightscript" uri="pkg:/components/feralin/FeralinTask.brs" />
+</component>

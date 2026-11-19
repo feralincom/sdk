@@ -4,15 +4,17 @@ import 'dart:math';
 
 import 'attribution.dart';
 import 'event_json.dart';
+import 'event_signer.dart';
 import 'event_store.dart';
 import 'idempotency.dart';
 import 'profile.dart';
+import 'short_links.dart';
 import 'transport.dart';
 import 'types.dart';
 import 'ulid.dart';
 
 const String sdkName = 'feralin-flutter';
-const String sdkVersion = '0.2.0';
+const String sdkVersion = '0.3.0';
 
 const String _eventFirstOpen = 'app_first_open';
 const String _eventDeepLink = 'deep_link_opened';
@@ -28,6 +30,8 @@ String? _validInstallCode(String? raw) {
 }
 const String _propFollowUp = 'consent_followup';
 const String _propFirstOpenAt = 'first_open_at';
+const String _propInstallStore = 'install_store';
+const String _propEmulator = 'device_emulator';
 const String _keyReferrerChecked = 'referrer_checked';
 const String _keyDeferredDeepLink = 'deferred_deep_link';
 const String _keyFollowUpId = 'referrer_followup_event_id';
@@ -64,6 +68,15 @@ typedef InstallReferrerReader = Future<AttributionParams?> Function();
 /// iOS AdServices token okuyucusu: yerel köprü yoksa `null` (unsupported), Apple hatasında fırlatır.
 typedef AdServicesTokenReader = Future<String?> Function();
 
+/// Meta Install Referrer zarfını okur (Android yerel eklentisi); yoksa `null`.
+typedef MetaReferrerReader = Future<String?> Function(String appId);
+
+/// Kurulum mağazası sınıfını okur (Android yerel eklentisi); platformda yoksa `null`.
+typedef InstallStoreReader = Future<String?> Function();
+
+/// Uygulamanın emülatörde çalışıp çalışmadığını okur (Android yerel eklentisi); bilinmiyorsa `null`.
+typedef EmulatorReader = Future<bool?> Function();
+
 /// SDK çekirdeği (Flutter içe aktarmaz). Davranış Web ve Android SDK ile aynıdır: izin yoksa olay üretilmez ve
 /// gönderilmez, izin reddedilince kuyruk silinir, izin bekleniyorsa kuyruk bekletilir. Depo yazımları tek sırada
 /// yürür; HTTP bu sıranın dışındadır, böylece izin reddi süren bir isteği beklemez.
@@ -77,6 +90,10 @@ class FeralinEngine {
     required InstallReferrerReader referrer,
     required AppContext Function() appContext,
     AdServicesTokenReader? adServicesToken,
+    MetaReferrerReader? metaReferrer,
+    InstallStoreReader? installStore,
+    EmulatorReader? emulator,
+    ShortLinkFetcher? shortLinkFetcher,
     Scheduler? scheduler,
     int Function()? clock,
     Random? random,
@@ -86,6 +103,10 @@ class FeralinEngine {
        _referrer = referrer,
        _appContext = appContext,
        _adServicesToken = adServicesToken ?? (() async => null),
+       _metaReferrer = metaReferrer ?? ((_) async => null),
+       _installStore = installStore ?? (() async => null),
+       _emulator = emulator ?? (() async => null),
+       _shortLinkFetcher = shortLinkFetcher ?? ioShortLinkFetch,
        _scheduler =
            scheduler ?? ((delay, task) => _TimerTask(Timer(delay, task))),
        _clock = clock ?? (() => DateTime.now().millisecondsSinceEpoch),
@@ -109,6 +130,10 @@ class FeralinEngine {
   final InstallReferrerReader _referrer;
   final AppContext Function() _appContext;
   final AdServicesTokenReader _adServicesToken;
+  final MetaReferrerReader _metaReferrer;
+  final InstallStoreReader _installStore;
+  final EmulatorReader _emulator;
+  final ShortLinkFetcher _shortLinkFetcher;
   final Scheduler _scheduler;
   final int Function() _clock;
   final Random _random;
@@ -294,6 +319,7 @@ class FeralinEngine {
       }
       _pinnedBatch = null;
       _deferredLink = null;
+      lastShortLink = null;
       _linkEvidence = null;
       _deferredDeepLinkEpoch++;
       await _store.remove(_keyDeferredDeepLink);
@@ -476,10 +502,53 @@ class FeralinEngine {
     return id;
   }
 
+  /// Son çözümlenen kısa link; bellekte tutulur, diske yazılmaz.
+  ResolvedShortLink? lastShortLink;
+
   /// Derin bağlantı URL'ini işler. Ham URL saklanmaz; izin beklenirken temizlenmiş hali yalnız bellekte tutulur.
-  Future<void> handleLink(String? url) => _run(() async {
+  ///
+  /// Fera Fly kısa linki (App Link / Universal Link doğrudan açıldı, yönlendirici atlandı) önce yönlendiriciden çözümlenir; dönen değer
+  /// çözümlenen linktir. Adreste zaten tıklama kimliği varsa (yönlendiriciden geçmiş), kısa link değilse, analitik izni yoksa ya da
+  /// çözümleme başarısızsa `null` döner ve adres olduğu gibi işlenir.
+  Future<ResolvedShortLink?> handleLink(String? url) async {
     final link = DeepLink.parse(url);
-    if (link == null) return;
+    if (link == null) return null;
+    Map<String, String>? resolveHeaders;
+    await _run(() async {
+      if (_analyticsAllowed &&
+          link.params.frClick == null &&
+          ShortLinks.isShortLink(url, config.shortLinkHosts)) {
+        resolveHeaders = ShortLinks.headers(
+          ios: platform.endsWith('_ios'),
+          attribution: _advertisingAllowed,
+        );
+      } else {
+        await _acceptLink(link);
+      }
+    });
+    final headers = resolveHeaders;
+    if (headers == null) return null;
+    // Ağ isteği görev sırasının dışında yapılır: olay kuyruğu en çok 5 sn beklemesin.
+    ResolvedShortLink? resolved;
+    try {
+      final response = await _shortLinkFetcher(url!, headers);
+      if (response != null && response.status == 200) {
+        resolved = ShortLinks.parse(response.body);
+      }
+    } on Object catch (error) {
+      _log('kısa link çözümlenemedi: ${error.runtimeType}');
+    }
+    await _run(() async {
+      lastShortLink = resolved;
+      final synthetic = resolved == null
+          ? null
+          : ShortLinks.syntheticUrl(url!, resolved);
+      await _acceptLink(DeepLink.parse(synthetic) ?? link);
+    });
+    return resolved;
+  }
+
+  Future<void> _acceptLink(DeepLink link) async {
     final at = _clock();
     final current = _consent;
     if (current == null) {
@@ -487,7 +556,7 @@ class FeralinEngine {
     } else if (current.analytics) {
       await _emitDeepLink(link, at);
     }
-  });
+  }
 
   Future<void> _emitDeepLink(DeepLink link, int at) async {
     final props = <String, Object?>{};
@@ -544,7 +613,11 @@ class FeralinEngine {
       final params = await _referrer();
       // Çıkış süren okumadan önceki yolu geçersiz kılar: okuma bitince başka kullanıcıya teslim edilmesin.
       if (epoch != _deferredDeepLinkEpoch && params != null) {
-        return AttributionParams(frClick: params.frClick, utm: params.utm);
+        return AttributionParams(
+          frClick: params.frClick,
+          utm: params.utm,
+          source: params.source,
+        );
       }
       return params;
     } on Object catch (error) {
@@ -566,13 +639,36 @@ class FeralinEngine {
         params != null &&
         !params.isEmpty &&
         !params.isPlayOrganicDefault) {
-      props[_propSource] = AttributionSource.playInstallReferrer;
+      props[_propSource] = params.source;
       params.writeTo(props);
     } else if (allowed && link != null) {
       props[_propSource] = linkSource;
       link.writeTo(props);
     } else {
       props[_propSource] = AttributionSource.none;
+    }
+    final metaAppId = config.metaAppId;
+    if (allowed && metaAppId != null) {
+      // Meta reklamından gelen kurulumun şifreli kampanya verisi (Facebook/Instagram uygulaması); sunucu projenin anahtarıyla çözer.
+      try {
+        final meta = await _metaReferrer(metaAppId);
+        if (meta != null && meta.isNotEmpty) props['meta_install_referrer'] = meta;
+      } on Object catch (error) {
+        _log('meta referrer okunamadı: ${error.runtimeType}');
+      }
+    }
+    // Kurulum mağazası kişisel veri ya da atıf kanıtı değildir: reklam izninden bağımsız eklenir. Okuma hatası ilk açılışı durdurmaz.
+    try {
+      final store = InstallStore.sanitize(await _installStore());
+      if (store != null) props[_propInstallStore] = store;
+    } on Object catch (error) {
+      _log('kurulum mağazası okunamadı: ${error.runtimeType}');
+    }
+    // Emülatör işareti yalnız `true` ise eklenir; cihaz kimliği değildir. Okuma hatası ilk açılışı durdurmaz.
+    try {
+      if (await _emulator() == true) props[_propEmulator] = true;
+    } on Object catch (error) {
+      _log('emülatör denetimi yapılamadı: ${error.runtimeType}');
     }
     // Dosya deposunda işlem yoktur. Kimlik olaydan önce yazılır: süreç arada ölürse aynı event_id ile
     // yeniden üretilir, kuyruk ve sunucu aynı kimliği tek olay sayar.
@@ -613,7 +709,7 @@ class FeralinEngine {
     }
     final at = _clock();
     final props = <String, Object?>{
-      _propSource: AttributionSource.playInstallReferrer,
+      _propSource: params.source,
       _propFollowUp: true,
     };
     final firstOpenAt = int.tryParse(_store.get(_keyFirstOpenAt) ?? '');
@@ -643,6 +739,18 @@ class FeralinEngine {
     // Yapılandırmadaki kod ilk olaya eklenir; uygulamanın olay özelliği olarak verdiği kod dokunulmadan geçer.
     final code = _pendingInstallCode;
     if (code != null) safeProperties[_propInstallCode] = code;
+    // Atıf olayları imzalanır (anahtar verildiyse): imza olayın kimliğine ve kurulum kimliğine bağlıdır.
+    final key = config.signingKey;
+    if (key != null && (name == _eventFirstOpen || name == _eventDeepLink)) {
+      safeProperties[EventSigner.property] = EventSigner.sign(
+        keyId: key.id,
+        secret: key.secret,
+        atSeconds: at ~/ 1000,
+        eventId: id,
+        eventName: name,
+        anonymousId: _anonymousId ?? '',
+      );
+    }
     final payload = encodeEvent(
       eventId: id,
       eventName: name,

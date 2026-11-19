@@ -25,8 +25,8 @@ import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicBoolean
 
 /**
- * Yalnız platform köprüsü: Play Install Referrer, App Link niyetleri, ağ durumu, yedekleme dışı dizin ve kuyruk şifreleme anahtarı
- * (Keystore). Kuyruk, izin ve gönderim Dart çekirdeğindedir. Hiçbir hata uygulamaya sızmaz; kanal yanıtı `null` olur.
+ * Yalnız platform köprüsü: Play ve Huawei AppGallery kurulum yönlendiricisi, emülatör işareti, kurulum mağazası, App Link niyetleri, ağ durumu, yedekleme dışı dizin ve kuyruk
+ * şifreleme anahtarı (Keystore). Kuyruk, izin ve gönderim Dart çekirdeğindedir. Hiçbir hata uygulamaya sızmaz; kanal yanıtı `null` olur.
  */
 class FeralinFlutterPlugin :
     FlutterPlugin,
@@ -95,6 +95,12 @@ class FeralinFlutterPlugin :
                 "getAppInfo" -> result.success(appInfo())
                 "getInitialLink" -> result.success(activity?.intent?.let(::consumeLink))
                 "readInstallReferrer" -> readInstallReferrer(1, result)
+                // Yalnız kapalı listedeki mağaza sınıfı döner; kurucu paket adı kanala verilmez.
+                "getInstallStore" -> result.success(context?.let(InstallStore::read))
+                // Yalnız evet/hayır döner; `Build` alanları kanala verilmez.
+                "isEmulator" -> result.success(EmulatorCheck.read())
+                "readHuaweiInstallReferrer" -> readHuaweiInstallReferrer(result)
+                "readMetaInstallReferrer" -> readMetaInstallReferrer(call.argument<String>("appId"), result)
                 "encryptQueue" -> queueCrypto(call, result) { plain, aad -> queueCipher.encrypt(plain, aad) }
                 "decryptQueue" -> queueCrypto(call, result) { stored, aad -> queueCipher.decrypt(stored, aad) }
                 "setNetworkListening" -> {
@@ -224,6 +230,23 @@ class FeralinFlutterPlugin :
         })
     }
 
+    /**
+     * Huawei AppGallery kurulum yönlendiricisi: izin listesinden geçmiş harita ya da `null` (kanıt yok). İçerik sağlayıcı sorgusu IPC
+     * olduğu için ana iş parçacığında yapılmaz. Dart yalnız reklam ölçümü izni açıkken ve Play kanıt vermediğinde çağırır.
+     */
+    private fun readHuaweiInstallReferrer(result: MethodChannel.Result) {
+        val app = context ?: return result.success(null)
+        background.execute {
+            val value = try {
+                HuaweiInstallReferrer(app).read()
+            } catch (t: Throwable) {
+                Log.w(TAG, "huawei referrer okunamadı: ${t.javaClass.simpleName}")
+                null
+            }
+            mainHandler.post { result.success(value) }
+        }
+    }
+
     private fun setNetworkListening(enabled: Boolean) {
         val manager = context?.getSystemService(ConnectivityManager::class.java) ?: return
         val current = networkCallback
@@ -257,5 +280,51 @@ class FeralinFlutterPlugin :
         const val MAX_REFERRER_ATTEMPTS = 3
         const val REFERRER_RETRY_MS = 2_000L
         const val REFERRER_TIMEOUT_MS = 8_000L
+    }
+
+    /**
+     * Meta Install Referrer: Facebook, Instagram ve Facebook Lite sağlayıcıları sorgulanır, en yeni etkileşimin zarfı döner
+     * (`{"r","ct","ts","p"}`; Android SDK ile aynı biçim). İçerik şifrelidir, burada açılmaz. IPC olduğu için ana iş parçacığında yapılmaz.
+     */
+    private fun readMetaInstallReferrer(appId: String?, result: MethodChannel.Result) {
+        val ctx = context
+        if (ctx == null || appId == null || !Regex("^[0-9]{5,20}$").matches(appId)) {
+            result.success(null)
+            return
+        }
+        Thread {
+            val providers = listOf(
+                "facebook" to "com.facebook.katana.provider.InstallReferrerProvider",
+                "instagram" to "com.instagram.contentprovider.InstallReferrerProvider",
+                "facebook_lite" to "com.facebook.lite.provider.InstallReferrerProvider",
+            )
+            var best: org.json.JSONObject? = null
+            var bestTs = -1L
+            for ((provider, authority) in providers) {
+                try {
+                    ctx.contentResolver.query(android.net.Uri.parse("content://$authority/$appId"), arrayOf("install_referrer", "is_ct", "actual_timestamp"), null, null, null)?.use { cursor ->
+                        if (!cursor.moveToFirst()) return@use
+                        val ri = cursor.getColumnIndex("install_referrer")
+                        if (ri < 0 || cursor.isNull(ri)) return@use
+                        val referrer = cursor.getString(ri)
+                        if (referrer.isNullOrBlank() || referrer.length > 7_000) return@use
+                        val ci = cursor.getColumnIndex("is_ct")
+                        val ti = cursor.getColumnIndex("actual_timestamp")
+                        val ts = if (ti >= 0 && !cursor.isNull(ti)) cursor.getLong(ti) else 0L
+                        if (ts > bestTs) {
+                            val json = org.json.JSONObject().put("r", referrer).put("p", provider)
+                            if (ci >= 0 && !cursor.isNull(ci)) json.put("ct", cursor.getInt(ci))
+                            if (ts > 0) json.put("ts", ts)
+                            best = json
+                            bestTs = ts
+                        }
+                    }
+                } catch (_: Exception) {
+                    // Uygulama yüklü değil ya da sağlayıcı izin vermedi: kanıt yoktur.
+                }
+            }
+            val value = best?.toString()
+            android.os.Handler(android.os.Looper.getMainLooper()).post { result.success(value) }
+        }.start()
     }
 }

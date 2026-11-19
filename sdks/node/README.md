@@ -75,7 +75,7 @@ process.once("SIGTERM", () => void feralin.close());
 ```ts
 const feralin = new FeralinClient({
   projectKey: process.env.FERALIN_PROJECT_KEY!,
-  collectUrl: "https://collect.feralin.com",
+  collectUrl: "https://feralin.com/collect",
   storageDirectory: "/var/lib/uygulama/feralin-queue",
   storageMaxBytes: 10 * 1024 * 1024, // varsayılan 10 MiB
   storageMaxAgeMs: 7 * 24 * 60 * 60 * 1000, // varsayılan 7 gün, en çok 90 gün

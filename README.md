@@ -2,7 +2,7 @@
 
 Feralin is a privacy-first analytics and attribution platform for websites, mobile apps, games and servers: <https://feralin.com>
 
-This repository holds the client SDKs, their documentation and the public API contract. It is a snapshot exported from the Feralin source tree (commit `587b09774de8`); the product itself (API, panel, collectors) is not in this repository.
+This repository holds the client SDKs, their documentation and the public API contract. It is a snapshot exported from the Feralin source tree (commit `5be5fcb4ce30`); the product itself (API, panel, collectors) is not in this repository.
 
 - User guide: <https://feralin.com/en/docs/guide>
 - API guide: <https://feralin.com/en/developers/guide>
@@ -33,7 +33,7 @@ Status values are the project's own evidence levels: `INTEGRATION_TESTED` means 
 | PHP | `feralin/feralin-php` | 0.1.0 | INTEGRATION_TESTED | [sdks/php](sdks/php) |
 | Laravel | `feralin/feralin-laravel` | 0.1.0 | INTEGRATION_TESTED | [sdks/php-laravel](sdks/php-laravel) |
 | Symfony | `feralin/feralin-symfony` | 0.1.0 | INTEGRATION_TESTED | [sdks/php-symfony](sdks/php-symfony) |
-| Go | `github.com/feralincom/sdk/sdks/go` | 0.1.0 | INTEGRATION_TESTED | [sdks/go](sdks/go) |
+| Go | `github.com/feralincom/sdk/sdks/go` | 0.1.0 | INSTALL_VERIFIED | [sdks/go](sdks/go) |
 | C# / .NET / ASP.NET | `Feralin.Sdk, Feralin.Sdk.AspNetCore` | 0.1.0 | INTEGRATION_TESTED | [sdks/dotnet](sdks/dotnet) |
 | Node.js | `@feralin/node` | 0.1.0 | INSTALL_VERIFIED | [sdks/node](sdks/node) |
 | Express | `@feralin/express` | 0.1.0 | INSTALL_VERIFIED | [sdks/node-express](sdks/node-express) |
@@ -41,12 +41,12 @@ Status values are the project's own evidence levels: `INTEGRATION_TESTED` means 
 | Python | `feralin` | 0.1.0 | INTEGRATION_TESTED | [sdks/python](sdks/python) |
 | Django | `feralin-django` | 0.1.0 | INTEGRATION_TESTED | [sdks/python-django](sdks/python-django) |
 | FastAPI | `feralin-fastapi` | 0.1.0 | INTEGRATION_TESTED | [sdks/python-fastapi](sdks/python-fastapi) |
-| Dart / Flutter | `feralin_flutter` | 0.2.0 | INTEGRATION_TESTED | [sdks/flutter](sdks/flutter) |
+| Dart / Flutter | `feralin_flutter` | 0.3.0 | INTEGRATION_TESTED | [sdks/flutter](sdks/flutter) |
 | Kotlin / Android | `com.feralin:android` | 0.1.0 | INTEGRATION_TESTED | [sdks/android](sdks/android) |
-| Swift / iOS / macOS | `Feralin` | 0.2.0 | INTEGRATION_TESTED | [sdks/swift](sdks/swift) |
+| Swift / iOS / macOS | `Feralin` | 0.3.0 | INTEGRATION_TESTED | [sdks/swift](sdks/swift) |
 | Java / Spring | `com.feralin:java, com.feralin:feralin-spring-boot-starter` | 0.1.0 | INTEGRATION_TESTED | [sdks/java](sdks/java) |
-| React Native | `@feralin/react-native` | 0.2.0 | INSTALL_VERIFIED | [sdks/react-native](sdks/react-native) |
-| Unity C# | `com.feralin.unity` | 0.2.0 | INTEGRATION_TESTED | [sdks/unity](sdks/unity) |
+| React Native | `@feralin/react-native` | 0.3.0 | INSTALL_VERIFIED | [sdks/react-native](sdks/react-native) |
+| Unity C# | `com.feralin.unity` | 0.3.0 | INTEGRATION_TESTED | [sdks/unity](sdks/unity) |
 | Unreal C++ | `Feralin` | 0.2.0 | IMPLEMENTING | [sdks/unreal](sdks/unreal) |
 | Godot GDScript | `feralin` | 0.2.0 | INTEGRATION_TESTED | [sdks/godot](sdks/godot) |
 | Rust | `feralin, tauri-plugin-feralin` | 0.1.0 | INTEGRATION_TESTED | [sdks/rust](sdks/rust) |
@@ -60,6 +60,9 @@ Status values are the project's own evidence levels: `INTEGRATION_TESTED` means 
 | Shopify | `-` | - | INTEGRATION_TESTED | [docs/sdk/no-code.md](docs/sdk/no-code.md) |
 | Wix / Webflow / Bubble / no-code | `-` | - | INTEGRATION_TESTED | [docs/sdk/no-code.md](docs/sdk/no-code.md) |
 | MCP stdio köprüsü | `@feralin/mcp-server` | 0.1.0 | REGISTRY_VERIFIED | [packages/mcp-server](packages/mcp-server) |
+| Cordova | `cordova-plugin-feralin` | 0.1.0 | UNIT_TESTED | [sdks/cordova](sdks/cordova) |
+| Capacitor | `@feralin/capacitor` | 0.1.0 | UNIT_TESTED | [sdks/capacitor](sdks/capacitor) |
+| Roku (BrightScript) | `-` | 0.1.0 | UNIT_TESTED | [sdks/roku](sdks/roku) |
 
 ## Install from this repository
 
@@ -68,10 +71,11 @@ Some SDKs install straight from a Git tag of this repository instead of a packag
 | SDK | How | Tag |
 |---|---|---|
 | Go | `go get github.com/feralincom/sdk/sdks/go@v0.1.0` | `sdks/go/v0.1.0` |
-| Swift / iOS / macOS | `.package(url: "https://github.com/feralincom/sdk.git", exact: "0.2.0")`, product `Feralin` (root `Package.swift`) | `0.2.0` |
-| Unity C# | `https://github.com/feralincom/sdk.git?path=sdks/unity#sdks/unity/v0.2.0` in Package Manager → Add package from git URL | `sdks/unity/v0.2.0` |
+| Swift / iOS / macOS | `.package(url: "https://github.com/feralincom/sdk.git", exact: "0.3.0")`, product `Feralin` (root `Package.swift`) | `0.3.0` |
+| Unity C# | `https://github.com/feralincom/sdk.git?path=sdks/unity#sdks/unity/v0.3.0` in Package Manager → Add package from git URL | `sdks/unity/v0.3.0` |
 | C / C++ native | `FetchContent_Declare` with `GIT_TAG sdks/cpp/v0.1.0` and `SOURCE_SUBDIR sdks/cpp` | `sdks/cpp/v0.1.0` |
 | Godot GDScript | copy `sdks/godot/addons/feralin` from the tag into your project's `addons/` | `sdks/godot/v0.2.0` |
+| Dart / Flutter | pubspec.yaml: `feralin_flutter: { git: { url: https://github.com/feralincom/sdk.git, path: sdks/flutter, ref: sdks/flutter/v0.3.0 } }` | `sdks/flutter/v0.3.0` |
 
 Each SDK README has the full steps.
 

@@ -18,6 +18,46 @@ namespace Feralin.Unity
         /// Android'de Play Install Referrer kaynağı. Diğer platformlarda referrer kavramı yoktur: ilk açılış yine bir kez sayılsın diye
         /// hemen <c>null</c> (kanıt yok) döndüren kaynak verilir; olay <c>attribution_source=none</c> taşır.
         /// </summary>
+        /// <summary>Meta Install Referrer okuyucusu: Android oyuncuda Java köprüsü, diğer platformlarda <c>null</c>.</summary>
+        public static IMetaReferrerSource CreateMetaReferrerSource()
+        {
+#if UNITY_ANDROID && !UNITY_EDITOR
+            return new AndroidMetaReferrerSource();
+#else
+            return null;
+#endif
+        }
+
+        /// <summary>Kurulum mağazası okuyucusu: Android oyuncuda <c>PackageManager</c>, diğer platformlarda <c>null</c> (alan eklenmez).</summary>
+        public static IInstallStoreSource CreateInstallStoreSource()
+        {
+#if UNITY_ANDROID && !UNITY_EDITOR
+            return new AndroidInstallStoreSource();
+#else
+            return null;
+#endif
+        }
+
+        /// <summary>Emülatör okuyucusu: Android oyuncuda <c>android.os.Build</c> alanları, diğer platformlarda <c>null</c> (alan eklenmez).</summary>
+        public static IEmulatorSource CreateEmulatorSource()
+        {
+#if UNITY_ANDROID && !UNITY_EDITOR
+            return new AndroidEmulatorSource();
+#else
+            return null;
+#endif
+        }
+
+        /// <summary>Huawei AppGallery kurulum yönlendiricisi okuyucusu: Android oyuncuda Java köprüsü, diğer platformlarda <c>null</c>.</summary>
+        public static IHuaweiReferrerSource CreateHuaweiReferrerSource()
+        {
+#if UNITY_ANDROID && !UNITY_EDITOR
+            return new AndroidHuaweiReferrerSource();
+#else
+            return null;
+#endif
+        }
+
         public static IInstallReferrerSource CreateInstallReferrerSource()
         {
 #if UNITY_ANDROID && !UNITY_EDITOR
@@ -44,6 +84,146 @@ namespace Feralin.Unity
             return IosNative.ReadTrackingStatus();
 #else
             return TrackingStatus.Unavailable;
+#endif
+        }
+    }
+
+    /// <summary>Meta Install Referrer: Android'de <c>FeralinMetaReferrer.java</c> ile Facebook/Instagram/Facebook Lite sağlayıcıları okunur.</summary>
+    internal sealed class AndroidMetaReferrerSource : IMetaReferrerSource
+    {
+        public string Read(string appId)
+        {
+#if UNITY_ANDROID && !UNITY_EDITOR
+            AndroidJNI.AttachCurrentThread();
+            try
+            {
+                using (var player = new AndroidJavaClass("com.unity3d.player.UnityPlayer"))
+                using (var activity = player.GetStatic<AndroidJavaObject>("currentActivity"))
+                using (var context = activity.Call<AndroidJavaObject>("getApplicationContext"))
+                using (var bridge = new AndroidJavaClass("com.feralin.unity.FeralinMetaReferrer"))
+                {
+                    return bridge.CallStatic<string>("read", context, appId);
+                }
+            }
+            catch (Exception)
+            {
+                // Sağlayıcı yok ya da JNI hatası: kanıt yoktur.
+                return null;
+            }
+#else
+            return null;
+#endif
+        }
+    }
+
+    /// <summary>
+    /// Kurulum mağazası: uygulamayı kuran paketi <c>PackageManager</c> ile okur (Android 11+ <c>getInstallSourceInfo</c>, öncesi
+    /// <c>getInstallerPackageName</c>) ve <see cref="InstallStore.Classify"/> ile kapalı listeye indirger. Paket adı bu sınıfın dışına çıkmaz.
+    /// Okunamazsa <c>unknown</c> (Android SDK ile aynı). Cihazda sınanmamıştır: Android oyuncu derlemesi bu depoda yoktur.
+    /// </summary>
+    internal sealed class AndroidInstallStoreSource : IInstallStoreSource
+    {
+        public string Read()
+        {
+#if UNITY_ANDROID && !UNITY_EDITOR
+            string installer = null;
+            AndroidJNI.AttachCurrentThread();
+            try
+            {
+                using (var player = new AndroidJavaClass("com.unity3d.player.UnityPlayer"))
+                using (var activity = player.GetStatic<AndroidJavaObject>("currentActivity"))
+                using (var context = activity.Call<AndroidJavaObject>("getApplicationContext"))
+                using (var manager = context.Call<AndroidJavaObject>("getPackageManager"))
+                using (var version = new AndroidJavaClass("android.os.Build$VERSION"))
+                {
+                    var packageName = context.Call<string>("getPackageName");
+                    if (version.GetStatic<int>("SDK_INT") >= 30)
+                    {
+                        using (var info = manager.Call<AndroidJavaObject>("getInstallSourceInfo", packageName))
+                        {
+                            installer = info.Call<string>("getInstallingPackageName");
+                        }
+                    }
+                    else
+                    {
+                        installer = manager.Call<string>("getInstallerPackageName", packageName);
+                    }
+                }
+            }
+            catch (Exception)
+            {
+                // Paket bilgisi okunamadı ya da JNI hatası: kurucu bilinmiyor sayılır.
+                installer = null;
+            }
+            return InstallStore.Classify(installer);
+#else
+            return null;
+#endif
+        }
+    }
+
+    /// <summary>
+    /// Emülatör işareti: <c>android.os.Build</c> alanlarını okur ve <see cref="EmulatorCheck.IsEmulator"/> ile tek bir evet/hayıra indirger.
+    /// Alanların kendisi bu sınıfın dışına çıkmaz. Okunamazsa <c>false</c>. Cihazda sınanmamıştır: Android oyuncu derlemesi bu depoda yoktur.
+    /// </summary>
+    internal sealed class AndroidEmulatorSource : IEmulatorSource
+    {
+        public bool Read()
+        {
+#if UNITY_ANDROID && !UNITY_EDITOR
+            AndroidJNI.AttachCurrentThread();
+            try
+            {
+                using (var build = new AndroidJavaClass("android.os.Build"))
+                {
+                    return EmulatorCheck.IsEmulator(
+                        build.GetStatic<string>("FINGERPRINT"),
+                        build.GetStatic<string>("MODEL"),
+                        build.GetStatic<string>("MANUFACTURER"),
+                        build.GetStatic<string>("BRAND"),
+                        build.GetStatic<string>("DEVICE"),
+                        build.GetStatic<string>("PRODUCT"),
+                        build.GetStatic<string>("HARDWARE"));
+                }
+            }
+            catch (Exception)
+            {
+                // JNI hatası: işaret üretilmez.
+                return false;
+            }
+#else
+            return false;
+#endif
+        }
+    }
+
+    /// <summary>
+    /// Huawei AppGallery kurulum yönlendiricisi: Android'de <c>FeralinHuaweiReferrer.java</c> AppGallery içerik sağlayıcısının yalnız
+    /// <c>referrer</c> sütununu okur. Ham dizgi çekirdekte izin listesinden geçer. Cihazda sınanmamıştır.
+    /// </summary>
+    internal sealed class AndroidHuaweiReferrerSource : IHuaweiReferrerSource
+    {
+        public string Read()
+        {
+#if UNITY_ANDROID && !UNITY_EDITOR
+            AndroidJNI.AttachCurrentThread();
+            try
+            {
+                using (var player = new AndroidJavaClass("com.unity3d.player.UnityPlayer"))
+                using (var activity = player.GetStatic<AndroidJavaObject>("currentActivity"))
+                using (var context = activity.Call<AndroidJavaObject>("getApplicationContext"))
+                using (var bridge = new AndroidJavaClass("com.feralin.unity.FeralinHuaweiReferrer"))
+                {
+                    return bridge.CallStatic<string>("read", context);
+                }
+            }
+            catch (Exception)
+            {
+                // AppGallery yok ya da JNI hatası: kanıt yoktur.
+                return null;
+            }
+#else
+            return null;
 #endif
         }
     }

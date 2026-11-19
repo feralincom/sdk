@@ -21,6 +21,19 @@ function nowIso() { return new Date().toISOString(); }
 /** Bu kadar hareketsizlikten sonra gelen olay yeni oturum başlatır. */
 export const SESSION_IDLE_MS = 30 * 60_000;
 const SESSION_KEY = "fr_sid";
+
+/**
+ * Sayfada görünür geçen süre olayı: `{ visible_ms }`, sayfa görüntülemesi başına birden çok kez gidebilir (sunucu oturum ve sayfa
+ * başına toplar). Olayın sayfa adresi, başlığı ve oturumu ölçülen `page_view` anındaki değerlerdir, gönderim anındakiler değil.
+ */
+export const PAGE_ENGAGEMENT_EVENT_NAME = "fr_page_engagement";
+/** Tek olayda bildirilebilecek en uzun görünür süre (1 saat); üstü bu değere kırpılır. */
+export const PAGE_ENGAGEMENT_MAX_MS = 3_600_000;
+/** Bundan kısa birikim gönderilmez; aynı sayfa görüntülemesinin sonraki gönderimine devreder. */
+export const PAGE_ENGAGEMENT_MIN_MS = 1_000;
+/** Ölçülen sayfa görüntülemesi: `page_view` anındaki bağlam ve oturum, biriken görünür süre ve saatin çalışmaya başladığı an (gizliyken null). */
+type MeasuredPage = { context: UtpEvent["context"]; sessionId: string; ms: number; since: number | null };
+function isVisible() { return document.visibilityState === "visible"; }
 function hasWindow() { return typeof window !== "undefined" && typeof document !== "undefined"; }
 function sanitizeProps(p?: Record<string, unknown>): Record<string, unknown> | undefined {
   if (!p) return undefined;
@@ -164,6 +177,8 @@ export class Feralin {
   private unbindPageEvents?: () => void;
   /** `setGlobalProperties` haritası: yalnız bellekte tutulur, depoya yazılmaz; `fr_` dışındaki her olaya eklenir. */
   private globals = new Map<string, ProfileValue>();
+  /** Görünür süresi ölçülen son sayfa görüntülemesi; yalnız bellekte tutulur, izin geri çekilince ve `reset` ile silinir. */
+  private measured?: MeasuredPage;
 
   constructor(options: FeralinOptions) {
     if (!options?.projectKey || !options?.collectUrl) throw new Error("feralin: projectKey ve collectUrl zorunlu");
@@ -191,8 +206,12 @@ export class Feralin {
     }
     if (hasWindow()) {
       this.trackAutoPage();
-      const onPageHide = () => { void this.flush(true); };
-      const onVisibilityChange = () => { if (document.visibilityState === "hidden") void this.flush(true); };
+      // Süre olayı gönderimden önce kuyruğa girer: sayfa kapanışındaki aynı istekle çıkar.
+      const onPageHide = () => { this.emitEngagement(true); void this.flush(true); };
+      const onVisibilityChange = () => {
+        if (document.visibilityState === "hidden") { this.emitEngagement(true); void this.flush(true); }
+        else if (this.measured && this.measured.since === null && isVisible()) this.measured.since = Date.now();
+      };
       window.addEventListener("pagehide", onPageHide);
       document.addEventListener("visibilitychange", onVisibilityChange);
       this.unbindPageEvents = () => {
@@ -230,6 +249,26 @@ export class Feralin {
     this.anonymousId = ulid();
     this.sessionId = ulid();
     this.lastActivityMs = Date.now();
+    // Ölçülen sayfa eski oturuma aittir; yeni kimlikle bağ kurulmasın diye birikim de silinir.
+    this.measured = undefined;
+  }
+  /**
+   * Biriken görünür süreyi `fr_page_engagement` olarak kuyruğa yazar. `stop` saati durdurur (sayfa gizlendi); aksi hâlde saat
+   * çalışmayı sürdürür. Bir saniyenin altındaki birikim gönderilmez, sonraki gönderime kalır.
+   */
+  private emitEngagement(stop: boolean) {
+    const m = this.measured;
+    if (!m) return;
+    if (m.since !== null) {
+      const now = Date.now();
+      // Sistem saati geri alınırsa negatif süre eklenmez.
+      m.ms += Math.max(0, now - m.since);
+      m.since = stop ? null : now;
+    }
+    if (m.ms < PAGE_ENGAGEMENT_MIN_MS) return;
+    const visibleMs = Math.min(PAGE_ENGAGEMENT_MAX_MS, Math.round(m.ms));
+    m.ms = 0;
+    this.enqueue(PAGE_ENGAGEMENT_EVENT_NAME, { visible_ms: visibleMs }, m);
   }
   private readAnonymousId() { try { return this.storage.get("fr_aid"); } catch { return null; } }
   /** Depoyu izne eşitler: izin varsa kimlik yazılır, yoksa silinir. Depolama hatası izlemeyi durdurmaz. */
@@ -365,10 +404,20 @@ export class Feralin {
   }
 
   track(eventName: string, properties?: Record<string, unknown>): UtpEvent | null {
+    const measures = eventName === "page_view" && this.opts.pageEngagement !== false && hasWindow();
+    // Tek sayfalı uygulamada adres çoktan değişmiştir: önceki sayfanın süresi, hatırlanan bağlamıyla yeni görüntülemeden önce yazılır.
+    if (measures) this.emitEngagement(false);
+    const e = this.enqueue(eventName, properties);
+    if (measures && e) this.measured = { context: e.context, sessionId: e.session_id as string, ms: 0, since: isVisible() ? Date.now() : null };
+    return e;
+  }
+
+  /** Olayı kurar ve kuyruğa yazar. `measured` verilirse (süre olayı) bağlam ve oturum ölçülen sayfa görüntülemesinden alınır; oturum uzatılmaz, utm eklenmez. */
+  private enqueue(eventName: string, properties?: Record<string, unknown>, measured?: MeasuredPage): UtpEvent | null {
     if (this.destroyed) { this.log("yok edilmiş örnek, olay üretilmedi", eventName); return null; }
     if (!this.consent.analytics) { this.log("consent yok, olay üretilmedi", eventName); return null; }
     if (!/^[a-z][a-z0-9_]*$/.test(eventName) || eventName.length > 100) { this.log("geçersiz olay adı", eventName); return null; }
-    this.touchSession();
+    if (!measured) this.touchSession();
     const e: UtpEvent = {
       event_id: ulid(),
       event_name: eventName,
@@ -377,7 +426,7 @@ export class Feralin {
       schema_version: 1,
       sdk: { name: SDK_NAME, version: SDK_VERSION },
       anonymous_id: this.anonymousId,
-      session_id: this.sessionId,
+      session_id: measured ? measured.sessionId : this.sessionId,
       consent: { ...this.consent },
     };
     if (this.userId) e.user_id = this.userId;
@@ -392,7 +441,9 @@ export class Feralin {
     }
     // Tıklama kimliği reklam amaçlıdır: yalnız açık reklam izniyle gider.
     if (props && this.consent.advertising !== true) delete props.fr_click;
-    if (hasWindow()) {
+    if (measured) {
+      if (measured.context) e.context = { ...measured.context };
+    } else if (hasWindow()) {
       const page = cleanPage(location.href);
       props = withUtm(props, page.utm);
       e.context = {

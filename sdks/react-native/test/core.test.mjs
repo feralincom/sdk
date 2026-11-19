@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 
 const require = createRequire(import.meta.url);
-const { createFeralin, SDK_NAME, SDK_VERSION } = require("../dist/core.js");
+const { createFeralin, pathOf, SDK_NAME, SDK_VERSION } = require("../dist/core.js");
 
 const KEY = "pk_test_rn_unit_0001";
 const CONFIG = { projectKey: KEY, collectUrl: "https://collect.example.com" };
@@ -294,4 +294,67 @@ test("kurulum eşleştirme kodu yalnız biçimi doğruysa yerel katmana iletilir
   const other = fakeNative();
   assert.equal(await createFeralin(other, "android").initialize({ ...CONFIG, installCode: "x;DROP" }), true);
   assert.equal("installCode" in other.calls[0][1], false);
+});
+
+test("imza anahtarı yerel katmana iletilir; biçimi geçersizse başlatma reddedilir", async () => {
+  const key = { id: "sgn_0123456789abcdef", secret: "fsk_gizli_anahtar_degeri" };
+  const native = fakeNative();
+  assert.equal(await createFeralin(native, "android").initialize({ ...CONFIG, signingKey: { ...key, fazladan: "x" } }), true);
+  assert.deepEqual(native.calls[0][1].signingKey, key);
+  const none = fakeNative();
+  assert.equal(await createFeralin(none, "android").initialize(CONFIG), true);
+  assert.equal("signingKey" in none.calls[0][1], false);
+  for (const bad of [{ id: "anahtar", secret: key.secret }, { id: "sgn_KISA", secret: key.secret }, { id: key.id + String.fromCharCode(10), secret: key.secret }, { id: key.id, secret: "kisa" }, { id: key.id, secret: "x".repeat(201) }, { id: key.id }, "sgn_0123456789abcdef"]) {
+    const other = fakeNative();
+    const sdk = createFeralin(other, "android");
+    assert.equal(await sdk.initialize({ ...CONFIG, signingKey: bad }), false);
+    assert.equal(other.calls.length, 0);
+  }
+});
+
+test("Meta App ID yalnız biçimi doğruysa yerel katmana iletilir", async () => {
+  const native = fakeNative();
+  assert.equal(await createFeralin(native, "android").initialize({ ...CONFIG, metaAppId: " 1234567890 " }), true);
+  assert.equal(native.calls[0][1].metaAppId, "1234567890");
+  const other = fakeNative();
+  assert.equal(await createFeralin(other, "android").initialize({ ...CONFIG, metaAppId: "abc" }), true);
+  assert.equal("metaAppId" in other.calls[0][1], false);
+});
+
+test("kısa link: Android köprüsü çözümlenen yolu verir, köprü yoksa adresin yolu döner", async () => {
+  const ios = createFeralin(undefined, "ios");
+  assert.deepEqual(await ios.handleShortLink("https://marka.fera.fly/kampanya?x=1"), { destination: "/kampanya", linkCode: null, hasClickId: false });
+
+  const native = fakeNative({
+    handleShortLink: async (url) => {
+      native.calls.push(["handleShortLink", url]);
+      return { destination: "/urun/42", linkCode: "kampanya", hasClickId: true };
+    },
+  });
+  const api = createFeralin(native, "android");
+  // Başlatılmadan köprü çağrılmaz.
+  assert.deepEqual(await api.handleShortLink("https://fera.fly/kampanya"), { destination: "/kampanya", linkCode: null, hasClickId: false });
+  await api.initialize({ ...CONFIG, shortLinkHosts: [" Fera.Fly ", "go.marka.com", "kötü host", 42, "x"] });
+  const init = native.calls.find((c) => c[0] === "initialize")[1];
+  assert.deepEqual(init.shortLinkHosts, ["fera.fly", "go.marka.com"]);
+  assert.deepEqual(await api.handleShortLink("https://fera.fly/kampanya"), { destination: "/urun/42", linkCode: "kampanya", hasClickId: true });
+  assert.deepEqual(native.calls.filter((c) => c[0] === "handleShortLink"), [["handleShortLink", "https://fera.fly/kampanya"]]);
+
+  // Köprü hata verirse ya da bozuk yanıt dönerse uygulamaya sızmaz.
+  const failing = fakeNative({ handleShortLink: async () => { throw new Error("köprü"); } });
+  const quiet = createFeralin(failing, "android");
+  await quiet.initialize(CONFIG);
+  assert.deepEqual(await quiet.handleShortLink("https://fera.fly/k"), { destination: "/k", linkCode: null, hasClickId: false });
+  const bad = createFeralin(fakeNative({ handleShortLink: async () => ({ destination: 7 }) }), "android");
+  await bad.initialize(CONFIG);
+  assert.deepEqual(await bad.handleShortLink("https://fera.fly/"), { destination: "/", linkCode: null, hasClickId: false });
+  assert.deepEqual(await bad.handleShortLink(""), { destination: "/", linkCode: null, hasClickId: false });
+});
+
+test("pathOf: sorgu ve parça atılır, bozuk girdi kök yola düşer", () => {
+  assert.equal(pathOf("https://fera.fly/a/b?c=1#d"), "/a/b");
+  assert.equal(pathOf("https://fera.fly"), "/");
+  assert.equal(pathOf("myapp://host/yol"), "/yol");
+  assert.equal(pathOf(null), "/");
+  assert.equal(pathOf("yol"), "/");
 });

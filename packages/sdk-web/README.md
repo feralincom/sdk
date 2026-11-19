@@ -16,7 +16,7 @@ Derleme aracı olmayan sitelerde betik Feralin'in kendi adresinden yüklenir: `h
   window.addEventListener("load", () => {
     feralin.initialize({
       projectKey: "pk_live_…",              // yalnız public anahtar
-      collectUrl: "https://collect.feralin.com",
+      collectUrl: "https://feralin.com/collect",
       consent: { analytics: true, advertising: false }, // consent yoksa olay üretilmez
     });
   });
@@ -24,14 +24,17 @@ Derleme aracı olmayan sitelerde betik Feralin'in kendi adresinden yüklenir: `h
 ```
 ```ts
 import { initialize, track } from "@feralin/web";
-initialize({ projectKey: "pk_live_…", collectUrl: "https://collect.feralin.com", consent: { analytics: true } });
+initialize({ projectKey: "pk_live_…", collectUrl: "https://feralin.com/collect", consent: { analytics: true } });
 track("signup_completed", { plan: "growth" });
 ```
 
 ## API
 `initialize(options)`, `page(props?)`, `track(name, props?)`, `identify(userId)`, `group(groupId, traits?)`, `setUserProperties(props)`, `setGlobalProperties(props)`, `clearGlobalProperties()`, `setConsent(consent)`, `optOut()`, `reset()`, `flush()`, `getStatus()`.
 
-Kimlik yöntemleri (UTP §8.2): `group(groupId, traits?)` → `fr_group`, `setUserProperties(props)` → `fr_user_properties`, `setGlobalProperties(props)` ve `clearGlobalProperties()`. Anahtar `^[a-zA-Z][a-zA-Z0-9_]{0,63}$`, çağrı başına ve global haritada en çok 50; değer yalnız dizge (≤256 karakter, e-posta biçiminde değil), sonlu sayı ya da mantıksal. Kişisel veriye benzeyen anahtar (e-posta, telefon, IP, ad soyad, adres, kimlik numarası, parola, doğum tarihi) ve doğrulama alanları (`verified`, `receipt` vb.) istemcide düşer. Global özellikler `fr_` dışındaki her olaya eklenir, olayın kendi özelliği aynı anahtarda ezer, `null` anahtarı siler, `reset()` temizler. Grup kimliği 1-128 karakter, `@` ve kontrol karakteri içermez. Toplayıcı yalnız projenin kullanıcı özelliği izin listesindeki anahtarları saklar (liste boşsa hiçbiri; olay yine sayılır). Global özellikler yalnız bellektedir, depoya yazılmaz.
+Kimlik yöntemleri (UTP §8.2): `group(groupId, traits?)` → `fr_group`, `setUserProperties(props)` → `fr_user_properties`, `setGlobalProperties(props)` ve `clearGlobalProperties()`. Anahtar `^[a-zA-Z][a-zA-Z0-9_]{0,63}$`, çağrı başına ve global haritada en çok 50; değer yalnız dizge (≤256 karakter, e-posta biçiminde değil), sonlu sayı ya da mantıksal. Kişisel veriye benzeyen anahtar (e-posta, telefon, IP, ad soyad, adres, kimlik numarası, parola, doğum tarihi) ve doğrulama alanları (`verified`, `receipt` vb.) istemcide düşer. Global özellikler `fr_` dışındaki her olaya eklenir, olayın kendi özelliği aynı anahtarda ezer, `null` anahtarı siler, `reset()` temizler. Grup kimliği 1-128 karakter, `@` ve kontrol karakteri içermez. Toplayıcı yalnız projenin kullanıcı özelliği izin listesindeki anahtarları saklar; liste boşsa otomatik kip: kişisel veriye benzemeyen her anahtar saklanır. Global özellikler yalnız bellektedir, depoya yazılmaz.
+
+## Sayfada görünür süre (`fr_page_engagement`)
+Çekirdek SDK her `page_view` için sekmenin gerçekten görünür olduğu süreyi (`document.visibilityState === "visible"`) biriktirir ve `fr_page_engagement` {`visible_ms`} olayı olarak gönderir; arka plandaki sekmenin süresi sayılmaz, oturumun son sayfası da ölçülür. Olay üç noktada kuyruğa girer: sekme gizlenince (`visibilitychange`), sayfa kapanırken (`pagehide`; ikisinde de sayfa kapanışı gönderiminden önce, aynı istekle çıkar) ve sonraki `page_view`'dan hemen önce (tek sayfalı uygulamada rota değişimi ya da elle `page()`). Olayın `context.page_url`, `context.page_title` ve `session_id` değerleri ölçülen `page_view` anındakilerdir, gönderim anındakiler değil; olay oturumu uzatmaz. `visible_ms` son gönderimden beri geçen görünür süredir (tam milisaniye, 1 000-3 600 000; üstü bir saate kırpılır): bir sayfa görüntülemesi için birden çok olay gelebilir, sunucu oturum ve sayfa başına toplar. 1 saniyenin altındaki birikim gönderilmez, aynı sayfa görüntülemesinin sonraki gönderimine devreder. İzin kapısı diğer olaylarla aynıdır: `consent.analytics` yoksa olay üretilmez; izin geri çekilince, `reset()` ve `destroy()` ile birikim gönderilmeden silinir. Global özellikler ve `utm_*` bu olaya eklenmez. Kapatmak için `initialize({ ..., pageEngagement: false })` (varsayılan `true`).
 
 ## Replay/heatmap modülü (`@feralin/web/replay`, `dist/feralin-replay.iife.js`)
 Ayrı betiktir; çekirdek bütçesine girmez ve varsayılan yüklenmez. **DOM kaydı, metin, form değeri ve oturum oynatma yoktur**: yalnız üç etkileşim olayı gider (`fr_replay_click` {sel, x, y, vp}, `fr_replay_scroll` {depth, vp}, `fr_replay_view` {sel, vp}; `view` yalnız `data-fr-view` işaretli bölümlerde). Seçici maskelidir ve maskeleme kapatılamaz: etiket adı, güvenli `id` ve `:nth-of-type`; sınıf, öznitelik değeri, `href`, `value` ve metin hiç okunmaz; `data-fr-mask` taşıyan ata zinciri `[masked]` ile keser; form öğeleri yalnız `input[type=…]` yazılır. Koordinatlar görünüm alanına göre yüzdedir, görünüm alanı sınıf olarak gider (`xs|sm|md|lg|xl`), piksel gönderilmez.
@@ -76,7 +79,7 @@ if (flags.isEnabled("new_checkout")) { /* varyant: flags.variant("new_checkout")
 ```ts
 import { initialize } from "@feralin/web";
 import { captureErrors } from "@feralin/web/errors";
-const client = initialize({ projectKey: "pk_live_…", collectUrl: "https://collect.feralin.com", consent: { analytics: true } });
+const client = initialize({ projectKey: "pk_live_…", collectUrl: "https://feralin.com/collect", consent: { analytics: true } });
 const errors = captureErrors({ client, appVersion: "1.4.2", sampleRate: 1 });
 try { riskyCall(); } catch (e) { errors.capture(e); }   // elle bildirim: handled=true
 ```
@@ -86,7 +89,7 @@ Tarayıcının kendi `PerformanceObserver` girdilerinden LCP, INP, CLS ve TTFB �
 ```ts
 import { initialize } from "@feralin/web";
 import { captureVitals } from "@feralin/web/vitals";
-const client = initialize({ projectKey: "pk_live_…", collectUrl: "https://collect.feralin.com", consent: { analytics: true } });
+const client = initialize({ projectKey: "pk_live_…", collectUrl: "https://feralin.com/collect", consent: { analytics: true } });
 captureVitals({ client, sampleRate: 1 });   // sampleRate: sayfa yüklemesi başına örnekleme (0..1)
 ```
 
@@ -102,3 +105,21 @@ captureVitals({ client, sampleRate: 1 });   // sampleRate: sayfa yüklemesi baş
 - `page_url` scheme+host+path, `referrer` yalnız origin gönderilir. Sorgu ve parça gönderilmez; yalnız `utm_source/medium/campaign/term/content` `properties.utm_*` olarak taşınır (açıkça verilen özellik ezilmez).
 - Parmak izi, canvas/font taraması, IP toplama yok. `properties` anahtarları allowlist deseniyle filtrelenir.
 - IIFE gzip bütçesi 8 KB (build'de doğrulanır).
+
+## Smart Script (web açılış sayfası)
+
+`/sdk/feralin-smart.iife.js` betiği sayfadaki App Store, Google Play, AppGallery ve Galaxy Store bağlantılarını Feralin kısa linkine çevirir
+ve sayfanın UTM ile reklam tıklama kimliklerini (gclid, fbclid, ttclid…) linke ekler. Linkin kendi parametresi önceliklidir.
+
+```html
+<script src="https://feralin.com/sdk/feralin-smart.iife.js" defer></script>
+<script>
+  window.addEventListener("DOMContentLoaded", function () {
+    window.feralinSmart.apply({ link: "https://feralin.com/l/KOD" });
+  });
+</script>
+```
+
+Başka öğeleri çevirmek için `data-feralin-smart` özniteliği ya da `selector` seçeneği kullanılır. `referrerAsSource: true` verilirse UTM
+yokken yönlendirenin alan adı `utm_source` olur. Çerez yazılmaz; parametreler yalnız ziyaret boyunca `sessionStorage`'da tutulur.
+ESM kullanımı: `import { applySmartScript } from "@feralin/web/smart"`.

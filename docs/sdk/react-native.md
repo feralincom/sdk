@@ -10,7 +10,7 @@
 |---|---|
 | Dil | TypeScript, Kotlin |
 | Paket | `@feralin/react-native` |
-| Sürüm | 0.2.0 |
+| Sürüm | 0.3.0 |
 | Yaşam döngüsü | INSTALL_VERIFIED |
 | Kaynak dizin | `sdks/react-native` |
 | Registry | npm: **PUBLISHED** (sonraki adım: her paket için npm trusted publishing (OIDC); npm 2FA'yı atlayan anahtarla doğrudan yayını Ocak 2027'de kapatıyor; Android çekirdeği Maven Central'da ayrıca yayımlanmadı (npm paketinde android/maven-repo ile gelir)) |

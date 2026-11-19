@@ -144,14 +144,26 @@ namespace Feralin.Unity
     public sealed class TransportRequest
     {
         internal TransportRequest(string url, byte[] body, IReadOnlyDictionary<string, string> headers, TimeSpan timeout)
+            : this(url, body, headers, timeout, "POST")
+        {
+        }
+
+        internal TransportRequest(string url, byte[] body, IReadOnlyDictionary<string, string> headers, TimeSpan timeout, string method)
         {
             Url = url;
             Body = body;
             Headers = headers;
             Timeout = timeout;
+            Method = method;
         }
 
-        /// <summary>POST adresi.</summary>
+        /// <summary>
+        /// HTTP yöntemi: olaylar ve atıf için <c>POST</c>, Fera Fly kısa link çözümlemesi için gövdesiz <c>GET</c>. Kendi taşıyıcınızı
+        /// yazıyorsanız bu değeri kullanın; <c>GET</c> isteğini POST olarak gönderen taşıyıcıda kısa link çözümlenmez (açılış yine sayılır).
+        /// </summary>
+        public string Method { get; }
+
+        /// <summary>İstek adresi.</summary>
         public string Url { get; }
         /// <summary>UTF-8 JSON gövde.</summary>
         public byte[] Body { get; }
@@ -261,5 +273,65 @@ namespace Feralin.Unity
         /// ilk olaya <c>fr_install_code</c> olarak eklenir; sunucu kurulumu projeye bağlar. Biçimi geçersizse yok sayılır (Android SDK ile aynı kural).
         /// </summary>
         public string InstallCode { get; set; }
+        /// <summary>
+        /// Facebook uygulama kimliği (Meta App ID, 5-20 rakam). Verilirse Android'de Meta reklamından gelen kurulumun kampanya verisi
+        /// Facebook/Instagram uygulamasından okunur (Meta Install Referrer; Facebook SDK gerekmez). Çözme anahtarı panelde projeye girilir.
+        /// </summary>
+        public string MetaAppId { get; set; }
+        /// <summary>Meta Install Referrer okuyucusu (Unity katmanı Android'de verir); yoksa okunmaz.</summary>
+        public IMetaReferrerSource MetaReferrerSource { get; set; }
+        /// <summary>
+        /// Kurulum mağazası okuyucusu (Unity katmanı Android'de verir). Verilirse ilk açılış olayına <c>install_store</c> eklenir; reklam
+        /// izninden bağımsızdır. Yoksa alan eklenmez.
+        /// </summary>
+        public IInstallStoreSource InstallStoreSource { get; set; }
+        /// <summary>
+        /// SDK imza anahtarı (panelde Atıf &gt; Dolandırıcılık koruması). Verilirse ilk açılış ve bağlantı açılışı olayları imzalanır
+        /// (<c>fr_sig</c>); sunucu imzasız ya da bozuk imzalı kurulumu projenin kuralına göre işaretler ya da reddeder. Biçimi geçersiz
+        /// anahtar kurucuda yapılandırma hatasıdır.
+        /// </summary>
+        public SigningKey SigningKey { get; set; }
+        /// <summary>
+        /// Emülatör okuyucusu (Unity katmanı Android'de verir). <c>true</c> dönerse ilk açılış olayına <c>device_emulator: true</c>
+        /// eklenir; <c>false</c> ise ya da kaynak yoksa alan eklenmez.
+        /// </summary>
+        public IEmulatorSource EmulatorSource { get; set; }
+        /// <summary>
+        /// Huawei AppGallery kurulum yönlendiricisi okuyucusu (Unity katmanı Android'de verir). Play kanıt vermezse ve reklam ölçümü
+        /// izni açıksa okunur; kanıt <c>attribution_source=huawei_install_referrer</c> ile gider.
+        /// </summary>
+        public IHuaweiReferrerSource HuaweiReferrerSource { get; set; }
+        /// <summary>
+        /// Fera Fly kısa link hostları (varsayılan <c>fera.fly</c>). Bu hostlardan birine ya da alt alanına (<c>marka.fera.fly</c>) ait
+        /// adresle açılışta istemci linki yönlendiriciden çözümler. Markalı alanınız varsa listeye ekleyin.
+        /// </summary>
+        public IList<string> ShortLinkHosts { get; set; } = new List<string> { "fera.fly" };
+        /// <summary>
+        /// Kısa link çözümlemesinde bildirilen cihaz sınıfı: <c>ios</c>, <c>android</c> ya da <c>desktop</c> (Unity katmanı
+        /// <c>Application.platform</c> değerinden verir). Yönlendirici hedefi buna göre seçer; cihaz modeli gönderilmez.
+        /// </summary>
+        public string ShortLinkDevice { get; set; } = "android";
+    }
+
+    /// <summary>
+    /// Kısa linkle açılışın sonucu (<see cref="FeralinClient.HandleShortLink"/>). <see cref="Destination"/> dışarıdan gelen veridir: oyun
+    /// yolu kendi yönlendirme tablosuyla eşleştirmeli, doğrudan yetkili bir eylem çalıştırmamalıdır.
+    /// </summary>
+    public sealed class ShortLinkOpen
+    {
+        /// <summary>Sonuç oluşturur.</summary>
+        public ShortLinkOpen(string destination, string linkCode, bool hasClickId)
+        {
+            Destination = destination;
+            LinkCode = linkCode;
+            HasClickId = hasClickId;
+        }
+
+        /// <summary>Açılacak yol: çözümlenen linkin derin yolu (yoksa <c>/</c>), çözümlenemediyse adresin kendi yolu.</summary>
+        public string Destination { get; }
+        /// <summary>Kısa kod; çözümleme yapılmadıysa <c>null</c>.</summary>
+        public string LinkCode { get; }
+        /// <summary>Tıklama kimliği alındı mı (reklam ölçümü izni yoksa olaya eklenmez).</summary>
+        public bool HasClickId { get; }
     }
 }

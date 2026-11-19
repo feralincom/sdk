@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Linq;
 using System.Text;
 using System.Threading;
 
@@ -16,7 +17,7 @@ namespace Feralin.Unity
         /// <summary>Olaylardaki <c>sdk.name</c> değeri.</summary>
         public const string SdkName = "feralin-unity";
         /// <summary>Olaylardaki <c>sdk.version</c> değeri.</summary>
-        public const string SdkVersion = "0.2.0";
+        public const string SdkVersion = "0.3.0";
         /// <summary>Olaylardaki <c>platform</c> değeri.</summary>
         public const string Platform = "unity";
 
@@ -46,6 +47,8 @@ namespace Feralin.Unity
         private readonly string _projectKey;
         private readonly string _endpoint;
         private readonly IFeralinTransport _transport;
+        private readonly string[] _shortLinkHosts;
+        private readonly string _shortLinkDevice;
         private readonly int _batchSize;
         private readonly int _queueLimit;
         private readonly TimeSpan _timeout;
@@ -73,6 +76,13 @@ namespace Feralin.Unity
         // Kurulum eşleştirme kodu: yalnız ilk olaya eklenir; olay kuyruğa girmezse geri konur.
         private string _pendingInstallCode;
         private const string InstallCodeProperty = "fr_install_code";
+        private static readonly System.Text.RegularExpressions.Regex MetaAppIdPattern = new System.Text.RegularExpressions.Regex("^[0-9]{5,20}$", System.Text.RegularExpressions.RegexOptions.CultureInvariant);
+        private string _metaAppId;
+        private IMetaReferrerSource _metaReferrerSource;
+        private IInstallStoreSource _installStoreSource;
+        private readonly SigningKey _signingKey;
+        private readonly IEmulatorSource _emulatorSource;
+        private readonly IHuaweiReferrerSource _huaweiReferrerSource;
         private static readonly System.Text.RegularExpressions.Regex InstallCodePattern = new System.Text.RegularExpressions.Regex("^[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z _-]{10,16}$", System.Text.RegularExpressions.RegexOptions.CultureInvariant);
         private string _userId;
         private string _anonymousId;
@@ -121,10 +131,18 @@ namespace Feralin.Unity
             {
                 throw new ArgumentException("feralin: Transport zorunlu", nameof(options));
             }
+            var signingError = options.SigningKey?.ValidationError();
+            if (signingError != null)
+            {
+                // Mesajda anahtar değeri bulunmaz.
+                throw new ArgumentException("feralin: " + signingError, nameof(options));
+            }
 
             _projectKey = key;
             _endpoint = collect.GetLeftPart(UriPartial.Path).TrimEnd('/') + "/v1/batch";
             _transport = options.Transport;
+            _shortLinkHosts = (options.ShortLinkHosts ?? new List<string>()).Where(h => !string.IsNullOrWhiteSpace(h)).Take(20).ToArray();
+            _shortLinkDevice = options.ShortLinkDevice == "ios" || options.ShortLinkDevice == "desktop" ? options.ShortLinkDevice : "android";
             _batchSize = Math.Max(1, Math.Min(options.BatchSize, MaxBatchEvents));
             _queueLimit = Math.Max(1, options.QueueLimit);
             _timeout = options.Timeout > TimeSpan.Zero ? options.Timeout : TimeSpan.FromSeconds(10);
@@ -149,6 +167,13 @@ namespace Feralin.Unity
             _trackingStatus = options.TrackingStatusProvider;
             _errors = options.Errors ?? new ErrorOptions();
             _consent = options.Consent ?? Consent.None;
+            var metaAppId = options.MetaAppId?.Trim();
+            _metaAppId = !string.IsNullOrEmpty(metaAppId) && MetaAppIdPattern.IsMatch(metaAppId) ? metaAppId : null;
+            _metaReferrerSource = options.MetaReferrerSource;
+            _installStoreSource = options.InstallStoreSource;
+            _signingKey = options.SigningKey;
+            _emulatorSource = options.EmulatorSource;
+            _huaweiReferrerSource = options.HuaweiReferrerSource;
             var installCode = options.InstallCode?.Trim();
             _pendingInstallCode = !string.IsNullOrEmpty(installCode) && InstallCodePattern.IsMatch(installCode) ? installCode : null;
             _consentDecided = options.Consent != null;
@@ -494,11 +519,17 @@ namespace Feralin.Unity
 
             var now = _now();
             var eventId = Ulid.New(now);
+            var occurredAt = options?.OccurredAt ?? now;
+            if (_signingKey != null && (eventName == FirstOpenEventName || eventName == DeepLinkEventName))
+            {
+                // Atıf olayları imzalanır: imza olayın kimliğine ve kurulum kimliğine bağlıdır.
+                props[EventSigner.PropertyName] = EventSigner.Sign(_signingKey.Id, _signingKey.Secret, occurredAt.ToUnixTimeSeconds(), eventId, eventName, anonymousId);
+            }
             var wire = new Dictionary<string, object>(StringComparer.Ordinal)
             {
                 ["event_id"] = eventId,
                 ["event_name"] = eventName,
-                ["occurred_at"] = MiniJson.FormatTime(options?.OccurredAt ?? now),
+                ["occurred_at"] = MiniJson.FormatTime(occurredAt),
                 ["platform"] = Platform,
                 ["schema_version"] = 1,
                 ["sdk"] = new Dictionary<string, object> { ["name"] = SdkName, ["version"] = SdkVersion },

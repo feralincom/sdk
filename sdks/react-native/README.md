@@ -44,6 +44,16 @@ Feralin.reset(); // çıkış
 
 Hiçbir metot fırlatmaz, Promise reddedilmez. `sk_` anahtar reddedilir ve SDK kapalı kalır. İzin kuralları Android SDK ile aynıdır (`sdks/android/README.md`): karar yoksa olay üretilmez, `fr_click` ve `utm_*` yalnız `advertising === true` iken gider.
 
+## Fera Fly kısa linkleri (Android)
+
+App Link doğrudan açıldığında (`https://fera.fly/kod`, `https://marka.fera.fly/kod`) Android çekirdeği linki yönlendiriciden çözümler: derin yol, UTM ve reklam izni varsa tıklama kimliği `deep_link_opened` olayına eklenir. Otomatik yakalama açıkken bu kendiliğinden olur; gidilecek yolu almak için:
+
+```ts
+const open = await Feralin.handleShortLink(url); // { destination: "/urun/42", linkCode: "kampanya", hasClickId: true }
+```
+
+Markalı alan: `Feralin.initialize({ ..., shortLinkHosts: ["fera.fly", "go.marka.com"] })`. iOS yerel modülü olmadığı için iOS'ta adresin kendi yolu döner (`linkCode: null`). Analitik izni yoksa istek yapılmaz.
+
 ## Ertelenmiş derin bağlantı (yalnız Android)
 
 ```ts
@@ -107,3 +117,37 @@ DATABASE_URL='postgres://kullanici:parola@127.0.0.1:5432/test_db?sslmode=disable
 ```
 
 Son komut temiz bir React Native projesi oluşturur, paketi kurar, release APK derler, kendi emülatörünü `-read-only` ve ayrı portla açar, gerçek `services/collect` ile senaryoyu koşar ve `collect_outbox` üzerinde doğrular. Çevrimdışı adımı yalnız kendi emülatörünün ağını kapatır. Başka emülatöre dokunmaz. Yalnız test veritabanı kullanın.
+
+## Kurulum mağazası (Android)
+
+İlk açılış olayı (`app_first_open`) `install_store` özelliğini taşır: uygulamayı cihaza kuran paketten türetilen kapalı listeden bir değer (`google_play`, `samsung_galaxy_store`, `huawei_appgallery`, `amazon_appstore`, `xiaomi_getapps`, `oppo_app_market`, `vivo_app_store`, `honor_app_market`, `sideload`, `unknown`, `other`). Köprüde ve JS tarafında kod ya da yapılandırma yoktur: ilk açılışı `sdks/android` çekirdeği üretir, alan oradan gelir. Reklam ölçümü izninden bağımsız eklenir (analitik izni yine şarttır); listede olmayan kurucunun paket adı gönderilmez (`other`); okunamazsa alan eklenmez, ilk açılış yine üretilir. Değer işletim sisteminin bildirdiğidir, mağaza tarafından doğrulanmaz.
+
+Alan, paketle gelen çekirdek AAR'ına (`android/maven-repo`) bağlıdır: AAR `npm pack` sırasında `scripts/prepack.mjs` ile çekirdek kaynağından yeniden üretilir. npm'de yayımlanmış `0.2.0` paketindeki AAR bu özellikten önce derlendiği için alanı taşımaz; alan bir sonraki npm yayınıyla gelir.
+
+## SDK imzası, emülatör işareti ve Huawei AppGallery (Android, 18 Kasım 2026)
+
+- **SDK imzası:** `Feralin.initialize({ ..., signingKey: { id: 'sgn_...', secret: 'fsk_...' } })` anahtarı Android çekirdeğine iletir; çekirdek yalnız `app_first_open` ve `deep_link_opened` olaylarına `fr_sig` ekler. Kimlik `sgn_` + 12-40 küçük harf/rakam, değer 16-200 karakter olmalıdır; geçersiz anahtarda `initialize` `false` döner ve yerel katman çağrılmaz. Anahtar değeri loglanmaz. Anahtar uygulamaya gömülüdür: imza sahte kurulumu zorlaştırır, imkânsız kılmaz.
+- **Emülatör işareti:** çekirdek emülatörde `app_first_open` olayına `device_emulator: true` ekler; değilse alan yoktur. Köprüde kod yoktur.
+- **Huawei AppGallery kurulum yönlendiricisi:** Play kanıt vermezse ve reklam ölçümü izni açıksa çekirdek AppGallery'den okur; kanıt `attribution_source=huawei_install_referrer` ile gider. `<queries>` kaydı çekirdek AAR'ının manifestinden birleşir.
+
+Üçü de paketle gelen çekirdek AAR'ına (`android/maven-repo`) bağlıdır; AAR `scripts/prepack.mjs` ile çekirdek kaynağından yeniden üretilir, npm'de yayımlanmış `0.2.0` paketinde yoktur. Köprü eşlemesi birim testlidir (`core.test.mjs`, `BridgeMappingTest.kt`); gerçek cihazda denenmedi.
+
+## Meta Install Referrer (Android)
+
+Facebook ya da Instagram reklamından gelen kurulumun kampanya, reklam seti ve reklam bilgisi Meta'nın kendi verisinden okunur; Facebook SDK
+gerekmez. Yapılacaklar:
+
+1. Feralin panelinde Atıf ekranındaki Meta kartına Facebook App ID'yi ve Meta uygulama panelindeki Install Referrer çözme anahtarını girin.
+2. SDK yapılandırmasına Facebook App ID'yi verin (`metaAppId`; Unity'de `FeralinBehaviour` alanı ya da `FeralinOptions.MetaAppId`).
+3. Android 11 ve üzerinde uygulama manifestine paket görünürlüğü ekleyin (Android SDK ve Flutter eklentisi bunu kendi manifestinden
+   birleştirir; Unity'de `Assets/Plugins/Android/AndroidManifest.xml` içine elle eklenir):
+
+```xml
+<queries>
+    <package android:name="com.facebook.katana" />
+    <package android:name="com.instagram.android" />
+    <package android:name="com.facebook.lite" />
+</queries>
+```
+
+Veri yalnız reklam ölçümü izni (`consent.advertising`) açıkken okunur; içerik şifrelidir ve uygulamada açılmaz.

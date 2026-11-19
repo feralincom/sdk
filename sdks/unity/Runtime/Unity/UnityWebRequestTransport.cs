@@ -49,11 +49,13 @@ namespace Feralin.Unity
         /// <inheritdoc />
         public void Send(TransportRequest request, Action<TransportResponse> onComplete)
         {
-            var web = new UnityWebRequest(request.Url, UnityWebRequest.kHttpVerbPOST)
+            // Kısa link çözümlemesi gövdesiz GET'tir; diğer bütün istekler POST.
+            var get = request.Method == "GET";
+            var web = new UnityWebRequest(request.Url, get ? UnityWebRequest.kHttpVerbGET : UnityWebRequest.kHttpVerbPOST)
             {
                 // Yönlendirme izlenmez: proje anahtarı başka adrese gitmesin.
                 redirectLimit = 0,
-                uploadHandler = new UploadHandlerRaw(request.Body),
+                uploadHandler = get ? null : new UploadHandlerRaw(request.Body),
 #if UNITY_WEBGL && !UNITY_EDITOR
                 // Tarayıcıda akış okunamaz, yanıt alındıktan sonra boyutuna bakılır.
                 downloadHandler = new DownloadHandlerBuffer(),

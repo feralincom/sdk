@@ -16,6 +16,7 @@ import 'src/core/event_json.dart';
 import 'src/core/event_store.dart';
 import 'src/core/profile.dart';
 import 'src/core/revenue_event.dart';
+import 'src/core/short_links.dart';
 import 'src/core/signal_events.dart';
 import 'src/core/transport.dart';
 import 'src/core/types.dart';
@@ -91,6 +92,9 @@ abstract final class Feralin {
       transport: IoHttpTransport(),
       referrer: bridge.readInstallReferrer,
       adServicesToken: bridge.adServicesToken,
+      metaReferrer: bridge.metaInstallReferrer,
+      installStore: bridge.installStore,
+      emulator: bridge.isEmulator,
       appContext: () => AppContext(
         locale: PlatformDispatcher.instance.locale.toLanguageTag(),
         timezone: info.timezone,
@@ -362,6 +366,41 @@ abstract final class Feralin {
   /// Android'de `autoCaptureDeepLinks` açıkken çağrılmamalıdır; aynı açılış iki kez sayılır.
   static Future<void> handleDeepLink(Uri uri) async {
     await _engine?.handleLink(uri.toString());
+  }
+
+  /// Fera Fly kısa linkiyle (ör. `https://marka.fera.fly/kod`) açılışı işler ve uygulamanın açacağı yolu verir. Bağlantı doğrudan
+  /// açıldığında yönlendirici atlandığı için SDK linki çözümler: derin yol, UTM ve (reklam izni varsa) tıklama kimliği `deep_link_opened`
+  /// olayına eklenir. Adres kısa link değilse, çözümlenemezse ya da analitik izni yoksa adresin kendi yolu döner.
+  /// [handleDeepLink] ile aynı açılışı sayar: ikisinden yalnız biri çağrılır. Android'de `autoCaptureDeepLinks` açıkken kısa link zaten
+  /// çözümlenir; o durumda yolu [lastShortLink] verir.
+  static Future<ShortLinkOpen> handleShortLink(Uri uri) async {
+    final fallback = ShortLinkOpen(
+      destination: ShortLinks.pathOf(uri.toString()),
+    );
+    final engine = _engine;
+    if (engine == null) return fallback;
+    try {
+      final resolved = await engine.handleLink(uri.toString());
+      if (resolved == null) return fallback;
+      return ShortLinkOpen(
+        destination: resolved.deepLinkPath ?? '/',
+        linkCode: resolved.code,
+        hasClickId: resolved.clickId != null,
+      );
+    } on Object {
+      return fallback;
+    }
+  }
+
+  /// Son çözümlenen kısa linkin sonucu (otomatik yakalamada uygulamanın gideceği yol); yoksa `null`. Bellekte tutulur.
+  static ShortLinkOpen? get lastShortLink {
+    final resolved = _engine?.lastShortLink;
+    if (resolved == null) return null;
+    return ShortLinkOpen(
+      destination: resolved.deepLinkPath ?? '/',
+      linkCode: resolved.code,
+      hasClickId: resolved.clickId != null,
+    );
   }
 
   /// Kurulumdan sonra ertelenmiş derin bağlantıyı bir kez verir (yalnız Android; iOS `notSupported`). Okuma reklam ölçümü
