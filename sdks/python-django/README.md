@@ -9,7 +9,7 @@
 | Birim testleri (Django 6.1, gerçek ara katman zinciri, sync ve async) | Geçiyor |
 | Temiz kurulum + gerçek `services/collect` | `scripts/sdk-e2e/run.mjs python-django` ile geçti; istekler Django test istemcisinden girer |
 | Django 4.2-5.x, gerçek WSGI/ASGI sunucusu | Sınanmadı |
-| PyPI yayını | `BLOCKED_EXTERNAL`: hesap yok, `feralin` çekirdeği de yayınlanmadı |
+| PyPI yayını | Yayında: `pip install feralin-django` (0.1.0, 19 Kasım 2026) |
 
 ## Kurulum
 

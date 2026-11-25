@@ -41,12 +41,17 @@ android {
     }
 
     publishing {
-        singleVariant("release")
+        // Maven Central kaynak ve javadoc jar'ı ister.
+        singleVariant("release") {
+            withSourcesJar()
+            withJavadocJar()
+        }
     }
 }
 
-// Yalnız yerel dizine yayın: React Native paketi çekirdeği buradan alır (Maven Central yayını BLOCKED_EXTERNAL).
-// Uzak depo ve kimlik bilgisi tanımlı değildir; bu görev hiçbir registry'ye yükleme yapamaz.
+// Yalnız yerel dizine yayın: React Native paketi çekirdeği ve Maven Central paketi (scripts/sdk-publish/maven-publish.mjs) buradan
+// alınır. Uzak depo ve kimlik bilgisi tanımlı değildir; bu görev hiçbir registry'ye yükleme yapamaz. POM alanları Maven Central
+// zorunluluklarıdır (ad, açıklama, adres, lisans, geliştirici, SCM).
 publishing {
     publications {
         register<MavenPublication>("release") {
@@ -54,6 +59,31 @@ publishing {
             artifactId = "android"
             version = feralinVersion
             afterEvaluate { from(components["release"]) }
+            pom {
+                name.set("Feralin Android SDK")
+                description.set("Feralin Android SDK: izin öncelikli olaylar, kalıcı kuyruk, Play Install Referrer ve App Link atfı.")
+                url.set("https://feralin.com")
+                licenses {
+                    license {
+                        name.set("MIT")
+                        url.set("https://opensource.org/licenses/MIT")
+                    }
+                }
+                developers {
+                    developer {
+                        id.set("feralin")
+                        name.set("Feralin")
+                        email.set("noreply@feralin.com")
+                        organization.set("Feralin")
+                        organizationUrl.set("https://feralin.com")
+                    }
+                }
+                scm {
+                    url.set("https://github.com/feralincom/sdk")
+                    connection.set("scm:git:https://github.com/feralincom/sdk.git")
+                    developerConnection.set("scm:git:https://github.com/feralincom/sdk.git")
+                }
+            }
         }
     }
     repositories {

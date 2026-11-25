@@ -34,7 +34,7 @@
     "prepack": "node scripts/vendor.mjs && node ../../node_modules/typescript/bin/tsc -p tsconfig.json"
   },
   "dependencies": {
-    "@feralin/web": "^0.1.0"
+    "@feralin/web": "^0.1.0 || ^0.2.0"
   },
   "peerDependencies": {
     "@capacitor/core": ">=7.0.0"

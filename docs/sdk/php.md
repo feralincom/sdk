@@ -11,13 +11,11 @@
 | Dil | PHP |
 | Paket | `feralin/feralin-php` |
 | Sürüm | 0.1.0 |
-| Yaşam döngüsü | INTEGRATION_TESTED |
+| Yaşam döngüsü | REGISTRY_VERIFIED |
 | Kaynak dizin | `sdks/php` |
-| Registry | Packagist: **BLOCKED_EXTERNAL** (gereken: Packagist hesabı ve public Git deposu) |
+| Registry | Packagist: **PUBLISHED** (sonraki adım: Packagist hesabı ve public Git deposu) |
 
 ## Kurulum
-
-Registry yayını durumu **BLOCKED_EXTERNAL**: paket henüz `Packagist` üzerinde yayınlanmış olarak doğrulanmadı; aşağıdaki adımlar kaynaktan ya da yerel pakettendir.
 
 ```bash
 # uygulamanızın dizininde (DEPO: deponun yolu)
@@ -69,7 +67,7 @@ $feralin->track('order_completed', ['order_id' => 'ord_1', 'fr_click' => $click]
 | source | PASS |  |
 | build | PASS | composer install (path deposu, symlink'siz kopya) çalışma zamanı bağımlılığı olmadan autoload üretti. |
 | test | PASS | PHPUnit 10.5, 16 test (PHP 8.3.6, WSL Ubuntu 24.04; scripts/sdk-e2e/php-suite.sh). Windows'ta PHP yok. |
-| registry | BLOCKED_EXTERNAL | Packagist hesabı yok. |
+| registry | PASS | Packagist'te yayımlandı: feralin/feralin-php:0.1.0 (19 Kasım 2026; ayrı depo github.com/feralincom/feralin-php, etiket v0.1.0, commit 4f77d27; Packagist hesabı GitHub ile). Geri okuma: repo.packagist.org/p2/feralin/feralin-php.json sürüm 0.1.0, kaynak etiketli GitHub zipball. Composer ile temiz kurulum bu makinede koşulmadı (composer yok). Otomatik güncelleme kancası kurulmadı: yeni sürümde Packagist paket sayfasında Update. |
 | clean_install | PASS | Composer path deposundan boş tüketiciye kuruldu; yalnız feralin/feralin-php, çalışma zamanı bağımlılığı yok. |
 | event_receipt | PASS | scripts/sdk-e2e/run.mjs php (gerçek toplayıcı, WSL): 202=6 ve 401=1, outbox'ta 7 satır doğrulandı; fr_click izne bağlı, izinsiz SDK olay üretmez, idempotency. |
 | documentation | PASS | docs/sdk/php.md: kurulum ve kullanım kod blokları README'den, yetenek ve zincir durumu yetenek dosyasından üretilir (scripts/sdk-dry-run/docs.mjs); registry yayını ve Super Admin kanıtı ayrı halkadır. |

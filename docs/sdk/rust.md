@@ -11,15 +11,13 @@
 | Dil | Rust |
 | Paket | `feralin, tauri-plugin-feralin` |
 | Sürüm | 0.1.0 |
-| Yaşam döngüsü | INTEGRATION_TESTED |
+| Yaşam döngüsü | REGISTRY_VERIFIED |
 | Kaynak dizin | `sdks/rust` |
-| Registry | crates.io: **BLOCKED_EXTERNAL** (gereken: crates.io hesabı (GitHub girişi, doğrulanmış e-posta); publish-new kapsamlı cio önekli API anahtarı (CARGO_REGISTRY_TOKEN); ad rezervasyonu yok, feralin ilk yayında alınır; trusted publishing yalnız ilk sürümden sonra) |
+| Registry | crates.io: **PUBLISHED** (sonraki adım: crates.io hesabı (GitHub girişi, doğrulanmış e-posta); publish-new kapsamlı cio önekli API anahtarı (CARGO_REGISTRY_TOKEN); ad rezervasyonu yok, feralin ilk yayında alınır; trusted publishing yalnız ilk sürümden sonra) |
 | Derleme | `cd sdks/rust && cargo build --workspace` |
 | Test | `cd sdks/rust && cargo test --workspace` |
 
 ## Kurulum
-
-Registry yayını durumu **BLOCKED_EXTERNAL**: paket henüz `crates.io` üzerinde yayınlanmış olarak doğrulanmadı; aşağıdaki adımlar kaynaktan ya da yerel pakettendir.
 
 ```toml
 [dependencies]
@@ -65,7 +63,7 @@ client.close(Duration::from_secs(5));   // çıkmadan önce çağırın
 | source | PASS | feralin crate ve tauri-plugin-feralin; Cargo.lock depoda; cargo fmt --check ve cargo clippy --workspace --all-targets -D warnings temiz (Rust 1.100, Windows MSVC). |
 | build | PASS | cargo build: feralin (ureq 3.5, rustls) ve tauri-plugin-feralin (Tauri 2.12) Windows'ta derlendi. Linux ve macOS'ta derlenmedi. |
 | test | PASS | cargo test --workspace: 11 modül, 23 istemci, 4 gerçek HTTP testi ve 1 doküman testi geçti; Tauri eklentisinin kendi testi yok (0 test). |
-| registry | BLOCKED_EXTERNAL | crates.io hesabı yok. |
+| registry | PASS | crates.io'da yayımlandı: feralin 0.1.0 (19 Kasım 2026, git 074f400f, cargo publish; crates.io hesabı site sahibinin GitHub hesabıyla). Geri okuma: crates.io API max_version 0.1.0, .crate sha256 b859634db61ccdd4 yerel paketle aynı. |
 | clean_install | PASS | scripts/sdk-e2e/targets/rust.mjs: crate kopyası boş tüketici crate'ine yerel yolla bağlanıp derlendi; crates.io'dan kurulum denenemez. |
 | event_receipt | PASS | scripts/sdk-e2e/run.mjs rust: gerçek services/collect + PostgreSQL outbox; 202, fr_click yalnız reklam izniyle, izinsiz olay üretilmez ve toplayıcı reddeder, yanlış anahtar 401, yanıt kaybında aynı anahtarla tek outbox satırı. Tauri eklentisi gerçek pencerede koşmadı. |
 | documentation | PASS | docs/sdk/rust.md: kurulum ve kullanım kod blokları README'den, yetenek ve zincir durumu yetenek dosyasından üretilir (scripts/sdk-dry-run/docs.mjs); registry yayını ve Super Admin kanıtı ayrı halkadır. |

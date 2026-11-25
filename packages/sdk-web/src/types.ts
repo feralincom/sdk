@@ -15,7 +15,7 @@ export type UtpEvent = {
   properties?: Record<string, unknown>;
   consent: Consent;
   context?: {
-    page_url?: string; page_title?: string; referrer?: string; locale?: string; timezone?: string;
+    page_url?: string; page_title?: string; referrer?: string; referrer_path?: string; search_query?: string; locale?: string; timezone?: string;
     screen?: { width: number; height: number };
   };
 };

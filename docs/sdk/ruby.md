@@ -11,15 +11,13 @@
 | Dil | Ruby |
 | Paket | `feralin` |
 | Sürüm | 0.1.0 |
-| Yaşam döngüsü | INTEGRATION_TESTED |
+| Yaşam döngüsü | REGISTRY_VERIFIED |
 | Kaynak dizin | `sdks/ruby` |
-| Registry | RubyGems: **BLOCKED_EXTERNAL** (gereken: RubyGems.org hesabı, MFA (UI and API); push_rubygem kapsamlı rubygems_ önekli API anahtarı (GEM_HOST_API_KEY) ya da pending trusted publisher; ad rezervasyonu yok, feralin ilk yayında alınır) |
+| Registry | RubyGems: **PUBLISHED** (sonraki adım: RubyGems.org hesabı, MFA (UI and API); push_rubygem kapsamlı rubygems_ önekli API anahtarı (GEM_HOST_API_KEY) ya da pending trusted publisher; ad rezervasyonu yok, feralin ilk yayında alınır) |
 | Derleme | `cd sdks/ruby && ruby -S gem build feralin.gemspec` |
 | Test | `cd sdks/ruby && ruby -S rake test` |
 
 ## Kurulum
-
-Registry yayını durumu **BLOCKED_EXTERNAL**: paket henüz `RubyGems` üzerinde yayınlanmış olarak doğrulanmadı; aşağıdaki adımlar kaynaktan ya da yerel pakettendir.
 
 ```bash
 cd sdks/ruby
@@ -65,7 +63,7 @@ client.close                          # kalanı en çok 5 sn içinde gönderir
 | source | PASS |  |
 | build | PASS | gem build uyarısız; 0 çalışma zamanı bağımlılığı. |
 | test | PASS | Minitest 55 test, 1 atlandı: gerçek Process.fork Windows'ta yok, çatallanma pid taklidiyle sınandı. rake test:rails ayrıca gerçek Rails 8.1.4.1 ve rack 3.2.8 ile 5 test geçti. |
-| registry | BLOCKED_EXTERNAL | RubyGems.org hesabı yok. |
+| registry | PASS | RubyGems'te yayımlandı: feralin 0.1.0 (19 Kasım 2026, paket git b912a59b, gem push --otp; RubyGems hesabı MFA UI and API). Geri okuma: api/v2 sürüm kaydı sha256 f2a9da419bb8b313 yerel .gem ile aynı. |
 | clean_install | PASS | gem build çıktısı boş GEM_HOME içine --local ile kuruldu, yalnız feralin kuruldu; RubyGems.org'dan kurulum denenemez. |
 | event_receipt | PASS | scripts/sdk-e2e/run.mjs ruby: 202, outbox, izinsiz red, 401, idempotency, Rack istek başına izin. |
 | documentation | PASS | docs/sdk/ruby.md: kurulum ve kullanım kod blokları README'den, yetenek ve zincir durumu yetenek dosyasından üretilir (scripts/sdk-dry-run/docs.mjs); registry yayını ve Super Admin kanıtı ayrı halkadır. |

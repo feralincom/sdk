@@ -9,7 +9,7 @@ bağımlılık yok. Python ≥ 3.10, tür ipuçları ve `py.typed` ile.
 | Konu | Durum |
 |---|---|
 | Kod: `Client`, `track`, `identify`, `set_consent`, `flush`, `close`, `status` | `TESTING` — gerçek yerel `http.server` ile 28 `unittest` testi geçti |
-| Yayın: `pip install feralin` | **Henüz yayımlanmadı — `BLOCKED_EXTERNAL`.** PyPI hesabı + 2FA + API token gerekir; `feralin` adı doğrulanmadı. Yaşam döngüsü `PROPOSED → … → PUBLISHED → REGISTRY_VERIFIED → INSTALL_VERIFIED → SUPPORTED`: `docs/sdk/capability-matrix.md` §0 ve §4 |
+| Yayın: `pip install feralin` | **Yayında (19 Kasım 2026): `feralin==0.1.0` PyPI'de.** |
 | Gerçek `collect` ile uçtan uca | Bu ortamda yalnız sahte sunucu; live-dev'de `examples/basic.py` ile `202` kanıtı alınmalı |
 | İmzalı server event (`verified`), OTel tracing, async istemci | Yok — F3/F5 (`verified` alanı istemciden **asla** gönderilmez; `track_revenue` `feralin_purchase` istemci beyanı üretir, doğrulama sunucuda) |
 

@@ -3,7 +3,7 @@
 // event_id; URL'lerin sorgu dizgisi gönderilmez; parmak izi çıkarılmaz.
 import { ulid } from "./ulid";
 import { EventQueue, defaultStorage } from "./queue";
-import { cleanPage, cleanReferrer } from "./url";
+import { cleanPage, cleanReferrer, referrerDetail } from "./url";
 import type { Consent, FeralinOptions, FlushResult, RejectedEvent, UtpEvent } from "./types";
 import { GROUP_EVENT_NAME, USER_PROPERTIES_EVENT_NAME, acceptsGlobalProperties, mergeGlobalProperties, sanitizeProfileProperties, validGroupId } from "./profile";
 import type { ProfileDrop, ProfileValue } from "./profile";
@@ -446,10 +446,13 @@ export class Feralin {
     } else if (hasWindow()) {
       const page = cleanPage(location.href);
       props = withUtm(props, page.utm);
+      const rawReferrer = this.referrerOverride ?? document.referrer;
       e.context = {
         ...(page.url ? { page_url: page.url.slice(0, 2048) } : {}),
         page_title: document.title.slice(0, 512),
-        referrer: cleanReferrer(this.referrerOverride ?? document.referrer).slice(0, 2048),
+        referrer: cleanReferrer(rawReferrer).slice(0, 2048),
+        // Yalnız harici yönlendirende: yönlendiren yolu (sorgusuz) ve bilinen arama motorunun sorgusu. İç gezinmede alan yoktur.
+        ...referrerDetail(rawReferrer, location.href),
         locale: navigator.language,
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
         screen: { width: window.innerWidth, height: window.innerHeight },

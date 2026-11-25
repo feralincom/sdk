@@ -1,8 +1,8 @@
 # Değişiklikler
 
-## Yayınlanmamış (yayın bekliyor)
+## 0.2.0 (yayın adayı, 25 Kasım 2026)
 
-Depodadır, npm'deki 0.1.0 içinde yoktur; sonraki sürüm numarasıyla yayımlanacak (0.1.0 yeniden yayımlanamaz).
+Ekleyici sürüm. Eş bağımlılık `@feralin/web` artık `^0.1.0 || ^0.2.0`.
 
 - `provideFeralinErrorHandler(options?)` ve `FeralinErrorHandler`: uygulamanın `ErrorHandler`'ı olur, hataları `@feralin/web/errors` üzerinden `fr_error` olarak gönderir (`origin: "uncaught_exception"`, `handled: false`) ve `delegate.handleError`'ı (yoksa Angular varsayılanı gibi `console.error`) çağırır. İzin, örnekleme, sınır ve PII temizliği Web SDK'nınkidir; sunucuda olay üretmez. `reportFrameworkError` ve `FeralinErrorOptions` dışa aktarılır (17 Kasım 2026).
 

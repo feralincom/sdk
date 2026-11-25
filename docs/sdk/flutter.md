@@ -11,15 +11,13 @@
 | Dil | Dart |
 | Paket | `feralin_flutter` |
 | Sürüm | 0.3.0 |
-| Yaşam döngüsü | INTEGRATION_TESTED |
+| Yaşam döngüsü | REGISTRY_VERIFIED |
 | Kaynak dizin | `sdks/flutter` |
-| Registry | pub.dev: **BLOCKED_EXTERNAL** (gereken: Google hesabıyla dart pub login (anahtar yok; pub-credentials.json); feralin.com doğrulanmış yayıncısı önerilir (DNS alanı doğrulaması); otomatik yayın yalnız ilk sürümden sonra) |
+| Registry | pub.dev: **PUBLISHED** (sonraki adım: Google hesabıyla dart pub login (anahtar yok; pub-credentials.json); feralin.com doğrulanmış yayıncısı önerilir (DNS alanı doğrulaması); otomatik yayın yalnız ilk sürümden sonra) |
 | Derleme | `cd sdks/flutter && flutter pub get` |
 | Test | `cd sdks/flutter && flutter test` |
 
 ## Kurulum
-
-Registry yayını durumu **BLOCKED_EXTERNAL**: paket henüz `pub.dev` üzerinde yayınlanmış olarak doğrulanmadı; aşağıdaki adımlar kaynaktan ya da yerel pakettendir.
 
 ```yaml
 dependencies:
@@ -88,7 +86,7 @@ if (link.status == DeferredDeepLinkStatus.delivered) router.go(link.path!);
 | source | PASS |  |
 | build | PASS | Android release APK; iOS derlenemez, macOS yok. |
 | test | PASS | flutter analyze temiz, flutter test: 121 test (şifreli kuyruk, anahtarsız mod, eski satır geçişi dahil); Kotlin QueueCipher 5 JVM testi. |
-| registry | BLOCKED_EXTERNAL | pub.dev yayıncısı yok; pub publish --dry-run koşar, yayın yapılmaz. |
+| registry | PASS | pub.dev'de yayımlandı: feralin_flutter 0.3.0 (19 Kasım 2026, git 75eca7f0, flutter pub publish; doğrulanmış yayıncı yok, yükleyici bu makinedeki dart pub login Google hesabı). Geri okuma: pub.dev API latest 0.3.0, archive_sha256 ee08d1eb04e40bdd yerel arşivle aynı, 84 dosya bu commit ile aynı. Git etiketi kanalı da sürer: sdks/flutter/v0.3.0 (herkese açık depo commit 9283cc9). |
 | clean_install | PASS | 13 Kasım 2026: scripts/e2e-emulator.mjs git: flutter create ile boş proje, paket pub.dev dışından git kaynağıyla (HEAD paket ağacından kurulan yerel file:// git deposu, pubspec.lock source: git ve resolved-ref) kuruldu, release APK emülatörde olay gönderdi ve ClickHouse satırı doğrulandı. pub.dev ve uzak git barındırma (GitHub) sınanmadı. |
 | event_receipt | PASS | scripts/e2e-collect.sh ve API 36 emülatör. 13 Kasım 2026: scripts/e2e-emulator.mjs example ve git: emülatörde init, izin, ilk açılış (adb kurulumu, kaynak none), screen_view, feralin_purchase, ağ kesikken kuyruk, ağ gelince gönderim; gerçek services/collect outbox, collect worker ve ClickHouse FINAL satırları tam bir kez; video ve ClickHouse çıktısı tests/e2e/screenshots/mobile altında (git dışı). Emülatördür, gerçek cihaz değil: SDK-R07 BLOCKED_EXTERNAL. |
 | documentation | PASS | docs/sdk/flutter.md: kurulum ve kullanım kod blokları README'den, yetenek ve zincir durumu yetenek dosyasından üretilir (scripts/sdk-dry-run/docs.mjs); registry yayını ve Super Admin kanıtı ayrı halkadır. |

@@ -11,13 +11,11 @@
 | Dil | PHP |
 | Paket | `feralin/feralin-symfony` |
 | Sürüm | 0.1.0 |
-| Yaşam döngüsü | INTEGRATION_TESTED |
+| Yaşam döngüsü | REGISTRY_VERIFIED |
 | Kaynak dizin | `sdks/php-symfony` |
-| Registry | Packagist: **BLOCKED_EXTERNAL** (gereken: Packagist hesabı ve public Git deposu; feralin/feralin-php yayını) |
+| Registry | Packagist: **PUBLISHED** (sonraki adım: Packagist hesabı ve public Git deposu; feralin/feralin-php yayını) |
 
 ## Kurulum
-
-Registry yayını durumu **BLOCKED_EXTERNAL**: paket henüz `Packagist` üzerinde yayınlanmış olarak doğrulanmadı; aşağıdaki adımlar kaynaktan ya da yerel pakettendir.
 
 ```bash
 # Symfony uygulamanızın dizininde (DEPO: deponun yolu)
@@ -85,7 +83,7 @@ public function siparis(RequestFeralin $feralin): Response
 | source | PASS |  |
 | build | PASS | composer install (path deposu ../php, symfony 6.4/7 bileşenleri) geçici kopyada kuruldu. |
 | test | PASS | PHPUnit 7 test, Symfony 7.4 bileşenleri üzerinde (PHP 8.3.6, WSL Ubuntu; scripts/sdk-e2e/php-suite.sh). Symfony 6.4 kısıtta, bu koşuda sınanmadı; Symfony 8 kısıt dışı (PHP 8.4 ister). |
-| registry | BLOCKED_EXTERNAL | Packagist hesabı yok. |
+| registry | PASS | Packagist'te yayımlandı: feralin/feralin-symfony:0.1.0 (19 Kasım 2026; ayrı depo github.com/feralincom/feralin-symfony, etiket v0.1.0, commit 167ad1c; Packagist hesabı GitHub ile). Geri okuma: repo.packagist.org/p2/feralin/feralin-symfony.json sürüm 0.1.0, kaynak etiketli GitHub zipball, require feralin/feralin-php ^0.1. Composer ile temiz kurulum bu makinede koşulmadı (composer yok). Otomatik güncelleme kancası kurulmadı: yeni sürümde Packagist paket sayfasında Update. |
 | clean_install | PASS | scripts/sdk-e2e/run.mjs php-symfony: composer create-project symfony/skeleton 7.4 (http-kernel 7.4.23, WSL PHP 8.3.6) boş uygulamasına yerel path deposundan (Packagist değil) kuruldu; Flex paketi bundles.php'ye eklemedi, README'deki gibi elle eklendi; prod kabı derlendi. |
 | event_receipt | PASS | scripts/sdk-e2e/run.mjs php-symfony: prod ortamında PHP yerleşik sunucusuna gerçek HTTP; RequestFeralin argümanı, olay kernel.terminate aşamasında gerçek toplayıcıya: izinli olay outbox'ta bir kez, reklam izni yokken fr_click yok, izinsiz istekte olay yok. Messenger ve konsol sınanmadı. |
 | documentation | PASS | docs/sdk/php-symfony.md: kurulum ve kullanım kod blokları README'den, yetenek ve zincir durumu yetenek dosyasından üretilir (scripts/sdk-dry-run/docs.mjs); registry yayını ve Super Admin kanıtı ayrı halkadır. |

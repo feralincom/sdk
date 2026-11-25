@@ -11,7 +11,7 @@
 | Dil | PHP |
 | Paket | `feralin` |
 | Sürüm | 0.1.0 |
-| Yaşam döngüsü | IMPLEMENTING |
+| Yaşam döngüsü | INTEGRATION_TESTED |
 | Kaynak dizin | `sdks/wordpress` |
 | Registry | wordpress.org: **BLOCKED_EXTERNAL** (gereken: wordpress.org eklenti incelemesi ve SVN erişimi) |
 | Derleme | `node sdks/wordpress/scripts/build.mjs` |
@@ -50,13 +50,13 @@ feralin.setConsent({ analytics: true, advertising: false });
 
 | Yetenek | Durum |
 |---|---|
-| event | PLANNED (kod yazıldı; yalnız stub'lı birim testi, gerçek WP'de ÇALIŞTIRILMADI; BLOCKED_EXTERNAL) |
-| batch | PLANNED (kod yazıldı; yeniden deneme ve cron stub'lı testte, gerçek WP'de ÇALIŞTIRILMADI; BLOCKED_EXTERNAL) |
-| consent | PLANNED (WP Consent API kodu stub'lı testte, gerçek WP'de ÇALIŞTIRILMADI; BLOCKED_EXTERNAL) |
-| identity | PLANNED (takma ad stub'lı testte, gerçek WP'de ÇALIŞTIRILMADI) |
-| attribution | PLANNED (fr_click süzgeci stub'lı testte, gerçek WP'de ÇALIŞTIRILMADI) |
+| event | SUPPORTED (sayfa izleme Web SDK ile, gerçek WordPress'te e2e; registry yayını yok) |
+| batch | PARTIAL (Web SDK kuyruğu ve PHP SDK gönderimi gerçek kurulumda çalıştı; WP-Cron yeniden denemesi yalnız saplı testte) |
+| consent | SUPPORTED (izin yokken olay yok, ödeme anı izni feralin_checkout_consent süzgeciyle; gerçek kurulumda e2e. WP Consent API eklentisiyle koşmadı) |
+| identity | PARTIAL (WordPress kullanıcı kimliği tuzlu takma ada çevrilir; saplı testte, gerçek kurulumda misafir siparişle koşuldu) |
+| attribution | PARTIAL (fr_click feralin_order_event_properties süzgeciyle; saplı testte, gerçek kurulumda koşmadı) |
 | deeplink | N/A |
-| revenue | PLANNED (Woo siparişi feralin_purchase, transaction_id woo:order:<id>; saplı testte, gerçek WooCommerce'te ÇALIŞTIRILMADI) |
+| revenue | SUPPORTED (WooCommerce siparişi tamamlanınca bir kez feralin_purchase, transaction_id woo:order:<id>, tutar küçük birimde; gerçek WooCommerce 11.3.1 ile e2e. İstemci beyanıdır, verified gönderilmez) |
 | error | PLANNED |
 | replay | PLANNED (yalnız Web SDK üzerinden) |
 | tracing | N/A |
@@ -65,11 +65,11 @@ feralin.setConsent({ analytics: true, advertising: false });
 
 | Halka | Durum | Not |
 |---|---|---|
-| source | PARTIAL | Kod yazıldı; php -l ve WordPress çekirdeksiz (ince saplı) PHPUnit 20/20 geçti; gerçek WordPress'te çalışmadı. |
-| build | PARTIAL | Eklenti dizini üretilir; zip ve WP kurulumu denenmedi. |
-| test | PARTIAL | PHPUnit 20 test (PHP 8.3.6, WSL; WordPress/WooCommerce sapları, sipariş olayı gerçek PHP SDK'sı ve yerel sahte toplayıcıyla). Gerçek WordPress ve WooCommerce yok. |
+| source | PASS | php -l; eklenti gerçek WordPress ve WooCommerce'te etkinleşti ve çalıştı (scripts/sdk-e2e/run.mjs wordpress (24 Kasım 2026, WSL): resmî WordPress 7.1.5 (SHA-1 doğrulandı) ve WooCommerce 11.3.1, koşuya özgü MariaDB, PHP 8.3 yerleşik sunucusu, gerçek services/collect ve ClickHouse). |
+| build | PASS | scripts/build.mjs eklenti dizinini üretir (Web SDK ve PHP SDK içinde); bu çıktı temiz WordPress'e kopyalanıp etkinleştirildi. feralin.com indirme paketi (feralin-wordpress-*.zip) aynı dizinden üretilir. |
+| test | PASS | PHPUnit 20 test (saplı) ve gerçek kurulum e2e: ayarlarda sk_ reddi (Settings API temizleyicisi), sayfada betik ve başlangıç kodu, izin yokken olay yok, izinden sonra page_view ve özel olay, izinli WooCommerce siparişinde tek feralin_purchase, izinsiz siparişte olay yok (scripts/sdk-e2e/run.mjs wordpress (24 Kasım 2026, WSL): resmî WordPress 7.1.5 (SHA-1 doğrulandı) ve WooCommerce 11.3.1, koşuya özgü MariaDB, PHP 8.3 yerleşik sunucusu, gerçek services/collect ve ClickHouse). WP Consent API eklentisi, WP-Cron yeniden denemesi ve gerçek tarayıcı (jsdom yerine) koşmadı. |
 | registry | BLOCKED_EXTERNAL | wordpress.org SVN erişimi yok. |
-| clean_install | BLOCKED_EXTERNAL | Gerçek WordPress test sitesi yok (çekirdek indirilmedi). |
-| event_receipt | BLOCKED_EXTERNAL | Sipariş olayı yalnız yerel sahte toplayıcıya gitti; gerçek WooCommerce ve toplayıcı yok. |
+| clean_install | PASS | Boş WordPress kurulumuna eklenti dizini kopyalandı, activate_plugin ile etkinleşti, ayarlar kaydedildi; WooCommerce ile birlikte. |
+| event_receipt | PASS | 3 ön yüz olayı (Web SDK, platform web) ve 1 sipariş olayı (PHP SDK, platform php) gerçek toplayıcıda 202, outbox'ta ve ClickHouse'ta tam bir kez; kaynak sütunları web:127.0.0.1 ve server:. |
 | documentation | PASS | docs/sdk/wordpress.md: kurulum ve kullanım kod blokları README'den, yetenek ve zincir durumu yetenek dosyasından üretilir (scripts/sdk-dry-run/docs.mjs); registry yayını ve Super Admin kanıtı ayrı halkadır. |
 | super_admin_proof | NOT_STARTED |  |

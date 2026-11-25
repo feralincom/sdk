@@ -1,6 +1,6 @@
 {
   "name": "@feralin/electron",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Feralin Node.js SDK için Electron köprüsü: ana süreç, contextIsolation uyumlu preload ve renderer erişimi.",
   "license": "MIT",
   "type": "module",
@@ -30,7 +30,7 @@
     "test:e2e": "node ../../scripts/sdk-e2e/run.mjs electron"
   },
   "peerDependencies": {
-    "@feralin/node": "^0.1.0"
+    "@feralin/node": "^0.1.0 || ^0.2.0"
   },
   "devDependencies": {
     "@feralin/node": "workspace:*",

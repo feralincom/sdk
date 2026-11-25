@@ -1,6 +1,6 @@
 {
   "name": "@feralin/node",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Feralin Node.js server SDK: UTP v1 olayları, consent passthrough, idempotent batch, üstel geri çekilme. Çalışma zamanı bağımlılığı yoktur.",
   "license": "MIT",
   "type": "module",

@@ -1,16 +1,16 @@
 # Feralin Swift SDK
 
-iOS, iPadOS, macOS, tvOS ve watchOS için UTP v1 istemcisi. `URLSession` ve `actor` kullanır, dış bağımlılığı yoktur. Olaylar `POST /v1/batch` üzerinden gider. Kapsam: izin kapılı olay, sınırlı kuyruk (isteğe bağlı kalıcı), 30 dk otomatik oturum, üstel geri çekilme, Apple attribution çağrıları.
+iOS, iPadOS, macOS, tvOS ve watchOS için UTP v1 istemcisi. `URLSession` ve `actor` kullanır, dış bağımlılığı yoktur. Olaylar `POST /v1/batch` üzerinden gider. Kapsam: izin kapılı olay, sınırlı kuyruk (isteğe bağlı kalıcı), 30 dk otomatik oturum, üstel geri çekilme, Apple attribution çağrıları, satın alma geliri (`trackRevenue`, StoreKit 2) ve SKAN dönüşüm değeri modülü.
 
 ## Durum
 
 | Konu | Durum |
 |---|---|
 | Kod ve testler | **Platformdan bağımsız çekirdek Linux'ta derlendi ve sınandı (17 Kasım 2026, Swift 6.4.2).** Apple'a özgü bloklar (`#if canImport`: Darwin/MachO, AppTrackingTransparency, AdServices, StoreKit, AdAttributionKit, ObjectiveC) ve iOS hedefi hiç derlenmedi: macOS ve Xcode yok. `lifecycle: INTEGRATION_TESTED` |
-| `swift build`, `swift test` | Linux x86_64: derleme uyarısız, 89 XCTest geçti. Darwin'e bağlı testler (TransportTests, dSYM çerçeve yakalama) ve iOS/macOS derlemesi `NOT_RUN` |
+| `swift build`, `swift test` | Linux x86_64 (20 Kasım 2026, Swift 6.4.2): derleme uyarısız, 149 XCTest geçti (gelir ve SKAN dahil). Darwin'e bağlı testler (TransportTests, dSYM çerçeve yakalama), StoreKit 2 köprüsü (`StoreKitCapture.swift`) ve iOS/macOS derlemesi `NOT_RUN` |
 | Gerçek `services/collect` | `node scripts/sdk-e2e/run.mjs ios-swift` Linux'ta geçti: temiz tüketici, outbox 7 satır, ClickHouse'ta 3 olay tam bir kez. Olay platformu Linux'ta `other` gider; iOS cihaz ve simülatör `NOT_RUN` |
 | Gerçek cihaz ve App Store | `BLOCKED_EXTERNAL`: Apple Developer hesabı, yayınlı uygulama, Apple Ads kampanyası |
-| SPM yayını (Git tag) | `BLOCKED_EXTERNAL`: herkese açık depo var (<https://github.com/feralincom/sdk>), kök `Package.swift` dışa aktarımla gelir; sürüm etiketi `0.2.0` henüz gönderilmedi, gönderim ve etiket site sahibinin onayını bekler |
+| SPM yayını (Git tag) | Yayında: etiket `0.3.0` (herkese açık depo <https://github.com/feralincom/sdk>, 19 Kasım 2026); temiz SPM kurulumu Linux'ta derlendi ve çalıştı. `0.4.0` (gelir, StoreKit 2, SKAN) yayın adayı: etiket gönderilince kurulabilir |
 
 Apple'a özgü API imzaları ve sürümleri developer.apple.com belgesinden doğrulandı; derleyiciyle doğrulanmadı. Xcode ile ilk derlemede denenecek riskler aşağıda. İlk Linux derlemesi iki gerçek hata buldu ve düzeltildi: sonlu olmayan sayı (`NaN`) özellik olarak düşmek yerine `null` gidiyordu, testlerde actor çağrıları derlenmiyordu.
 
@@ -22,11 +22,11 @@ Swift 5.9 araç zinciri (Xcode 15+). iOS 14, macOS 11, tvOS 14, watchOS 7.
 
 Paket herkese açık depodadır: <https://github.com/feralincom/sdk>. Swift Package Manager bildirimi yalnız depo kökünde aradığı için depo kökünde `sdks/swift` kaynağını gösteren bir `Package.swift` vardır. Sürüm etiketi kökte düz semver'dir (`0.2.0`); paket kimliği adresin son parçasıdır (`sdk`).
 
-Xcode: **File → Add Package Dependencies…** → `https://github.com/feralincom/sdk.git` → **Exact Version** `0.3.0` → ürün `Feralin`. Ya da `Package.swift`:
+Xcode: **File → Add Package Dependencies…** → `https://github.com/feralincom/sdk.git` → **Exact Version** `0.4.0` → ürün `Feralin`. Ya da `Package.swift`:
 
 ```swift
 // Package.swift
-.package(url: "https://github.com/feralincom/sdk.git", exact: "0.3.0")
+.package(url: "https://github.com/feralincom/sdk.git", exact: "0.4.0")
 // hedef bağımlılığı
 .product(name: "Feralin", package: "sdk")
 ```
@@ -103,6 +103,7 @@ Kurulum kimliği rastgele bir ULID'dir, `UserDefaults` içinde yalnız analitik 
 |---|---|---|---|
 | `ProductInteraction` | Olay adı ve özellikleri | Evet: olaylar `anonymous_id` ve varsa `user_id` taşır | Analytics |
 | `UserID` | `user_id` ve kalıcı rastgele kurulum kimliği | Evet | Analytics |
+| `PurchaseHistory` | `trackRevenue` ve StoreKit 2 satın alma olayları (`feralin_purchase`) | Evet | Analytics |
 | `AdvertisingData` | `fr_click`, AdServices token | Evet | Analytics |
 
 Kurulum kimliği donanıma değil, uygulama kurulumuna atanmış rastgele değerdir; IDFA, IDFV okunmadığından `DeviceID` beyan edilmez.
@@ -130,7 +131,7 @@ let client = try FeralinClient(configuration: .init(
 | `installIdentifier()` | Kurulum kimliğini (ADR-0007) döndürür | Reklam ölçümü izni (ATT dâhil) yoksa `nil`. Kimliği kendi sunucunuza iletin; sunucu gizli API anahtarıyla `POST /v1/projects/{id}/attribution/account-links` (`surface=app`, `subject_id=<kimlik>`) çağırır. SDK hesap kimliği yazmaz |
 | `bindInstall()` | AdServices token'ını bu kimlikle gönderir ve `InstallBinding(installID, adServices)` döndürür | Token alınamasa (`notSupported`, `tokenUnavailable`) da `installID` hesap bağı için geçerlidir. Derlenmedi: macOS yok |
 | `redeemContinuityCode(_:)` | `POST {api}/v1/projects/{id}/attribution/continuity-tokens/redeem` | Yalnız kullanıcı kodu girdiğinde çağırın; SDK panoyu okumaz. Sonuç eşleşen ilk açılıştır, indirme sayısı değildir. Sözleşmede macOS, tvOS, watchOS değeri yok: `notSupported` |
-| `updateConversionValue(fine:coarse:lock:frameworks:)` | SKAdNetwork (iOS 16.1) ve AdAttributionKit (iOS 17.4) | `called` yalnız çağrının hatasız döndüğünü söyler; bekleyen postback yoksa sistem çağrıyı yok sayar |
+| `updateConversionValue(fine:coarse:lock:frameworks:)` | SKAdNetwork (iOS 16.1) ve AdAttributionKit (iOS 17.4) | Elle çağrı; reklam izni ister. Kiracı şemasıyla otomatik güncelleme için aşağıdaki SKAN modülü. `called` yalnız çağrının hatasız döndüğünü söyler; bekleyen postback yoksa sistem çağrıyı yok sayar |
 
 Attribution uçlarında proje anahtarı `Authorization: Bearer` ile gider, `X-Feralin-Project-Key` yalnız toplayıcıdadır. Token saklanmaz ve loglanmaz.
 
@@ -209,6 +210,67 @@ done
   Bitcode ya da App Store işlemesiyle dSYM değiştiyse App Store Connect'ten indirilen dSYM aynı komutla yüklenir. Çok mimarili (fat) dSYM mimari başına ayrı kayda bölünür. Dosya en çok 48 MiB, varsayılan 90 gün saklanır.
 - **Durum:** `Signals.swift`, `AppleFrames.swift` ve `SignalsTests.swift` yazıldı, macOS'ta DERLENMEDİ ve KOŞULMADI. Sözleşme mantığı Android ve React Native'deki birim testli karşılıklarla aynıdır. Sunucu tarafı (dSYM yükleme, UUID eşleşmesi, `llvm-symbolizer` çözümü) gerçek arm64 dSYM ile sınandı (`services/saas-api/test/fixtures/feralin-dsym-fixture.c`, Mac olmadan NDK LLVM araçlarıyla üretildi); SDK'nın cihazda ürettiği çerçeve sınanmadı.
 
+## Satın alma geliri: trackRevenue ve StoreKit 2
+
+Sözleşme Android, Flutter ve Web ile aynıdır: olay `feralin_purchase`, tutar küçük birimde tam sayı (`amount_minor`, 49,99 TRY için 4999), para birimi ISO 4217, `purchase_type` `purchase`, `subscription_start`, `subscription_renew` ya da `subscription_cancel` (tutar 0). İstemci beyanıdır: `verified` hiçbir zaman gönderilmez, çağıranın verdiği `verified` ve türevleri düşürülür.
+
+```swift
+// Elle beyan (StoreKit dışı ödeme ya da kendi sunucunuzun onayladığı sipariş)
+try await client.trackRevenue(RevenueInput(transactionID: "ord_1", amountMinor: 4999, currency: "TRY", productID: "pro"))
+
+// Ondalık tutarla (StoreKit Product): küçük birime sunucuyla aynı kuralla çevrilir
+try await client.trackRevenue(amount: product.price, currency: product.priceFormatStyle.currencyCode,
+                              productID: product.id, transactionID: String(transaction.id),
+                              receipt: PurchaseReceipt(provider: .apple, token: verification.jwsRepresentation))
+
+// StoreKit 2: uygulama içi satın alma sonucu (aynı cihazda purchase() dönen işlem Transaction.updates akışına düşmez)
+let result = try await product.purchase()
+try await client.trackStoreKitPurchase(result, product: product)
+
+// StoreKit 2: Transaction.updates dinleyicisi (varsayılan kapalı; uygulama açılışında, en erken anda kurun)
+let client = try FeralinClient(configuration: .init(
+    projectKey: "pk_live_...",
+    collectURL: "https://collect.example.com",
+    consent: Consent(analytics: true),
+    storageDirectory: FeralinClient.defaultStorageDirectory(),
+    captureStoreKitTransactions: true
+))
+```
+
+- **Tutar ve küçük birim:** StoreKit işleminde önce işlemin kendi fiyatı (`Transaction.price`, teklif ve indirim yansır) ve para birimi (`Transaction.currency`, iOS 16+) okunur; iOS 15'te para birimi, işlemde fiyat yoksa tutar ürün kataloğundan (`Product.price`, `priceFormatStyle.currencyCode`) tamamlanır. Küçük birim üssü sunucudaki kuralla aynıdır (JPY, KRW gibi 10 para birimi 0; BHD, JOD, KWD, OMR, TND 3; öteki 2), yarım değer yukarı yuvarlanır. Apple belgesine göre tüketilebilir üründe `Transaction.price` adet toplamıdır; SDK yeniden çarpmaz.
+- **Tür:** otomatik yenilenen abonelikte ilk işlem (`id == originalID`) `subscription_start`, sonrakiler `subscription_renew`; öteki ürünler `purchase`. Olaya `original_transaction_id`, `product_kind`, `store` ve iOS 16+ `store_environment` (Production, Sandbox, Xcode) eklenir.
+- **Gönderilmeyenler:** `VerificationResult.unverified` (Apple imzası doğrulanmadı), iade ya da hak iptali (`revocationDate`), üst aboneliğe geçilmiş eski işlem (`isUpgraded`), aile paylaşımıyla gelen hak (`ownershipType == .familyShared`: ödemeyi bu kullanıcı yapmadı). Sonuç `StoreKitCaptureOutcome` ile döner.
+- **İade:** sunucunun istemci olayı sözleşmesinde iade türü yoktur; iade ve geri ödeme App Store Server Notifications V2 (`POST /v1/finance-notifications/apple`) ile, imzası doğrulanarak deftere yazılır. Bu bildirim adresini App Store Connect'te tanımlayın.
+- **Tekrar engeli:** aynı işlem (aynı `transaction_id` ve tür) bu kurulumda ikinci kez kuyruğa girmez; `trackRevenue` `nil`, StoreKit yolu `.duplicate` döner. Kayıt en çok 512 işlemdir ve `storageDirectory` verilirse diske (`feralin-purchases-v1.json`) yazılır. Verilmezse kuyruk gibi yalnız bellektedir: yeniden açılışta StoreKit bitmemiş işlemi yeniden bildirirse olay yeniden gider ve sunucu `transaction_id` ile tekilleştirir (olay kaybı yerine tekrar seçildi). Analitik izni geri çekilince kayıt silinir.
+- **İşlemi bitirmek:** SDK `transaction.finish()` çağırmaz; içeriği teslim edip işlemi bitirmek uygulamanındır.
+- **REAL_VERIFIED için sunucu tarafı:** satır yalnız sunucu Apple'dan işlemi doğrularsa REAL_VERIFIED olur. Gerekenler: panelde projenin Apple mağaza bağlantısı (bundle id, issuer id, key id ve uygulama içi satın alma anahtarı `.p8`; App Store Server API) ve sunucuda Apple Root CA - G3 (`APPLE_ROOT_CA_PEM_PATH`). Olay `receipt` (`provider: apple`) taşıyorsa toplayıcı `receipt_provider` ve belirtecin SHA-256 özetini yazar; sunucu `GET /inApps/v1/transactions/{transaction_id}` ile işlemi Apple'dan çeker, bundle, ürün, para birimi ya da tutar tutmazsa satır UNKNOWN olur. Makbuz yoksa ya da doğrulayıcı kurulmamışsa satır ESTIMATED kalır. Ham JWS olay deposuna yazılmaz; 8192 karakteri aşan JWS makbuz olarak gönderilmez.
+- **Durum:** saf katman (`Revenue.swift`: sözleşme, küçük birim, tekrar engeli, StoreKit işlem eşlemesi) Linux'ta XCTest ile geçti (20 Kasım 2026). StoreKit 2 köprüsü (`StoreKitCapture.swift`, `#if canImport(StoreKit)`) Xcode'da DERLENMEDİ ve gerçek StoreKit işlemiyle (sandbox ya da StoreKit Testing) KOŞULMADI: Mac gerekir.
+
+## SKAN dönüşüm değeri modülü (SKAdNetwork 4 ve AdAttributionKit)
+
+Kiracının paneldeki SKAN şemasını (hangi olay hangi ince ve kaba değeri üretir) sunucudan alır ve izlenen olaylara göre `SKAdNetwork.updatePostbackConversionValue(_:coarseValue:lockWindow:)` (iOS 16.1+) ile `Postback.updateConversionValue(_:coarseConversionValue:lockPostback:)` (AdAttributionKit, iOS 17.4+) çağırır. Varsayılan kapalıdır; uygulama ayarıyla açılır.
+
+```swift
+let client = try FeralinClient(configuration: .init(
+    projectKey: "pk_live_...",
+    collectURL: "https://collect.example.com",
+    consent: Consent(analytics: kullaniciAnalitikIzniVerdi),
+    attribution: AttributionConfiguration(apiURL: "https://api.example.com", projectID: "proj_..."),
+    storageDirectory: FeralinClient.defaultStorageDirectory(),
+    skan: SkanConfiguration(frameworks: .both)
+))
+try await client.track("sign_up")       // şemada varsa dönüşüm değeri güncellenir
+await client.refreshSkanSchema()       // panelde şema değişince hemen uygulamak için (isteğe bağlı)
+```
+
+- **Şema:** `GET {api}/v1/projects/{id}/skan/conversion-schema/sdk` (proje anahtarı `Authorization: Bearer`); en çok 24 saatte bir yenilenir (`schemaRefreshInterval`), arada diskteki kopya kullanılır. Şema kaydedilmemişse (`revision: null`) değer gönderilmez. `attribution` verilmeden modül açılırsa kurulum `FeralinError.configuration` fırlatır.
+- **Kural (sunucuyla aynı, `skan-schema.ts`):** seçim `highest_value`: değer hiç düşmez; ince değerde sayı, kaba değerde low < medium < high. Pencereler 0-2, 3-7 ve 8-35. gün; ince değer yalnız ilk pencerede gider (sonrakilerde 0 gönderilir, Apple yok sayar). `lock_window` kuralı o pencereyi kilitler, pencere bitene kadar başka çağrı yapılmaz. 35. günden sonra çağrı yapılmaz. Apple yalnız değer arttığında ya da kilit istendiğinde çağrılır; çağrılar sırayla yapılır.
+- **Kurulum kaydı:** Apple "uygulama ilk açıldığında kurulumu kaydetmek için çağırın" dediğinden modül ilk çalıştığında bir kez ince 0 ve kaba `low` gönderir; pencereler bu andan sayılır. Panelde ince değer 0 ya da yalnız kaba `low` değerine anlamlı bir olay eşlemeyin: kural olayı görülmemiş kurulum da bu değerle görünür.
+- **İzin:** SKAN ve AdAttributionKit ATT izni istemez ve kişi tanımlamaz; modül analitik ve reklam izninden bağımsız çalışır (olay izin yüzünden kuyruğa girmese de değer güncellenir). Çağrı Apple'a gider, Feralin'e olay verisi gitmez. `childDirected: true` ise modül çalışmaz. Elle `updateConversionValue` yöntemi eskisi gibi reklam izni ister.
+- **Kalıcılık:** durum (kayıt anı, pencere değerleri, şema) `storageDirectory` varsa `feralin-skan-v1.json`, yoksa `UserDefaults` içinde tutulur. Kişi verisi yoktur.
+- **Sonuç:** `lastSkanUpdate` son çağrının sonucudur; `called` yalnız çağrının hatasız döndüğünü söyler, atıf gerçekleştiği anlamına gelmez. Postback çözümü sunucuda topludur ve ESTIMATED'dır; kesin tekil atıf iddia edilmez.
+- **Durum:** karar mantığı, şema çözümü, kalıcılık ve sunucu isteği Linux'ta XCTest ile (sahte Apple çağrısıyla) geçti (20 Kasım 2026). Gerçek `SKAdNetwork` ve `AdAttributionKit` çağrıları (`ApplePlatform.swift`, `#if canImport(StoreKit) && os(iOS)`) Xcode'da DERLENMEDİ ve cihazda KOŞULMADI; gerçek postback için Apple Ads ya da SKAN destekli ağ kampanyası gerekir (`BLOCKED_EXTERNAL`).
+
 ## Ağ
 
 `URLSessionTransport` yönlendirme izlemez, proje anahtarı başka adrese taşınmaz; 3xx kalıcı olmayan hata sayılır, olaylar kuyrukta kalır. Yanıt gövdesi indirme sırasında 64 KB ile kesilir. `URLSessionTransport(session:)` verilen oturumun yalnız yapılandırmasını kullanır, o oturumun delegesi çağrılmaz; özel ağ yığını için `Transport` uygulanır.
@@ -216,7 +278,8 @@ done
 ## Desteklenmeyenler
 
 - Kuyruk şifreli değildir; `storageDirectory` verilmezse bellektedir ve süreç ölünce kaybolur. Kalıcı kuyruk ve oturum kodu yazıldı, derlenmedi ve koşmadı.
-- `page`, `screen`, `trackRevenue`, StoreKit makbuzu, Universal Links işleme, OTel yok. Hata, oyun ve reklam geliri yöntemleri vardır (aşağıda).
+- `page`, `screen`, OTel yok. Hata, oyun, reklam geliri ve satın alma geliri yöntemleri vardır. StoreKit 1 (`SKPaymentQueue`) otomatik yakalanmaz: `trackRevenue` ile verin.
+- İade ve hak iptali istemciden gönderilmez (sunucunun istemci olayı sözleşmesinde iade türü yok); iade sunucuya App Store Server Notifications V2 ile gelir.
 - Tel `platform` değeri iOS ve visionOS'ta `ios`, macOS, tvOS, watchOS'ta `other`: UTP şemasında ayrı değer yok.
 - Yaşam döngüsü bildirimleri otomatik izlenmez; `willEnterForeground()` ve `didEnterBackground()` çağırmak, arka plana geçerken `flush()` çağırmak uygulamanındır.
 

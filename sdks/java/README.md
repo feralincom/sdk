@@ -9,7 +9,7 @@ Feralin toplayıcısına (`services/collect`, `POST /v1/batch`) **sunucu tarafı
 
 ## Durum
 
-- Maven Central'a **yayımlanmadı** (`BLOCKED_EXTERNAL`): `com.feralin` alan adı doğrulaması ve imza anahtarı gerekir. Bugün paket adlarıyla kurulum çalışmaz.
+- Maven Central'da **yayında** (19 Kasım 2026): `com.feralin:java:0.1.0` ve `com.feralin:feralin-spring-boot-starter:0.1.0`; `mavenCentral()` deposundan paket adlarıyla kurulur.
 - Temiz kurulum yerel Maven deposundan sınanır: `scripts/sdk-e2e/run.mjs java`.
 - Testler JDK 17 üzerinde koşar. Java 11 uyumu derleyici düzeyindedir; gerçek bir JDK 11 çalışma zamanında koşulmadı.
 

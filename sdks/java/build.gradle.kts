@@ -42,12 +42,28 @@ subprojects {
             register<MavenPublication>("maven") {
                 from(components["java"])
                 pom {
+                    name.set("Feralin Java SDK: ${project.name}")
+                    description.set("Feralin Java sunucu SDK'sı (${project.name}): UTP v1 olayları, izin aktarımı, idempotent batch.")
                     url.set("https://feralin.com")
                     licenses {
                         license {
                             name.set("MIT")
                             url.set("https://opensource.org/licenses/MIT")
                         }
+                    }
+                    developers {
+                        developer {
+                            id.set("feralin")
+                            name.set("Feralin")
+                            email.set("noreply@feralin.com")
+                            organization.set("Feralin")
+                            organizationUrl.set("https://feralin.com")
+                        }
+                    }
+                    scm {
+                        url.set("https://github.com/feralincom/sdk")
+                        connection.set("scm:git:https://github.com/feralincom/sdk.git")
+                        developerConnection.set("scm:git:https://github.com/feralincom/sdk.git")
                     }
                 }
             }

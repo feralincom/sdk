@@ -1,8 +1,8 @@
 # Değişiklikler
 
-## Yayınlanmamış (yayın bekliyor)
+## 0.2.0 (yayın adayı, 25 Kasım 2026)
 
-Depodadır, npm'deki 0.1.0 içinde yoktur; sonraki sürüm numarasıyla yayımlanacak (0.1.0 yeniden yayımlanamaz).
+Ekleyici sürüm: kalıcı kuyruk isteğe bağlıdır, verilmezse davranış 0.1.0 ile aynıdır.
 
 - İsteğe bağlı kalıcı kuyruk: `storageDirectory`, `storageMaxBytes` (varsayılan 10 MiB), `storageMaxAgeMs` (varsayılan 7 gün, en çok 90 gün). Süreç çökerse olaylar sonraki açılışta aynı batch bileşimi ve aynı `Idempotency-Key` ile gönderilir; her istemci örneği kendi günlük dosyasına yazar, sahipsiz günlük atomik yeniden adlandırmayla devralınır; izin geri çekilince disk de silinir. Sıfır bağımlılık. `getStatus().storage` alanı (17 Kasım 2026).
 

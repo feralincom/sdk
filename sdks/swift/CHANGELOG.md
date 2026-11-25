@@ -1,8 +1,14 @@
 # Değişiklik günlüğü
 
-Yayınlanmadı: herkese açık depo var (github.com/feralincom/sdk), sürüm etiketi henüz gönderilmedi (`BLOCKED_EXTERNAL`). Bu sürüm kayıtları yazıldığında kod hiç derlenmedi ve testler hiç koşmadı (macOS, Xcode ve `swift` yok). Doğrulama durumu `sdks/capabilities.yaml` içindedir.
+Herkese açık depodan (github.com/feralincom/sdk) Git etiketiyle kurulur: `0.3.0` yayımlı (19 Kasım 2026). Swift kodu Linux'ta Swift 6.4.2 ile derlenir ve test edilir; Xcode, iOS cihazı ve StoreKit/SKAN'ın cihazdaki davranışı Mac gerektirir (`docs/MAC_GOREVLERI.md`). Doğrulama durumu `sdks/capabilities.yaml` içindedir.
 
-## Yayınlanmamış
+## 0.4.0 (yayın adayı, 25 Kasım 2026; Git etiketi `0.4.0` gönderilince yayımlanır)
+
+- Satın alma geliri (`Revenue.swift`): `trackRevenue(_:)` ve `trackRevenue(amount:currency:productID:transactionID:...)` → `feralin_purchase` (Android, Flutter ve Web ile aynı sözleşme; `verified` düşer, tutar küçük birimde tam sayı, üs kuralı sunucuyla aynı). Aynı işlem bu kurulumda ikinci kez kuyruğa girmez (`storageDirectory` verilirse `feralin-purchases-v1.json`). Yeni türler `RevenueInput`, `PurchaseType`, `PurchaseReceipt`, `MinorUnits`, `StoreKitCaptureOutcome`.
+- StoreKit 2 (`StoreKitCapture.swift`, `#if canImport(StoreKit)`): `trackStoreKitPurchase`, `trackStoreKitTransaction`, `startStoreKitTransactionCapture` ve `Configuration.captureStoreKitTransactions` (varsayılan kapalı). Yalnız doğrulanmış işlem gider, JWS makbuz belirtecidir; iade, üst aboneliğe geçiş ve aile paylaşımı gelir sayılmaz. Xcode'da derlenmedi.
+- SKAN dönüşüm değeri modülü (`Skan.swift`): `Configuration.skan` (varsayılan kapalı), `refreshSkanSchema()`, `lastSkanUpdate`. Kiracı şeması `skan/conversion-schema/sdk` ucundan alınır; en yüksek değer seçimi, üç pencere, kilit ve kurulum kaydı sunucu sözleşmesiyle aynı. ATT ve izinden bağımsız, `childDirected` açıkken kapalı.
+- Gizlilik bildirimi: `NSPrivacyCollectedDataTypePurchaseHistory` eklendi.
+- Linux'ta (20 Kasım 2026, Swift 6.4.2) `swift build` uyarısız, `swift test` 149 XCTest geçti (28 yeni test: `RevenueTests`, `SkanTests`).
 
 ## 0.3.0 (19 Kasım 2026)
 

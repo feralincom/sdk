@@ -10,7 +10,7 @@ public struct SDKIdentity: Equatable, Sendable {
         self.version = version
     }
 
-    public static let swift = SDKIdentity(name: "feralin-swift", version: "0.3.0")
+    public static let swift = SDKIdentity(name: "feralin-swift", version: "0.4.0")
 }
 
 /// UTP v1 toplayıcısına (`POST /v1/batch`) olay gönderen istemci. Kuyruk aktör içinde yaşar; aynı anda tek gönderici çalışır.
@@ -51,6 +51,14 @@ public actor FeralinClient {
         /// kullanıcı yeniden onaylayınca `setConsent(_:grantedAt:)` ile yeniler.
         public var consentMaxAgeDays: Int?
         public var advertisingConsentGrantedAt: Date?
+        /// SKAdNetwork / AdAttributionKit dönüşüm değeri modülü (`Skan.swift`). nil (varsayılan) ise kapalıdır. Açıkken kiracının şeması
+        /// `attribution` adresinden alınır ve izlenen olaylar Apple çağrısına çevrilir; SKAN ATT izni istemediğinden izin durumundan bağımsızdır.
+        /// `childDirected` açıksa çalışmaz. `attribution` verilmeden açılırsa kurulum `FeralinError.configuration` fırlatır.
+        public var skan: SkanConfiguration?
+        /// StoreKit 2 `Transaction.updates` dinleyicisi (varsayılan kapalı, Android'de otomatik yakalama olmadığı gibi). Açıksa doğrulanmış
+        /// işlemler `feralin_purchase` olarak gönderilir. Uygulama içinde `purchase()` dönen işlem bu akışa düşmez: onu `trackStoreKitPurchase` ile verin.
+        /// StoreKit 2 olmayan platformda (Linux, iOS 15 öncesi) etkisizdir.
+        public var captureStoreKitTransactions: Bool
         /// Yalnız testler: macOS üzerinde koşan testin iOS yolunu sınaması için.
         var platformOverride: String?
 
@@ -70,7 +78,9 @@ public actor FeralinClient {
             signingKey: SigningKey? = nil,
             childDirected: Bool = false,
             consentMaxAgeDays: Int? = nil,
-            advertisingConsentGrantedAt: Date? = nil
+            advertisingConsentGrantedAt: Date? = nil,
+            skan: SkanConfiguration? = nil,
+            captureStoreKitTransactions: Bool = false
         ) {
             self.projectKey = projectKey
             self.collectURL = collectURL
@@ -88,6 +98,8 @@ public actor FeralinClient {
             self.childDirected = childDirected
             self.consentMaxAgeDays = consentMaxAgeDays
             self.advertisingConsentGrantedAt = advertisingConsentGrantedAt
+            self.skan = skan
+            self.captureStoreKitTransactions = captureStoreKitTransactions
         }
     }
 
@@ -176,6 +188,14 @@ public actor FeralinClient {
     private var backoffUntil: TimeInterval = 0
     private var sendTail: Task<FlushResult, Never>?
     private var loop: Task<Void, Never>?
+    /// Gönderilmiş gelir işlemleri (`Revenue.swift`); aynı işlem ikinci kez kuyruğa girmez.
+    private var purchaseLedger: PurchaseLedger
+    /// SKAN modülü (`Skan.swift`); kapalıysa nil. Ayrı dosyadaki uzantı erişsin diye `private` değildir.
+    var skanRuntime: SkanRuntime?
+    /// SKAN modülünün Apple çağrısı (testlerde sahte); izin denetimi yapmaz, SKAN izin gerektirmez.
+    let skanConversionUpdater: @Sendable (Int, CoarseConversionLevel, Bool, ConversionFrameworks) async -> ConversionUpdateResult
+    /// StoreKit 2 `Transaction.updates` dinleyicisi (`StoreKitCapture.swift`).
+    var storeKitListener: Task<Void, Never>?
 
     /// - Parameters:
     ///   - transport: Yoksa `URLSessionTransport`.
@@ -217,6 +237,14 @@ public actor FeralinClient {
             _ = try Self.normalizedRoot(attribution.apiURL, field: "apiURL")
             guard !attribution.projectID.isEmpty else {
                 throw FeralinError.configuration("projectID boş olamaz")
+            }
+        }
+        if let skan = configuration.skan {
+            guard configuration.attribution != nil else {
+                throw FeralinError.configuration("skan modülü şemayı almak için attribution (apiURL, projectID) ister")
+            }
+            guard skan.schemaRefreshInterval > 0 else {
+                throw FeralinError.configuration("schemaRefreshInterval pozitif olmalı")
             }
         }
         let endpointText = root + "/v1/batch"
@@ -280,12 +308,39 @@ public actor FeralinClient {
         #endif
         self.adServicesTokenProvider = adServicesTokenProvider
         self.conversionUpdater = conversionUpdater
+        self.skanConversionUpdater = conversionUpdater
         self.trackingStatusProvider = trackingStatusProvider
+        // Gelir kaydı yalnız kalıcı kuyrukla birlikte diske yazılır: kuyruk bellekteyse ve süreç ölürse kayıt "gönderildi" deyip olayı
+        // kaybettirmesin (StoreKit bitmemiş işlemi yeniden bildirir, sunucu `transaction_id` ile tekilleştirir).
+        if let store, configuration.consent.analytics {
+            self.purchaseLedger = PurchaseLedger(keys: store.loadPurchaseKeys())
+        } else {
+            store?.clearPurchaseKeys()
+            self.purchaseLedger = PurchaseLedger()
+        }
+        // SKAN çocuklara yönelik uygulamada çalışmaz (reklam ölçümü kapalı); öteki durumlarda izin değil uygulama ayarı açar.
+        let skanEnabled: Bool
+        if let skan = configuration.skan, !configuration.childDirected {
+            let skanStore: any SkanStateStore = store.map { DiskSkanStateStore(store: $0) } ?? UserDefaultsSkanStateStore()
+            self.skanRuntime = SkanRuntime(configuration: skan, store: skanStore, state: skanStore.load() ?? SkanState(), tail: nil, lastResult: nil)
+            skanEnabled = true
+        } else {
+            self.skanRuntime = nil
+            skanEnabled = false
+        }
 
         // Geri yüklenen olaylar yeni bir track beklemeden arka plan göndericiyle gönderilsin.
         if !restored.isEmpty {
             Task { [weak self] in await self?.startLoopIfNeeded() }
         }
+        if skanEnabled {
+            Task { [weak self] in await self?.startSkan() }
+        }
+        #if canImport(StoreKit)
+        if configuration.captureStoreKitTransactions, #available(iOS 15.0, macOS 12.0, tvOS 15.0, watchOS 8.0, *) {
+            Task { [weak self] in await self?.startStoreKitTransactionCapture() }
+        }
+        #endif
     }
 
     private static func normalizedRoot(_ value: String, field: String) throws -> String {
@@ -313,6 +368,8 @@ public actor FeralinClient {
             diskStore?.clearQueue()
             diskStore?.clearSession()
             persistedActivityMillis = nil
+            purchaseLedger.removeAll()
+            diskStore?.clearPurchaseKeys()
         }
     }
 
@@ -366,6 +423,8 @@ public actor FeralinClient {
         context: Context? = nil
     ) throws -> TrackedEvent? {
         if closed { throw FeralinError.clientClosed }
+        // SKAN dönüşüm değeri izin gerektirmez (Apple: ATT'den bağımsız, kişi tanımlamaz); modül açıksa olay izin denetiminden önce görülür.
+        if skanRuntime != nil { observeSkan(eventName) }
         let effective = effectiveConsent
         guard effective.analytics else { return nil }
 
@@ -510,6 +569,8 @@ public actor FeralinClient {
         closed = true
         loop?.cancel()
         loop = nil
+        storeKitListener?.cancel()
+        storeKitListener = nil
         return await serializedFlush(deadline: Self.monotonicNow() + max(0, closeTimeout))
     }
 
@@ -681,6 +742,28 @@ public actor FeralinClient {
         try await post(attribution: attribution, path: path, body: body)
     }
 
+    /// Atıf API'sine `GET` (SKAN şeması); proje anahtarı `Authorization: Bearer` ile gider.
+    func getAttribution(_ attribution: AttributionConfiguration, path: String) async throws -> TransportResponse {
+        let base = try attributionRequest(attribution: attribution, path: path, body: Data())
+        // GET gövde taşımaz; Content-Type gönderilmez.
+        var request = TransportRequest(url: base.url, body: Data(), headers: base.headers.filter { $0.key != "Content-Type" }, timeout: base.timeout)
+        request.method = "GET"
+        return try await transport.send(request)
+    }
+
+    /// Saat (testlerde sahte).
+    func currentTime() -> Date { now() }
+
+    var isClosed: Bool { closed }
+
+    // Gelir kaydı (`Revenue.swift`).
+    func purchaseAlreadyTracked(_ key: String) -> Bool { purchaseLedger.contains(key) }
+
+    func notePurchaseTracked(_ key: String) {
+        guard purchaseLedger.insert(key) else { return }
+        diskStore?.savePurchaseKeys(purchaseLedger.keys)
+    }
+
     static func describe(_ error: Error) -> String { message(of: error) }
 
     static func summarize(_ raw: Data) -> String { problemSummary(raw) }
@@ -723,6 +806,11 @@ public actor FeralinClient {
     }
 
     private func post(attribution: AttributionConfiguration, path: String, body: FeralinValue) async throws -> TransportResponse {
+        let data = try Self.encoder().encode(body)
+        return try await transport.send(try attributionRequest(attribution: attribution, path: path, body: data))
+    }
+
+    private func attributionRequest(attribution: AttributionConfiguration, path: String, body data: Data) throws -> TransportRequest {
         var root = attribution.apiURL.trimmingCharacters(in: .whitespacesAndNewlines)
         while root.hasSuffix("/") { root.removeLast() }
         var allowed = CharacterSet.alphanumerics
@@ -731,14 +819,13 @@ public actor FeralinClient {
         guard let url = URL(string: "\(root)/v1/projects/\(project)/\(path)") else {
             throw TransportError(message: "geçersiz API adresi")
         }
-        let data = try Self.encoder().encode(body)
         let headers = [
             "Content-Type": "application/json",
             "Accept": "application/json, application/problem+json",
             "Authorization": "Bearer \(projectKey)",
             "User-Agent": "\(sdk.name)/\(sdk.version)",
         ]
-        return try await transport.send(TransportRequest(url: url, body: data, headers: headers, timeout: timeout))
+        return TransportRequest(url: url, body: data, headers: headers, timeout: timeout)
     }
 
     private func startLoopIfNeeded() {

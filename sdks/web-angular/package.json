@@ -1,6 +1,6 @@
 {
   "name": "@feralin/angular",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Feralin Web SDK için Angular bağdaştırıcısı: provideFeralin ve FeralinService. Angular SSR güvenli.",
   "license": "MIT",
   "type": "module",
@@ -22,7 +22,7 @@
   "peerDependencies": {
     "@angular/common": ">=17.0.0",
     "@angular/core": ">=17.0.0",
-    "@feralin/web": "^0.1.0"
+    "@feralin/web": "^0.1.0 || ^0.2.0"
   },
   "devDependencies": {
     "@angular/common": "^22.2.0",

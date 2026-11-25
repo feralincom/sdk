@@ -11,15 +11,13 @@
 | Dil | Java |
 | Paket | `com.feralin:java, com.feralin:feralin-spring-boot-starter` |
 | Sürüm | 0.1.0 |
-| Yaşam döngüsü | INTEGRATION_TESTED |
+| Yaşam döngüsü | REGISTRY_VERIFIED |
 | Kaynak dizin | `sdks/java` |
-| Registry | Maven Central: **BLOCKED_EXTERNAL** (gereken: com.feralin namespace doğrulaması ve imza anahtarı) |
+| Registry | Maven Central: **PUBLISHED** (sonraki adım: com.feralin namespace doğrulaması ve imza anahtarı) |
 | Derleme | `node scripts/sdk-dry-run/gradle.mjs sdks/java assemble` |
 | Test | `node scripts/sdk-dry-run/gradle.mjs sdks/java test` |
 
 ## Kurulum
-
-Registry yayını durumu **BLOCKED_EXTERNAL**: paket henüz `Maven Central` üzerinde yayınlanmış olarak doğrulanmadı; aşağıdaki adımlar kaynaktan ya da yerel pakettendir.
 
 ```bash
 cd sdks/java
@@ -72,7 +70,7 @@ try (FeralinClient client = FeralinClient.builder("pk_live_...", "https://collec
 | source | PASS |  |
 | build | PASS | JDK 17 ile --release 11 (çekirdek) ve --release 17 (starter), -Werror; kaynak, javadoc ve ana jar üretilir. |
 | test | PASS | JUnit: çekirdek 54, starter 16 test, JDK 17. Gerçek JDK 11 çalışma zamanında koşulmadı; makinede yok. |
-| registry | BLOCKED_EXTERNAL | Maven Central namespace ve imza anahtarı yok. |
+| registry | PASS | Maven Central'da yayımlandı: com.feralin:java:0.1.0 ve com.feralin:feralin-spring-boot-starter:0.1.0 (19 Kasım 2026, git bef6b14e, Central Portal dağıtımları 2c409355 ve 95eb6777; imza GPG BA912389B7C92BA9A702E74265D5A3DAF29F897F). Geri okuma: repo1.maven.org iki jar sha256 yerel paketlerle aynı. |
 | clean_install | PASS | Geçici yerel Maven deposuna yayımlanıp boş Gradle projelerine kuruldu; com.feralin grubu yalnız o depodan çözüldü, çekirdek 0 çalışma zamanı bağımlılığı. |
 | event_receipt | PASS | scripts/sdk-e2e/run.mjs java: 202, outbox, izinsiz red, 401, idempotency; starter gerçek gömülü Tomcat ile Spring Boot 3.5.16 ve 4.1.2 üzerinde istek başına izin, izin geri çekme, kapanışta gönderim. Gelir doğrulaması F5. |
 | documentation | PASS | docs/sdk/java.md: kurulum ve kullanım kod blokları README'den, yetenek ve zincir durumu yetenek dosyasından üretilir (scripts/sdk-dry-run/docs.mjs); registry yayını ve Super Admin kanıtı ayrı halkadır. |

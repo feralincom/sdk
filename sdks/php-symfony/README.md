@@ -10,11 +10,11 @@
 | Boş Symfony uygulamasına kurulum + gerçek `services/collect` | `node scripts/sdk-e2e/run.mjs php-symfony` ile geçti: `composer create-project symfony/skeleton` (7.4 LTS), `bundles.php`, `config/packages/feralin.yaml`, çözümleyici servisi, prod kabı ve `RequestFeralin` argümanıyla gerçek HTTP isteği; olay `kernel.terminate` aşamasında toplayıcıya gitti, outbox'ta doğrulandı |
 | Symfony 6.4 | `composer.json` izin verir; boş uygulama testi koşmadı (`FERALIN_E2E_SYMFONY='6.4.*'` ile seçilir) |
 | Symfony 8 | Desteklenmiyor: paket kısıtı `^6.4 \|\| ^7.0`; Symfony 8 PHP 8.4 ister, test makinesinde PHP 8.3 var |
-| Packagist yayını | `BLOCKED_EXTERNAL`: hesap gerekir, yayın yapılmadı |
+| Packagist yayını | Yayında: `feralin/feralin-symfony:0.1.0` (19 Kasım 2026); `composer require feralin/feralin-symfony` |
 
 ## Kurulum
 
-Packagist yayını olmadığından Composer iki paketi yerel path deposundan kurar (`symlink: false` gerçek kopya alır):
+Packagist yerine yerel kaynaktan kurmak isterseniz Composer iki paketi yerel path deposundan kurar (`symlink: false` gerçek kopya alır):
 
 ```bash
 # Symfony uygulamanızın dizininde (DEPO: deponun yolu)

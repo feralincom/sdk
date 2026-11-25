@@ -1,6 +1,6 @@
 {
   "name": "@feralin/vue",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Feralin Web SDK için Vue 3 bağdaştırıcısı: plugin ve composable. SSR ve Nuxt uyumlu.",
   "license": "MIT",
   "type": "module",
@@ -24,7 +24,7 @@
     "test:e2e": "node ../../scripts/sdk-e2e/run.mjs web-vue"
   },
   "peerDependencies": {
-    "@feralin/web": "^0.1.0",
+    "@feralin/web": "^0.1.0 || ^0.2.0",
     "vue": "^3.3.0"
   },
   "devDependencies": {

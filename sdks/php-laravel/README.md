@@ -10,11 +10,11 @@
 | Boş Laravel uygulamasına kurulum + gerçek `services/collect` | `node scripts/sdk-e2e/run.mjs php-laravel` ile geçti: `composer create-project laravel/laravel` (Laravel 13), paket keşfi, `vendor:publish`, `config:cache`, ara katman ve facade ile gerçek HTTP isteği; olay `terminate` aşamasında toplayıcıya gitti, outbox'ta doğrulandı |
 | Laravel 10, 11, 12 | `composer.json` izin verir; boş uygulama testi yalnız güncel sürümde koştu (`FERALIN_E2E_LARAVEL='^12.0'` ile başka sürüm seçilir) |
 | Octane, kuyruk işleri | Sınanmadı |
-| Packagist yayını | `BLOCKED_EXTERNAL`: hesap gerekir, yayın yapılmadı |
+| Packagist yayını | Yayında: `feralin/feralin-laravel:0.1.0` (19 Kasım 2026); `composer require feralin/feralin-laravel` |
 
 ## Kurulum
 
-Packagist yayını olmadığından Composer iki paketi yerel path deposundan kurar (`symlink: false` gerçek kopya alır):
+Packagist yerine yerel kaynaktan kurmak isterseniz Composer iki paketi yerel path deposundan kurar (`symlink: false` gerçek kopya alır):
 
 ```bash
 # Laravel uygulamanızın dizininde (DEPO: deponun yolu)

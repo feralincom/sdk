@@ -1,11 +1,15 @@
 # Değişiklik günlüğü
 
-`@feralin/web@0.1.0` npm'de yayımlıdır (17 Kasım 2026, git b1a7d127); site ayrıca `/sdk/feralin.iife.js` ile sunar. Doğrulama durumu `sdks/capabilities.yaml` içindedir.
+`@feralin/web@0.2.0` yayın adayıdır; `@feralin/web@0.1.0` npm'de yayımlıdır (17 Kasım 2026, git b1a7d127); site ayrıca `/sdk/feralin.iife.js` ile sunar. Doğrulama durumu `sdks/capabilities.yaml` içindedir.
 
-## Yayınlanmamış (yayın bekliyor)
+## 0.2.0 (yayın adayı, 25 Kasım 2026)
 
-Depodadır, npm'deki 0.1.0 içinde yoktur; sonraki sürüm numarasıyla yayımlanacak.
+Ekleyici sürüm: 0.1.0'daki hiçbir dışa açık API kaldırılmadı ya da değişmedi.
 
+- Kısa link kodu: giriş sayfasının adresindeki `fr_link` korunur ve olay özelliğine taşınır; link yönlendiricisi web hedefine bu kodu ekler (18 Kasım 2026).
+- Yönlendiren ayrıntısı: `page_view` olayında `referrer_path` (yönlendiren sayfanın yolu, sorgusuz) ve bilinen arama motorlarından gelen `search_query` (temizlenmiş, kısaltılmış); liste toplayıcının listesiyle aynıdır (20 Kasım 2026).
+- `@feralin/web/smart` (Smart Script, ayrı giriş noktası, çekirdek bütçesine girmez): açılış sayfasındaki mağaza bağlantılarını Feralin kısa linkine çevirir ve sayfanın UTM ve reklam tıklama kimliklerini linke ekler; çerez yazmaz, parametreler yalnız oturum boyunca `sessionStorage` içinde tutulur. `smart/snippet` IIFE olarak da sunulur (19 Kasım 2026).
+- Kurulum belgeleri gerçek toplayıcı adresini verir (`https://feralin.com/collect`).
 - Sayfada görünür süre: çekirdek her `page_view` için sekmenin görünür olduğu süreyi ölçer ve `fr_page_engagement` {`visible_ms`} olarak gönderir (sekme gizlenince, sayfa kapanırken ve sonraki `page_view`'dan önce; ölçülen sayfanın adresi, başlığı ve oturumuyla). Arka plandaki sekme sayılmaz, oturumun son sayfası ölçülür. `pageEngagement: false` kapatır; `PAGE_ENGAGEMENT_EVENT_NAME` dışa aktarılır (19 Kasım 2026).
 - `@feralin/web/errors`: V8 yığın izinin `Tür: mesaj` başlığı mesajında `@` varsa (ör. e-posta) Firefox çerçevesi sanılıp `top_frame` ve parmak izine giriyordu; V8 biçiminde artık yalnız `at ` satırları okunur. Toplayıcı `top_frame` alanını sunucuda da temizlediği için saklanan veriye e-posta yazılmıyordu; düzeltme istemciden çıkışı da keser (17 Kasım 2026).
 

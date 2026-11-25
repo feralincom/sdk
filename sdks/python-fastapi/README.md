@@ -9,7 +9,7 @@
 | Birim testleri (FastAPI 0.162, Starlette 1.10, TestClient) | Geçiyor |
 | Temiz kurulum + gerçek `services/collect` | `scripts/sdk-e2e/run.mjs python-fastapi` ile geçti; istekler TestClient'tan girer |
 | Gerçek uvicorn süreci, eski FastAPI sürümleri | Sınanmadı |
-| PyPI yayını | `BLOCKED_EXTERNAL`: hesap yok, `feralin` çekirdeği de yayınlanmadı |
+| PyPI yayını | Yayında: `pip install feralin-fastapi` (0.1.0, 19 Kasım 2026) |
 
 ## Kurulum
 

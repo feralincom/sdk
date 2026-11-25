@@ -2,7 +2,7 @@
 
 `com.feralin.unity`: Unity oyunları için UTP v1 olay SDK'sı. İzin yoksa olay üretmez, parmak izi veya cihaz kimliği toplamaz. Çalışma zamanı bağımlılığı yalnız Unity'nin kendi `UnityWebRequest` modülüdür (Android atfı için ayrıca Play Install Referrer kitaplığı, aşağıya bakın).
 
-> **Durum:** Registry'de yayınlanmadı. Paket kanalı herkese açık Git deposudur (aşağıda); sürüm etiketi `sdks/unity/v0.3.0` henüz gönderilmedi, gönderim ve etiket site sahibinin onayını bekler. O zamana kadar aşağıdaki gibi yerel kurulur. Android ve iOS yerel köprüleri (Keystore, Keychain, Install Referrer, AdServices) yazıldı ama oyuncu derlemesi ve cihaz olmadığı için **derlenmedi ve cihazda sınanmadı**. Ayrıntı için "Doğrulama" bölümüne bakın. Kurulum belgesi: [`docs/sdk/unity.md`](../../docs/sdk/unity.md) (TR ve EN).
+> **Durum:** Paket kanalı herkese açık Git deposudur (aşağıda); sürüm etiketi `sdks/unity/v0.3.0` yayında (19 Kasım 2026). Unity Asset Store kaydı yok. Android ve iOS yerel köprüleri (Keystore, Keychain, Install Referrer, AdServices) yazıldı ama oyuncu derlemesi ve cihaz olmadığı için **derlenmedi ve cihazda sınanmadı**. Ayrıntı için "Doğrulama" bölümüne bakın. Kurulum belgesi: [`docs/sdk/unity.md`](../../docs/sdk/unity.md) (TR ve EN).
 
 ## Kurulum
 

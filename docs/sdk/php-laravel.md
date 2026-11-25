@@ -11,13 +11,11 @@
 | Dil | PHP |
 | Paket | `feralin/feralin-laravel` |
 | Sürüm | 0.1.0 |
-| Yaşam döngüsü | INTEGRATION_TESTED |
+| Yaşam döngüsü | REGISTRY_VERIFIED |
 | Kaynak dizin | `sdks/php-laravel` |
-| Registry | Packagist: **BLOCKED_EXTERNAL** (gereken: Packagist hesabı ve public Git deposu; feralin/feralin-php yayını) |
+| Registry | Packagist: **PUBLISHED** (sonraki adım: Packagist hesabı ve public Git deposu; feralin/feralin-php yayını) |
 
 ## Kurulum
-
-Registry yayını durumu **BLOCKED_EXTERNAL**: paket henüz `Packagist` üzerinde yayınlanmış olarak doğrulanmadı; aşağıdaki adımlar kaynaktan ya da yerel pakettendir.
 
 ```bash
 # Laravel uygulamanızın dizininde (DEPO: deponun yolu)
@@ -79,7 +77,7 @@ Feralin::track('order_completed', ['order_id' => 'ord_1']);
 | source | PASS |  |
 | build | PASS | composer install (path deposu ../php, orchestra/testbench ile) geçici kopyada kuruldu. |
 | test | PASS | PHPUnit 8 test, Laravel 13.42 ve Orchestra Testbench 11.3 üzerinde (PHP 8.3.6, WSL Ubuntu; scripts/sdk-e2e/php-suite.sh). Laravel 10-12 kısıtta, bu koşuda sınanmadı. |
-| registry | BLOCKED_EXTERNAL | Packagist hesabı yok. |
+| registry | PASS | Packagist'te yayımlandı: feralin/feralin-laravel:0.1.0 (19 Kasım 2026; ayrı depo github.com/feralincom/feralin-laravel, etiket v0.1.0, commit 2708833; Packagist hesabı GitHub ile). Geri okuma: repo.packagist.org/p2/feralin/feralin-laravel.json sürüm 0.1.0, kaynak etiketli GitHub zipball, require feralin/feralin-php ^0.1. Composer ile temiz kurulum bu makinede koşulmadı (composer yok). Otomatik güncelleme kancası kurulmadı: yeni sürümde Packagist paket sayfasında Update. |
 | clean_install | PASS | scripts/sdk-e2e/run.mjs php-laravel: composer create-project laravel/laravel (Laravel 13.42, WSL PHP 8.3.6) boş uygulamasına yerel path deposundan (Packagist değil) kuruldu; paket keşfi, vendor:publish ve config:cache geçti. |
 | event_receipt | PASS | scripts/sdk-e2e/run.mjs php-laravel: PHP yerleşik sunucusunda Laravel ön denetleyicisine gerçek HTTP; FeralinContext ve facade, olay terminate aşamasında gerçek toplayıcıya: izinli olay outbox'ta bir kez, reklam izni yokken fr_click yok, izinsiz istekte olay yok. Octane ve kuyruk işleri sınanmadı. |
 | documentation | PASS | docs/sdk/php-laravel.md: kurulum ve kullanım kod blokları README'den, yetenek ve zincir durumu yetenek dosyasından üretilir (scripts/sdk-dry-run/docs.mjs); registry yayını ve Super Admin kanıtı ayrı halkadır. |

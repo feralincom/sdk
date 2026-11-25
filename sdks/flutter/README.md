@@ -12,11 +12,11 @@ Feralin UTP v1 SDK for Flutter. Saf Dart çekirdek (kuyruk, izin, HTTP, idempote
 | Gerçek Play tıklamasından gelen referrer | `BLOCKED_EXTERNAL`: Play Console ve yayınlanmış uygulama gerekir |
 | Gerçek cihaz (SDK-R07) | `BLOCKED_EXTERNAL` |
 | `flutter build ios` | Bu makinede yapılamaz (macOS ve Xcode yok); iOS yolu hiç derlenmedi veya çalıştırılmadı |
-| pub.dev yayını | `BLOCKED_EXTERNAL`: doğrulanmış yayıncı gerekir; yayın yapılmadı |
+| pub.dev yayını | Yayında: `feralin_flutter` 0.3.0 (19 Kasım 2026); `flutter pub add feralin_flutter` |
 
 ## Kurulum
 
-pub.dev yayını olmadığından bugün yol bağımlılığıyla eklenir:
+pub.dev'den: `flutter pub add feralin_flutter`. Yerel kaynaktan geliştirme için yol bağımlılığı:
 
 ```yaml
 dependencies:

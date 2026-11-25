@@ -24,7 +24,7 @@
     "test:e2e": "node ../../scripts/sdk-e2e/run.mjs tauri"
   },
   "peerDependencies": {
-    "@feralin/web": "^0.1.0"
+    "@feralin/web": "^0.1.0 || ^0.2.0"
   },
   "devDependencies": {
     "@feralin/web": "workspace:*",

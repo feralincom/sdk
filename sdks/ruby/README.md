@@ -4,7 +4,7 @@ Feralin toplayıcısına (`POST /v1/batch`) sunucu tarafından olay gönderen Ru
 
 ## Durum
 
-Henüz RubyGems'e yayınlanmadı (`BLOCKED_EXTERNAL`: RubyGems hesabı, 2FA ve `feralin` adının doğrulanması gerekir). `gem install feralin` bugün bu paketi kurmaz.
+RubyGems'te yayında: `gem install feralin` (0.1.0, 19 Kasım 2026).
 
 Yalnız Ruby 3.3.12 (Windows, `x64-mingw-ucrt`), Rails 8.1.4.1 ve rack 3.2.8 ile koşuldu; `required_ruby_version` 3.0'a izin verse de daha eski Ruby, Rails ve rack sürümleri denenmedi. Puma ve Unicorn altında çalıştırılmadı. Gerçek `Process.fork` testi Windows'ta atlanır; çatallanma orada pid değişimi taklit edilerek sınanır, gerçek çatallanma Linux'ta henüz koşulmadı.
 

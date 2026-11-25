@@ -11,15 +11,13 @@
 | Dil | Kotlin |
 | Paket | `com.feralin:android` |
 | Sürüm | 0.1.0 |
-| Yaşam döngüsü | INTEGRATION_TESTED |
+| Yaşam döngüsü | REGISTRY_VERIFIED |
 | Kaynak dizin | `sdks/android` |
-| Registry | Maven Central: **BLOCKED_EXTERNAL** (gereken: com.feralin namespace doğrulaması ve imza anahtarı) |
+| Registry | Maven Central: **PUBLISHED** (sonraki adım: com.feralin namespace doğrulaması ve imza anahtarı) |
 | Derleme | `node scripts/sdk-dry-run/gradle.mjs sdks/android assembleRelease` |
 | Test | `node scripts/sdk-dry-run/gradle.mjs sdks/android test` |
 
 ## Kurulum
-
-Registry yayını durumu **BLOCKED_EXTERNAL**: paket henüz `Maven Central` üzerinde yayınlanmış olarak doğrulanmadı; aşağıdaki adımlar kaynaktan ya da yerel pakettendir.
 
 ```kotlin
 // settings.gradle.kts
@@ -98,7 +96,7 @@ Feralin.consumeDeferredDeepLink { link ->
 | source | PASS |  |
 | build | PASS |  |
 | test | PASS |  |
-| registry | BLOCKED_EXTERNAL | Maven Central namespace ve imza anahtarı yok. |
+| registry | PASS | Maven Central'da yayımlandı: com.feralin:android:0.1.0 (19 Kasım 2026, git bef6b14e, Central Portal dağıtımı cad38014; imza GPG BA912389B7C92BA9A702E74265D5A3DAF29F897F, keyserver.ubuntu.com ve keys.openpgp.org; ad alanı com.feralin feralin.com DNS TXT ile doğrulandı). Geri okuma: repo1.maven.org android-0.1.0.aar sha256 yerel paketle aynı. |
 | clean_install | PASS | Yerel Maven deposundan React Native uygulamasına kurulum olarak sınandı. 13 Kasım 2026: scripts/e2e-clean-install.mjs: :feralin:publishToMavenLocal (koşuya özgü maven.repo.local, registry değil) → sample/ kaynağıyla tek modüllü boş Android projesi, bağımlılık com.feralin:android koordinatı → release APK (R8) → emülatörde olay ve ClickHouse satırı. Maven Central yayını ayrı halka (BLOCKED_EXTERNAL). |
 | event_receipt | PASS | scripts/e2e-collect.sh ve API 36 emülatör. 13 Kasım 2026: scripts/e2e-clean-install.mjs dokunmayla izin, olay, gönderim (202), ağ kesikken kuyruk, ağ gelince gönderim; collect worker ve ClickHouse FINAL: app_first_open 1 (adb kurulumu, attribution_source none), sample_button_clicked 2. Emülatördür, gerçek cihaz değil: SDK-R07 BLOCKED_EXTERNAL. |
 | documentation | PASS | docs/sdk/android.md: kurulum ve kullanım kod blokları README'den, yetenek ve zincir durumu yetenek dosyasından üretilir (scripts/sdk-dry-run/docs.mjs); registry yayını ve Super Admin kanıtı ayrı halkadır. |

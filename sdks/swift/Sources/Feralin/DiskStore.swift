@@ -18,6 +18,11 @@ private struct PersistedQueueFile: Codable {
     var events: [PersistedEvent]
 }
 
+private struct PersistedPurchasesFile: Codable {
+    var version: Int
+    var keys: [String]
+}
+
 /// Kalıcı kuyruk ve oturum deposu. Dosyalar verilen dizinin altında tutulur, her yazım atomiktir (geçici dosya + yeniden adlandırma).
 /// Disk hatası SDK'yı düşürmez: yazım başarısız olursa bellekteki kuyruk çalışmaya devam eder, okuma bozuksa kayıt sıfırlanır.
 /// Bir dizin tek bir istemciye aittir; aynı dizini paylaşan iki istemci birbirinin kuyruğunu ezer.
@@ -25,6 +30,8 @@ final class FeralinDiskStore: @unchecked Sendable {
     static let formatVersion = 1
     static let queueFileName = "feralin-queue-v1.json"
     static let sessionFileName = "feralin-session-v1.json"
+    static let purchasesFileName = "feralin-purchases-v1.json"
+    static let skanFileName = "feralin-skan-v1.json"
     /// Bundan büyük dosya bozuk sayılır; kuyruk sınırı bunun çok altında kalır.
     static let maxFileBytes = 16 * 1024 * 1024
 
@@ -37,6 +44,7 @@ final class FeralinDiskStore: @unchecked Sendable {
 
     var queueURL: URL { directory.appendingPathComponent(Self.queueFileName, isDirectory: false) }
     var sessionURL: URL { directory.appendingPathComponent(Self.sessionFileName, isDirectory: false) }
+    var purchasesURL: URL { directory.appendingPathComponent(Self.purchasesFileName, isDirectory: false) }
 
     /// Uygulama Destek dizininde SDK'ya ayrılmış varsayılan klasör. Bulunamazsa nil döner (kalıcılık kapalı kalır).
     static func defaultDirectory() -> URL? {
@@ -122,6 +130,48 @@ final class FeralinDiskStore: @unchecked Sendable {
         lock.lock()
         defer { lock.unlock() }
         removeFile(sessionURL)
+    }
+
+    // MARK: - Gelir kaydı ve SKAN durumu
+
+    /// Gönderilmiş gelir işlemlerinin anahtarları (`PurchaseLedger`); bozuk ya da eski biçimli dosya boş sayılır.
+    func loadPurchaseKeys() -> [String] {
+        lock.lock()
+        defer { lock.unlock() }
+        guard let data = readFile(purchasesURL) else { return [] }
+        guard let file = try? JSONDecoder().decode(PersistedPurchasesFile.self, from: data), file.version == Self.formatVersion else {
+            removeFile(purchasesURL)
+            return []
+        }
+        return file.keys.filter { !$0.isEmpty && $0.count <= 160 }
+    }
+
+    @discardableResult
+    func savePurchaseKeys(_ keys: [String]) -> Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        guard let data = try? JSONEncoder().encode(PersistedPurchasesFile(version: Self.formatVersion, keys: keys)) else { return false }
+        return writeFile(data, to: purchasesURL)
+    }
+
+    func clearPurchaseKeys() {
+        lock.lock()
+        defer { lock.unlock() }
+        removeFile(purchasesURL)
+    }
+
+    /// Adı verilen küçük dosya (SKAN durumu gibi); yoksa nil.
+    func loadBlob(_ name: String) -> Data? {
+        lock.lock()
+        defer { lock.unlock() }
+        return readFile(directory.appendingPathComponent(name, isDirectory: false))
+    }
+
+    @discardableResult
+    func saveBlob(_ data: Data, name: String) -> Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        return writeFile(data, to: directory.appendingPathComponent(name, isDirectory: false))
     }
 
     // MARK: - Dosya işlemleri (kilit altında çağrılır)

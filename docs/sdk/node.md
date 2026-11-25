@@ -10,7 +10,7 @@
 |---|---|
 | Dil | TypeScript |
 | Paket | `@feralin/node` |
-| Sürüm | 0.1.0 |
+| Sürüm | 0.2.0 |
 | Yaşam döngüsü | INSTALL_VERIFIED |
 | Kaynak dizin | `sdks/node` |
 | Registry | npm: **PUBLISHED** (sonraki adım: her paket için npm trusted publishing (OIDC); npm 2FA'yı atlayan anahtarla doğrudan yayını Ocak 2027'de kapatıyor) |

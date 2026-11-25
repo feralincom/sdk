@@ -354,6 +354,29 @@ test("utm yoksa properties eklenmez; boş referrer boş kalır", (t) => {
   assert.equal(e.context.referrer, "");
 });
 
+test("harici yönlendirenin yolu ve arama motoru sorgusu gider; iç yönlendirende alan yoktur", async (t) => {
+  withBrowser(t, "https://site.example/fiyat", "https://www.bing.com/search?q=Feralin+Sayac+ali@ornek.com&form=GIZLI5#x");
+  const { f, calls } = fakeFetch(202);
+  const c = new sdk.Feralin({ ...OPTS, consent: { analytics: true }, autoTrack: false, fetch: f, storage: spyStorage() });
+  const e = c.track("page_view");
+  assert.equal(e.context.referrer, "https://www.bing.com");
+  assert.equal(e.context.referrer_path, "/search");
+  assert.equal(e.context.search_query, "feralin sayac ***@***");
+  await c.flush();
+  assert.equal(calls[0].init.body.includes("GIZLI5"), false);
+  assert.equal(validateBatch(JSON.parse(calls[0].init.body)), true, JSON.stringify(validateBatch.errors));
+  // Arama motoru olmayan sitenin sorgusu okunmaz; yalnız yolu gider.
+  withBrowser(t, "https://site.example/", "https://blog.example.test/yazi/kayit?q=GIZLI6");
+  const d = new sdk.Feralin({ ...OPTS, consent: { analytics: true }, autoTrack: false, fetch: fakeFetch(202).f, storage: spyStorage() }).track("page_view");
+  assert.equal(d.context.referrer_path, "/yazi/kayit");
+  assert.equal("search_query" in d.context, false);
+  // Aynı sitenin (alt alan adı dahil) yönlendireni iç gezinmedir.
+  withBrowser(t, "https://www.site.example/b", "https://blog.site.example/a?q=x");
+  const i = new sdk.Feralin({ ...OPTS, consent: { analytics: true }, autoTrack: false, fetch: fakeFetch(202).f, storage: spyStorage() }).track("page_view");
+  assert.equal("referrer_path" in i.context, false);
+  assert.equal("search_query" in i.context, false);
+});
+
 test("hostsuz sayfa adresi page_url göndermez; batch şemaya uyar", async (t) => {
   withBrowser(t, "about:blank", "bozuk referrer");
   const { f, calls } = fakeFetch(202);
@@ -408,6 +431,25 @@ test("oturum sayfa yüklemeleri arasında sürer: aynı depoyu paylaşan iki ör
   // Kimlik de aynıdır; oturum kimliği anonim kimlikten farklı bir değerdir.
   assert.equal(b.anonymous_id, a.anonymous_id);
   assert.notEqual(a.session_id, a.anonymous_id);
+});
+
+test("her olay anonim kimlikle birlikte oturum kimliği taşır; depolama engelliyken ikisi birlikte yenilenir (ziyaretçi oturumdan çok sayılamaz)", () => {
+  // Panel hatası (287 oturuma 6.928 ziyaretçi) SDK'dan gelmez: oturumsuz ama anonim kimlikli olay Web SDK'da üretilmez.
+  const storage = mem();
+  const c = sessionClient(storage);
+  const events = [c.page(), c.track("signup_completed"), c.group("acme"), c.setUserProperties({ plan: "pro" }), c.trackRevenue({ transactionId: "t1", amountMinor: 990, currency: "TRY" })];
+  for (const e of events) {
+    assert.ok(e, "olay üretilmeli");
+    assert.match(e.anonymous_id, /^[0-9A-Z]{26}$/);
+    assert.match(e.session_id, /^[0-9A-Z]{26}$/);
+  }
+  // Depolama okunamaz ve yazılamazsa (gizli pencere, engelli site verisi) her yükleme yeni kimlik ve yeni oturum üretir: biri yenilenip öteki kalmaz.
+  const blocked = { get: () => { throw new Error("engelli"); }, set: () => { throw new Error("engelli"); }, remove: () => { throw new Error("engelli"); } };
+  const first = sessionClient(blocked).track("page_view");
+  const second = sessionClient(blocked).track("page_view");
+  assert.notEqual(second.anonymous_id, first.anonymous_id);
+  assert.notEqual(second.session_id, first.session_id);
+  assert.ok(first.session_id && second.session_id);
 });
 
 test("30 dakika hareketsizlikten sonraki ilk olay yeni oturum başlatır; süre içindeki olay oturumu uzatır", () => {

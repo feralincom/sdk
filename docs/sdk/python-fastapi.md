@@ -11,15 +11,13 @@
 | Dil | Python |
 | Paket | `feralin-fastapi` |
 | Sürüm | 0.1.0 |
-| Yaşam döngüsü | INTEGRATION_TESTED |
+| Yaşam döngüsü | REGISTRY_VERIFIED |
 | Kaynak dizin | `sdks/python-fastapi` |
-| Registry | PyPI: **BLOCKED_EXTERNAL** (gereken: PyPI hesabı ve 2FA; pypi- önekli API anahtarı (twine, TWINE_PASSWORD) ya da pending trusted publisher; feralin çekirdeği önce yayınlanır) |
+| Registry | PyPI: **PUBLISHED** (sonraki adım: PyPI hesabı ve 2FA; pypi- önekli API anahtarı (twine, TWINE_PASSWORD) ya da pending trusted publisher; feralin çekirdeği önce yayınlanır) |
 | Derleme | `python -m build sdks/python-fastapi` |
 | Test | `node scripts/sdk-dry-run/python-adapter.mjs sdks/python-fastapi fastapi httpx` |
 
 ## Kurulum
-
-Registry yayını durumu **BLOCKED_EXTERNAL**: paket henüz `PyPI` üzerinde yayınlanmış olarak doğrulanmadı; aşağıdaki adımlar kaynaktan ya da yerel pakettendir.
 
 ```bash
 pip install ./sdks/python ./sdks/python-fastapi fastapi
@@ -70,7 +68,7 @@ async def siparis(feralin: RequestFeralin = Depends(get_feralin)):
 | source | PASS |  |
 | build | PASS | Wheel run.mjs hedefinde kopyadan üretildi. |
 | test | PASS | unittest 14/14; FastAPI 0.162, Starlette 1.10. |
-| registry | BLOCKED_EXTERNAL | PyPI hesabı yok; feralin çekirdeği de yayınlanmadı. |
+| registry | PASS | PyPI'de yayımlandı: feralin-fastapi==0.1.0 (19 Kasım 2026, git f519d767, twine; wheel ve sdist). Geri okuma: pypi.org JSON API iki dosyanın sha256 özeti yerel paketle aynı. Registry'den temiz kurulum: boş venv'e pip install feralin==0.1.0 feralin-django==0.1.0 feralin-fastapi==0.1.0 ve import feralin (Windows, Python 3.13); olay alındısı registry paketiyle koşulmadı. |
 | clean_install | PASS | Çekirdek ve bağdaştırıcı wheel'leri temiz sanal ortama kuruldu; çerçeve PyPI'dan indi. |
 | event_receipt | PASS | scripts/sdk-e2e/run.mjs python-fastapi: TestClient, gerçek ASGI zinciri, gerçek toplayıcı. Gerçek uvicorn süreci NOT_RUN. |
 | documentation | PASS | docs/sdk/python-fastapi.md: kurulum ve kullanım kod blokları README'den, yetenek ve zincir durumu yetenek dosyasından üretilir (scripts/sdk-dry-run/docs.mjs); registry yayını ve Super Admin kanıtı ayrı halkadır. |

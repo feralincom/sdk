@@ -10,7 +10,7 @@ Sunucu, CLI ve masaüstü için UTP v1 istemcisi. Olaylar `POST /v1/batch` üzer
 | `cargo build`, `cargo test` | `PASS` (16 Kasım 2026): 15 modül, 23 istemci, 9 gelir/kimlik/hata sözleşmesi, 4 gerçek HTTP testi ve 1 doküman testi; `cargo fmt --check` ve `cargo clippy --all-targets -D warnings` temiz (Tauri eklentisi bu turda yeniden derlenmedi) |
 | Gerçek `services/collect` | `PASS`: `node scripts/sdk-e2e/run.mjs rust` (crate kopyası boş tüketiciye yerel yolla bağlanır; 202 + outbox, fr_click izin kuralı, izinsiz red, 401, aynı anahtarla idempotent tekrar) |
 | Tauri eklentisi | `cargo build -p tauri-plugin-feralin` Tauri 2.12 ile derlendi; eklentinin kendi testi yok, gerçek Tauri uygulamasında ve pencerede denenmedi |
-| crates.io yayını | `BLOCKED_EXTERNAL`: hesap ve `feralin` ad doğrulaması yok; yayın yapılmadı |
+| crates.io yayını | Yayında: `feralin` 0.1.0 (19 Kasım 2026); `cargo add feralin` |
 
 `Cargo.lock` depodadır (yeniden üretilebilir yerel koşu için; crate yayınında kullanılmaz). Yerel doğrulama: `scripts/ci-local.sh --only sdk-rust`.
 

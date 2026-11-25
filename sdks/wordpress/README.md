@@ -2,19 +2,21 @@
 
 Genel sayfalara Web SDK ekler ve tamamlanan WooCommerce siparişlerini PHP SDK ile sunucu olayı olarak gönderir.
 
-## Durum: `BLOCKED_EXTERNAL`
+## Durum: `INTEGRATION_TESTED`
 
-**Bu eklenti gerçek bir WordPress ya da WooCommerce kurulumunda hiç çalıştırılmadı.** Doğrulananlar: PHP dosyaları `php -l`'den geçer ve `scripts/build.mjs` çıktısı oluşur; ayrıca WordPress çekirdeği olmadan, yalnız eklentinin çağırdığı işlevlerin ince saplarıyla `tests/` altında 20 PHPUnit testi koşar (ayar doğrulaması, `sk_` reddi, kanca bağlama, ön yüz betiği, izin kapısı, sipariş olayı, WP-Cron yeniden denemesi; sipariş olayı gerçek PHP SDK'sı ve yerel sahte toplayıcıyla). Bu, WordPress'in kendi davranışının (Settings API, WP-Cron zamanlayıcısı, WooCommerce kancaları) kanıtı değildir.
+Eklenti gerçek WordPress ve WooCommerce kurulumunda uçtan uca sınandı (24 Kasım 2026, WSL; resmî WordPress 7.1.5, SHA-1 özeti doğrulandı, ve WooCommerce 11.3.1). Test boş bir siteye eklentiyi kurup etkinleştirir, ayarları Settings API temizleyicisinden geçirir (`sk_` anahtarı reddedilir), sayfayı açıp izin yokken olay gitmediğini ve izinden sonra Web SDK olaylarının gerçek toplayıcıya ulaştığını, izinli WooCommerce siparişinin bir kez `feralin_purchase` gönderdiğini ve izinsiz siparişin göndermediğini denetler; olaylar toplayıcının kuyruk tablosunda ve ClickHouse'ta tam bir kez bulunur. Ayrıca WordPress çekirdeği olmadan ince saplarla 20 PHPUnit testi koşar.
 
 ```bash
 bash scripts/sdk-e2e/php-suite.sh   # PHP 8.1+ ve Composer gerekir (Windows'ta WSL içinde)
+# Gerçek WordPress + WooCommerce e2e (Linux/WSL; PHP mysqli, MariaDB, PostgreSQL test veritabanı):
+FERALIN_WP_ARCHIVE=~/wordpress.tar.gz FERALIN_WC_ARCHIVE=~/woocommerce.zip DATABASE_URL='postgres://...' node scripts/sdk-e2e/run.mjs wordpress
 ```
 
 | Konu | Durum |
 |---|---|
-| Kod | Yazıldı; stub'lı birim testi 20/20, gerçek WordPress'te çalıştırılmadı |
-| Gerçek WordPress + WooCommerce testi | `BLOCKED_EXTERNAL`: test sitesi gerekir; WordPress çekirdeği indirilmedi (wordpress.org'dan resmî arşiv gerekir, sahibinin onayıyla) |
-| wordpress.org yayını | `BLOCKED_EXTERNAL`: SVN erişimi ve inceleme gerekir, yayın yapılmadı |
+| Gerçek WordPress + WooCommerce | Geçti: kurulum, ayarlar, sayfa izleme, izin kapısı, sipariş olayı, toplayıcı ve ClickHouse alındısı |
+| Sınanmayanlar | WP Consent API eklentisiyle birlikte çalışma, WP-Cron yeniden denemesi (yalnız saplı testte), gerçek tarayıcı (sayfa jsdom'da açıldı) |
+| wordpress.org yayını | `BLOCKED_EXTERNAL`: SVN erişimi ve inceleme gerekir; eklenti bugün feralin.com'dan indirilen zip ile kurulur |
 
 ## Kurulum
 
@@ -27,7 +29,7 @@ node sdks/wordpress/scripts/build.mjs
 cp -r sdks/wordpress/dist/feralin WP_DIZINI/wp-content/plugins/feralin
 ```
 
-Ardından **Eklentiler** sayfasından Feralin etkinleştirilir; anahtar ve toplayıcı adresi **Ayarlar > Feralin** sayfasından girilir. Gerçek WordPress sitesinde bu adımlar sınanmadı (yukarıdaki durum).
+Ardından **Eklentiler** sayfasından Feralin etkinleştirilir; anahtar ve toplayıcı adresi **Ayarlar > Feralin** sayfasından girilir.
 
 ## Kullanım
 

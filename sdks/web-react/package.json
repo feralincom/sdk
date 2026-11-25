@@ -1,6 +1,6 @@
 {
   "name": "@feralin/react",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Feralin Web SDK için React bağdaştırıcısı: Provider, hook ve Next.js App Router bileşeni. SSR güvenli.",
   "license": "MIT",
   "type": "module",
@@ -28,7 +28,7 @@
     "test:e2e": "node ../../scripts/sdk-e2e/run.mjs web-react"
   },
   "peerDependencies": {
-    "@feralin/web": "^0.1.0",
+    "@feralin/web": "^0.1.0 || ^0.2.0",
     "next": ">=13.4.0",
     "react": ">=18.0.0"
   },

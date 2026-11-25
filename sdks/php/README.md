@@ -9,11 +9,11 @@ Sunucu tarafından `POST /v1/batch` ucuna UTP v1 olayı gönderen Composer paket
 | `php -l`, PHPUnit | Geçiyor: PHP 8.3, WSL Ubuntu (`bash scripts/sdk-e2e/php-suite.sh`; Windows'ta `scripts/ci-local.sh --only sdk-php` WSL içinde koşar) |
 | Temiz kurulum + gerçek `services/collect` (`tests/e2e-consumer.php`) | `node scripts/sdk-e2e/run.mjs php` ile geçti: 202, outbox satırı, izinsiz red, 401, idempotency |
 | PHP 8.1 ve 8.2 | `composer.json` izin verir, sınanmadı |
-| Packagist yayını | `BLOCKED_EXTERNAL`: hesap gerekir, yayın yapılmadı |
+| Packagist yayını | Yayında: `feralin/feralin-php:0.1.0` (19 Kasım 2026); `composer require feralin/feralin-php` |
 
 ## Kurulum
 
-Packagist yayını olmadığından Composer yerel path deposundan kurar (`symlink: false` gerçek kopya alır):
+Packagist yerine yerel kaynaktan kurmak isterseniz Composer yerel path deposundan kurar (`symlink: false` gerçek kopya alır):
 
 ```bash
 # uygulamanızın dizininde (DEPO: deponun yolu)

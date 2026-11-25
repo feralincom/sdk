@@ -1,6 +1,6 @@
 {
   "name": "@feralin/web",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Feralin Web SDK — UTP v1 istemcisi (page_view, track, identify, consent, offline kuyruk, idempotent batch)",
   "license": "MIT",
   "type": "module",

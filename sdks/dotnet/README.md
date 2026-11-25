@@ -8,12 +8,12 @@
 |---|---|
 | Kod, birim testleri, `dotnet pack` | Geçiyor |
 | Gerçek `services/collect` + PostgreSQL, `.nupkg` temiz kurulum, QA-C yerel | `scripts/sdk-e2e/run.mjs dotnet` ile doğrulandı |
-| NuGet yayını | `BLOCKED_EXTERNAL`: nuget.org hesabı ve `Feralin` önek rezervasyonu gerekir, yayın yapılmadı |
+| NuGet yayını | Yayında: `Feralin.Sdk` ve `Feralin.Sdk.AspNetCore` 0.1.0 (19 Kasım 2026); `dotnet add package Feralin.Sdk` |
 | Gelir doğrulaması (QA-C F5 kısmı) | Kısmi: `TrackRevenue` `feralin_purchase` istemci beyanı üretir; `verified` yalnız sunucu makbuz doğrulayıcısıyla (adaptör BLOCKED_EXTERNAL) |
 
 ## Kurulum
 
-NuGet yayını olmadığından bugün yerel paket kaynağıyla kurulur:
+nuget.org'dan: `dotnet add package Feralin.Sdk` (ASP.NET Core için `Feralin.Sdk.AspNetCore`). Yerel paket kaynağıyla geliştirme:
 
 ```bash
 dotnet pack src/Feralin.Sdk/Feralin.Sdk.csproj -c Release -o ./paketler

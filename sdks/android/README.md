@@ -11,7 +11,7 @@ Kotlin kütüphanesi: consent-first olaylar, kalıcı çevrimdışı kuyruk, Pla
 | Emülatör (API 36, Play Store imajı) | Kurulum, izin, gerçek HTTP, çevrimdışı kuyruk doğrulandı; yerel Maven'dan boş projeye temiz kurulum ve ClickHouse satırı `scripts/e2e-clean-install.mjs` ile |
 | Gerçek Play tıklamasından gelen referrer | `BLOCKED_EXTERNAL`: Play Console ve yayınlanmış uygulama gerekir; bugüne dek sahte bağlantıyla sınandı |
 | Gerçek cihaz (SDK-R07) | `BLOCKED_EXTERNAL`: fiziksel cihaz gerekir |
-| Maven Central yayını | `BLOCKED_EXTERNAL`: `com.feralin` namespace doğrulaması ve imza anahtarı gerekir; yayın yapılmadı |
+| Maven Central yayını | Yayında: `com.feralin:android:0.1.0` (19 Kasım 2026); `implementation("com.feralin:android:0.1.0")` ile `mavenCentral()` deposundan kurulur |
 
 ## Gereksinimler
 

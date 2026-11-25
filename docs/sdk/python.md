@@ -11,15 +11,13 @@
 | Dil | Python |
 | Paket | `feralin` |
 | Sürüm | 0.1.0 |
-| Yaşam döngüsü | INTEGRATION_TESTED |
+| Yaşam döngüsü | REGISTRY_VERIFIED |
 | Kaynak dizin | `sdks/python` |
-| Registry | PyPI: **BLOCKED_EXTERNAL** (gereken: PyPI hesabı ve 2FA; ilk yayın pypi- önekli API anahtarıyla (twine, TWINE_PASSWORD) ya da pending trusted publisher; adlar feralin, feralin-django, feralin-fastapi boş (rezervasyon yok, ilk yayında alınır)) |
+| Registry | PyPI: **PUBLISHED** (sonraki adım: PyPI hesabı ve 2FA; ilk yayın pypi- önekli API anahtarıyla (twine, TWINE_PASSWORD) ya da pending trusted publisher; adlar feralin, feralin-django, feralin-fastapi boş (rezervasyon yok, ilk yayında alınır)) |
 | Derleme | `python -m build sdks/python` |
 | Test | `python -X utf8 -c "import sys,unittest; sys.path[:0]=['sdks/python/src','sdks/python/tests']; r=unittest.TextTestRunner().run(unittest.defaultTestLoader.discover('sdks/python/tests')); sys.exit(not r.wasSuccessful())"` |
 
 ## Kurulum
-
-Registry yayını durumu **BLOCKED_EXTERNAL**: paket henüz `PyPI` üzerinde yayınlanmış olarak doğrulanmadı; aşağıdaki adımlar kaynaktan ya da yerel pakettendir.
 
 ```bash
 pip install -e sdks/python          # veya: PYTHONPATH=sdks/python/src
@@ -93,7 +91,7 @@ except Exception as exc:
 | source | PASS |  |
 | build | PASS |  |
 | test | PASS |  |
-| registry | BLOCKED_EXTERNAL | PyPI hesabı yok. |
+| registry | PASS | PyPI'de yayımlandı: feralin==0.1.0 (19 Kasım 2026, git f519d767, twine; wheel ve sdist). Geri okuma: pypi.org JSON API iki dosyanın sha256 özeti yerel paketle aynı. Registry'den temiz kurulum: boş venv'e pip install feralin==0.1.0 feralin-django==0.1.0 feralin-fastapi==0.1.0 ve import feralin (Windows, Python 3.13); olay alındısı registry paketiyle koşulmadı. |
 | clean_install | PASS | Wheel temiz sanal ortama --no-index ile kuruldu. |
 | event_receipt | PASS | scripts/sdk-e2e/run.mjs python: 202, outbox, izinsiz red, 401, idempotency. |
 | documentation | PASS | docs/sdk/python.md: kurulum ve kullanım kod blokları README'den, yetenek ve zincir durumu yetenek dosyasından üretilir (scripts/sdk-dry-run/docs.mjs); registry yayını ve Super Admin kanıtı ayrı halkadır. |
